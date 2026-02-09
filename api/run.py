@@ -125,8 +125,28 @@ def login():
     if user: return jsonify({"success": True, "user": user, "token": API_KEY})
     return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
+@app.route('/change-password', methods=['POST'])
+def change_password():
+    if not check_auth(): return jsonify({"success": False, "message": "Unauthorized API Access"}), 401
+    
+    data = request.json
+    user_id = data.get('userId')
+    old_password = data.get('oldPassword')
+    new_password = data.get('newPassword')
+    
+    if not all([user_id, old_password, new_password]):
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+        
+    success, message = update_user_password(user_id, old_password, new_password)
+    if success:
+        return jsonify({"success": True, "message": message})
+    return jsonify({"success": False, "message": message}), 400
+
 @app.route('/cron/keepalive', methods=['GET'])
 def keepalive():
+
+
+
     return jsonify({"status": "alive", "timestamp": datetime.datetime.now().isoformat()})
 
 @app.route('/sync', methods=['POST'])
@@ -258,6 +278,7 @@ def sync():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)

@@ -100,9 +100,16 @@ def ensure_headers(service, spreadsheet_id, sheet_name, headers):
         # Don't raise here, allow partial sync to proceed if one sheet fails
         pass
 
+def sanitize_value(value):
+    """Prevent formula injection"""
+    if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+        return f"'{value}"
+    return value
+
 def upsert_rows(service, spreadsheet_id, sheet_name, headers, data, id_column_index=0):
     # Fetch existing
     range_name = f"'{sheet_name}'!A1:Z1000"
+
     try:
         result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
         rows = result.get('values', [])
@@ -129,9 +136,12 @@ def upsert_rows(service, spreadsheet_id, sheet_name, headers, data, id_column_in
     if data:
         id_map = {str(row[id_column_index]): i for i, row in enumerate(rows) if i > 0 and len(row) > id_column_index}
         for new_row in data:
-            nid = str(new_row[id_column_index])
-            if nid in id_map: rows[id_map[nid]] = new_row
-            else: rows.append(new_row)
+            # Sanitize input
+            sanitized_row = [sanitize_value(cell) for cell in new_row]
+            
+            nid = str(sanitized_row[id_column_index])
+            if nid in id_map: rows[id_map[nid]] = sanitized_row
+            else: rows.append(sanitized_row)
 
     # 3. Write back
     rows[0] = headers
@@ -325,110 +335,22 @@ def sync():
                 if not row or not row[0]: continue
                 while len(row) < 17: row.append('')
                 oid = str(row[0])
+                # Sanitize input: clean formulas
+                sanitized_row = [sanitize_value(cell) for cell in row]
+                
                 pulled_orders.append({
-                    "order_id": oid, "customer_id": str(row[1]), "rep_id": str(row[2]),
-                    "order_date": str(row[3]), 
-                    "gross_total": float(row[4]) if row[4] else 0,
-                    "discount_rate": float(row[5]) if row[5] else 0,
-                    "discount_value": float(row[6]) if row[6] else 0,
-                    "secondary_discount_rate": float(row[7]) if row[7] else 0,
-                    "secondary_discount_value": float(row[8]) if row[8] else 0,
-                    "net_total": float(row[9]) if row[9] else 0,
-                    "paid_amount": float(row[10]) if row[10] else 0, 
-                    "balance_due": float(row[11]) if row[11] else 0,
-                    "payment_status": str(row[12] or 'unpaid'), 
-                    "delivery_status": str(row[13] or 'pending'),
-                    "credit_period": int(row[14]) if row[14] else 90,
-                    "order_status": str(row[15] or 'confirmed'), 
-                    "updated_at": str(row[16] or ''),
+                    "order_id": sanitized_row[0], "customer_id": str(sanitized_row[1]), "rep_id": str(sanitized_row[2]), "order_date": str(sanitized_row[3]), 
+                    "gross_total": float(sanitized_row[4]) if sanitized_row[4] else 0, "discount_rate": float(sanitized_row[5]) if sanitized_row[5] else 0, "discount_value": float(sanitized_row[6]) if sanitized_row[6] else 0,
+                    "secondary_discount_rate": float(sanitized_row[7]) if sanitized_row[7] else 0, "secondary_discount_value": float(sanitized_row[8]) if sanitized_row[8] else 0,
+                    "net_total": float(sanitized_row[9]) if sanitized_row[9] else 0, "paid_amount": float(sanitized_row[10]) if sanitized_row[10] else 0, "balance_due": float(sanitized_row[11]) if sanitized_row[11] else 0,
+                    "payment_status": str(sanitized_row[12] or 'unpaid'), "delivery_status": str(sanitized_row[13] or 'pending'),
+                    "credit_period": int(sanitized_row[14]) if sanitized_row[14] else 90, "order_status": str(sanitized_row[15] or 'confirmed'), "updated_at": str(sanitized_row[16] or ''),
                     "lines": lines_by_order.get(oid, []), "sync_status": 'synced'
                 })
 
-        return jsonify({
-            "success": True, 
-            "pulledItems": pulled_items,
-            "pulledCustomers": pulled_customers,
-            "pulledOrders": pulled_orders,
-            "message": f"Sync completed successfully ({mode} mode)"
-        })
-
-
-        # 2. Pull Customers
-        result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range="'Customers'!A:Z").execute()
-        pulled_customers = []
-        rows = result.get('values', [])
-        if len(rows) > 1:
-            for row in rows[1:]:
-                if not row or not row[0]: continue
-                while len(row) < 10: row.append('')
-                try: disc1 = float(row[5]) if row[5] else 0
-                except: disc1 = 0
-                try: disc2 = float(row[6]) if row[6] else 0
-                except: disc2 = 0
-                try: bal = float(row[7]) if row[7] else 0
-                except: bal = 0
-                pulled_customers.append({
-                    "customer_id": str(row[0]), "shop_name": str(row[1]), "address": str(row[2]),
-                    "phone": str(row[3]), "city_ref": str(row[4]), 
-                    "discount_rate": disc1, "secondary_discount_rate": disc2,
-                    "outstanding_balance": bal, "status": str(row[8] or 'active'),
-                    "updated_at": str(row[9] or ''), "sync_status": 'synced'
-                })
-
-        # 3. Pull Orders & Lines
-        result_orders = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range="'Orders'!A:Z").execute()
-        result_lines = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range="'OrderLines'!A:Z").execute()
-        
-        pulled_orders = []
-        order_rows = result_orders.get('values', [])
-        line_rows = result_lines.get('values', [])
-        
-        lines_by_order = {}
-        if len(line_rows) > 1:
-            for row in line_rows[1:]:
-                if len(row) < 7: continue
-                oid = str(row[1])
-                line = {
-                    "line_id": str(row[0]), "order_id": oid, "item_id": str(row[2]),
-                    "item_name": str(row[3]), "quantity": int(row[4]) if row[4] else 0,
-                    "unit_value": float(row[5]) if row[5] else 0, "line_total": float(row[6]) if row[6] else 0
-                }
-                if oid not in lines_by_order: lines_by_order[oid] = []
-                lines_by_order[oid].append(line)
-
-        if len(order_rows) > 1:
-            for row in order_rows[1:]:
-                if not row or not row[0]: continue
-                while len(row) < 16: row.append('')
-                oid = str(row[0])
-                pulled_orders.append({
-                    "order_id": oid, "customer_id": str(row[1]), "rep_id": str(row[2]),
-                    "order_date": str(row[3]), 
-                    "gross_total": float(row[4]) if row[4] else 0,
-                    "discount_rate": float(row[5]) if row[5] else 0,
-                    "discount_value": float(row[6]) if row[6] else 0,
-                    "secondary_discount_rate": float(row[7]) if row[7] else 0,
-                    "secondary_discount_value": float(row[8]) if row[8] else 0,
-                    "net_total": float(row[9]) if row[9] else 0,
-                    "paid_amount": float(row[10]) if row[10] else 0, 
-                    "balance_due": float(row[11]) if row[11] else 0,
-                    "payment_status": str(row[12] or 'unpaid'), 
-                    "delivery_status": str(row[13] or 'pending'),
-                    "order_status": str(row[14] or 'confirmed'), 
-                    "updated_at": str(row[15] or ''),
-                    "lines": lines_by_order.get(oid, []), "sync_status": 'synced'
-                })
-
-
-        return jsonify({
-            "success": True, 
-            "pulledItems": pulled_items,
-            "pulledCustomers": pulled_customers,
-            "pulledOrders": pulled_orders,
-            "message": f"Sync completed successfully ({mode} mode)"
-        })
-        
+        return jsonify({"success": True, "pulledItems": pulled_items, "pulledCustomers": pulled_customers, "pulledOrders": pulled_orders, "debug": {"customer_header_len": len(customer_headers), "order_header_len": len(order_headers)}, "message": f"Sync completed successfully ({mode} mode)"})
     except Exception as e:
+
         print("SYNC ERROR:")
         traceback.print_exc()
         return jsonify({"success": False, "message": str(e)}), 500
