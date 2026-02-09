@@ -513,14 +513,15 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                     {isInCart(item.item_id) && !isOutOfStock && <span className={`ml-2 text-[10px] font-black uppercase ${themeClasses.text}`}>In Cart</span>}
                                                 </div>
                                                 <div className="flex items-center gap-1 mt-0.5 text-[10px] leading-none text-slate-500">
-                                                        <>
-                                                            <span className={`font-black ${themeClasses.text} font-mono text-xs`}>{cleanText(item.item_number)}</span>
-                                                            <span className="text-slate-300">•</span>
-                                                            <span className="uppercase font-bold text-slate-600">{cleanText(item.vehicle_model)}</span>
-                                                            <span className="text-slate-300">•</span>
-                                                            <span>{cleanText(item.source_brand)}</span>
-                                                        </>
+                                                    <>
+                                                        <span className={`font-black ${themeClasses.text} font-mono text-xs`}>{cleanText(item.item_number)}</span>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className={`uppercase font-bold ${themeClasses.text}`}>{cleanText(item.vehicle_model)}</span>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className={themeClasses.text}>{cleanText(item.source_brand)}</span>
+                                                    </>
                                                 </div>
+
                                             </div>
                                         </div>
                                         

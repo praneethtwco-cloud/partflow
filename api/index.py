@@ -6,114 +6,30 @@ import traceback
 import datetime
 import base64
 
-# --- Vercel Compatibility Fix ---
-# Add the 'api' directory to the path so we can import 'database.py'
+# --- Path Setup ---
+# Allow imports from 'api' package by adding parent directory to path
 CURRENT_DIR = os.path.dirname(__file__)
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.append(PARENT_DIR)
+
+# Also add CURRENT_DIR for legacy imports if needed
 if CURRENT_DIR not in sys.path:
     sys.path.append(CURRENT_DIR)
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
-
-# Import from our local database.py
-from database import init_db, create_user, authenticate_user, DB_PATH
+from api.utils import get_sheets_service, get_google_config, check_auth as check_api_key, API_KEY
+from api.auth_service import init_auth, create_user, authenticate_user, update_user_password
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize Database (SQLite in /tmp for Vercel)
-init_db()
-
-# SECURITY: Basic API Key for internal bridge
-API_KEY = "partflow_secret_token_2026_v2"
+# Initialize Auth System
+init_auth()
 
 def check_auth():
-    auth_header = request.headers.get('X-API-KEY')
-    return auth_header == API_KEY
-
-# Path to the JSON key (Fallback for local/PythonAnywhere)
-SERVICE_ACCOUNT_FILE = os.path.join(CURRENT_DIR, 'config', 'service-account.json')
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
-# --- Helper Functions ---
-
-def get_google_config():
-    """Helper to get and normalize Google config from Env or File"""
-    config = None
-    source = "none"
-    
-    # 1. Try standard Environment Variable (Raw JSON)
-    env_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    if env_json:
-        try:
-            cleaned = env_json.strip()
-            while (cleaned.startswith("'") and cleaned.endswith("'")) or (cleaned.startswith('"') and cleaned.endswith('"')):
-                cleaned = cleaned[1:-1].strip()
-            config = json.loads(cleaned)
-            source = "env_json"
-        except Exception as e:
-            print(f"ERROR: Environment JSON parsing failed: {e}")
-
-    # 2. Try Base64 encoding (Fail-proof Vercel method)
-    if not config:
-        b64_data = os.environ.get('GOOGLE_SERVICE_ACCOUNT_B64')
-        if b64_data:
-            try:
-                # Clean up potential whitespace
-                b64_cleaned = "".join(b64_data.split())
-                decoded = base64.b64decode(b64_cleaned).decode('utf-8')
-                config = json.loads(decoded)
-                source = "env_b64"
-            except Exception as e:
-                print(f"ERROR: Base64 decoding failed: {e}")
-
-    # 3. Fallback to physical file
-    if not config and os.path.exists(SERVICE_ACCOUNT_FILE):
-        try:
-            with open(SERVICE_ACCOUNT_FILE, 'r') as f:
-                config = json.load(f)
-                source = "file"
-        except Exception as e:
-            print(f"ERROR: File JSON parsing failed: {e}")
-            
-    # CRITICAL: Normalize private key for ALL loading methods
-    if config and 'private_key' in config:
-        key = config['private_key']
-        if isinstance(key, str):
-            if '\\n' in key:
-                key = key.replace('\\n', '\n')
-            key = key.strip()
-            if key.startswith('"') and key.endswith('"'):
-                key = key[1:-1].strip()
-            if key.startswith("'") and key.endswith("'"):
-                key = key[1:-1].strip()
-            config['private_key'] = key
-        
-    return config, source
-
-def get_sheets_service():
-    """Returns an authorized Google Sheets service object"""
-    config, _ = get_google_config()
-    if not config:
-        raise FileNotFoundError("Service account credentials not found in Environment or File.")
-    
-    try:
-        required = ['client_email', 'private_key', 'token_uri']
-        missing = [f for f in required if f not in config]
-        if missing:
-            raise ValueError(f"Missing required fields in service account JSON: {', '.join(missing)}")
-
-        creds = service_account.Credentials.from_service_account_info(
-            config, scopes=SCOPES)
-        return build('sheets', 'v4', credentials=creds)
-    except Exception as e:
-        print("AUTHENTICATION ERROR TRACEBACK:")
-        traceback.print_exc()
-        raise e
+    return check_api_key()
 
 def ensure_headers(service, spreadsheet_id, sheet_name, headers):
     try:
@@ -127,6 +43,12 @@ def ensure_headers(service, spreadsheet_id, sheet_name, headers):
     except Exception as err:
         print(f"Error creating sheet {sheet_name}: {err}")
         pass
+
+def sanitize_value(value):
+    """Prevent formula injection"""
+    if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+        return f"'{value}"
+    return value
 
 def upsert_rows(service, spreadsheet_id, sheet_name, headers, data, id_column_index=0):
     # Fetch existing
@@ -160,9 +82,12 @@ def upsert_rows(service, spreadsheet_id, sheet_name, headers, data, id_column_in
     if data:
         id_map = {str(row[id_column_index]): i for i, row in enumerate(rows) if i > 0 and len(row) > id_column_index}
         for new_row in data:
-            nid = str(new_row[id_column_index])
-            if nid in id_map: rows[id_map[nid]] = new_row
-            else: rows.append(new_row)
+            # Sanitize input
+            sanitized_row = [sanitize_value(cell) for cell in new_row]
+            
+            nid = str(sanitized_row[id_column_index])
+            if nid in id_map: rows[id_map[nid]] = sanitized_row
+            else: rows.append(sanitized_row)
 
     # 3. Write back (Ensuring Row 1 is ALWAYS the headers we want)
     rows[0] = headers
@@ -218,6 +143,23 @@ def login():
     user = authenticate_user(data.get('username'), data.get('password'))
     if user: return jsonify({"success": True, "user": user, "token": API_KEY})
     return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+@app.route('/change-password', methods=['POST'])
+def change_password():
+    if not check_auth(): return jsonify({"success": False, "message": "Unauthorized API Access"}), 401
+    
+    data = request.json
+    user_id = data.get('userId')
+    old_password = data.get('oldPassword')
+    new_password = data.get('newPassword')
+    
+    if not all([user_id, old_password, new_password]):
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+        
+    success, message = update_user_password(user_id, old_password, new_password)
+    if success:
+        return jsonify({"success": True, "message": message})
+    return jsonify({"success": False, "message": message}), 400
 
 @app.route('/cron/keepalive', methods=['GET'])
 def keepalive():
