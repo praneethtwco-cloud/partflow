@@ -209,6 +209,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         
         // Prepare Payment Data
         const payAmount = parseFloat(paymentAmount) || 0;
+        
+        if (payAmount > netTotal) {
+             showToast("Payment cannot exceed total amount", "error");
+             return;
+        }
+
         const payments: Payment[] = editingOrder ? editingOrder.payments : [];
         
         if (payAmount > 0) {
@@ -687,10 +693,17 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         <input 
                                             type="number" 
                                             step="1" 
-                                                className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                            min="0"
+                                            max="100"
+                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
                                             value={discountRate}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
+                                            onChange={(e) => {
+                                                let val = parseFloat(e.target.value) || 0;
+                                                if (val < 0) val = 0;
+                                                if (val > 100) val = 100;
+                                                setDiscountRate(val);
+                                            }}
                                         />
                                         <span className="text-rose-600">-{formatCurrency(primaryDiscountValue)}</span>
                                     </div>
@@ -703,10 +716,17 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                             <input 
                                                 type="number" 
                                                 step="1" 
-                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                                min="0"
+                                                max="100"
+                                                className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
                                                 value={secondaryDiscountRate}
                                                 onFocus={(e) => e.target.select()}
-                                                onChange={(e) => setSecondaryDiscountRate(parseFloat(e.target.value) || 0)}
+                                                onChange={(e) => {
+                                                    let val = parseFloat(e.target.value) || 0;
+                                                    if (val < 0) val = 0;
+                                                    if (val > 100) val = 100;
+                                                    setSecondaryDiscountRate(val);
+                                                }}
                                             />
                                             <span className="text-rose-600">-{formatCurrency(secondaryDiscountValue)}</span>
                                         </div>
