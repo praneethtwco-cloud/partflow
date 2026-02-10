@@ -4,6 +4,7 @@ import { SyncStats } from '../types';
 import { API_CONFIG } from '../config';
 import { useToast } from '../context/ToastContext';
 import { Modal } from './ui/Modal';
+import { ConflictResolver, ConflictItem } from './ui/ConflictResolver';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -13,11 +14,17 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const { themeClasses } = useTheme();
     const { showToast } = useToast();
     const [stats, setStats] = useState<SyncStats>(db.getSyncStats());
-    const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error' | 'checking'>('idle');
     const [logs, setLogs] = useState<string[]>([]);
     const [sheetId, setSheetId] = useState('');
     const [isConfiguring, setIsConfiguring] = useState(false);
-    const [serviceEmail, setServiceEmail] = useState('spareparts@clear-vision-476504-k2.iam.gserviceaccount.com');
+    const [serviceEmail, setServiceEmail] = useState('');
+    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, onConfirm: () => void} | null>(null);
+    
+    // Conflict State
+    const [showConflictResolver, setShowConflictResolver] = useState(false);
+    const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
+    const [cloudBuffer, setCloudBuffer] = useState<any>(null);
 
     useEffect(() => {
         setStats(db.getSyncStats());
@@ -61,10 +68,42 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
         setStatus('syncing');
         setLogs([]);
-        addLog(mode === 'overwrite' ? 'Starting FULL data upload (Overwrite mode)...' : 'Connecting to Google Cloud...');
 
+        if (mode === 'overwrite') {
+             addLog('Starting FULL data upload (Overwrite mode)...');
+             try {
+                await db.performSync((msg) => addLog(msg), 'overwrite');
+                setStatus('success');
+                showToast("Sync completed successfully!", "success");
+                setStats(db.getSyncStats());
+                onSyncComplete();
+            } catch (e: any) {
+                console.error(e);
+                setStatus('error');
+                addLog(`Error: ${e.message}`);
+                showToast(`Sync failed: ${e.message}`, "error");
+            }
+            return;
+        }
+
+        // Smart Sync (Check conflicts first)
+        addLog('Checking for conflicts...');
+        setStatus('checking');
+        
         try {
-            await db.performSync((msg) => addLog(msg), mode);
+            const result = await db.checkForConflicts();
+            
+            if (result.hasConflicts) {
+                addLog(`Found ${result.conflicts.length} conflicts.`);
+                setConflicts(result.conflicts);
+                setCloudBuffer(result.cloudData);
+                setShowConflictResolver(true);
+                setStatus('idle');
+                return;
+            }
+
+            addLog('No conflicts found. Proceeding with sync...');
+            await db.performSync((msg) => addLog(msg), 'upsert');
             
             setStatus('success');
             showToast("Sync completed successfully!", "success");
@@ -75,6 +114,25 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             setStatus('error');
             addLog(`Error: ${e.message}`);
             showToast(`Sync failed: ${e.message}`, "error");
+        }
+    };
+
+    const handleResolveConflicts = async (resolutions: { [id: string]: 'local' | 'cloud' }) => {
+        setShowConflictResolver(false);
+        setStatus('syncing');
+        addLog('Resolving conflicts and finalizing sync...');
+        
+        try {
+            await db.resolveConflictsAndSync(resolutions, cloudBuffer);
+            setStatus('success');
+            showToast("Sync completed successfully!", "success");
+            setStats(db.getSyncStats());
+            onSyncComplete();
+        } catch (e: any) {
+            console.error(e);
+            setStatus('error');
+            addLog(`Resolution Error: ${e.message}`);
+            showToast(`Resolution failed: ${e.message}`, "error");
         }
     };
 
@@ -107,7 +165,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className={`p-6 md:p-8 text-center bg-gradient-to-b ${themeClasses.bgSoft} to-white`}>
                      <div className="mb-6">
-                        {status === 'syncing' ? (
+                        {status === 'syncing' || status === 'checking' ? (
                             <div className={`w-20 h-20 border-4 border-slate-200 border-t-${themeClasses.bg.split('-')[1]}-600 rounded-full animate-spin mx-auto`}></div>
                         ) : status === 'success' ? (
                             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
@@ -121,7 +179,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                      </div>
                      
                       <h3 className="text-lg font-bold text-slate-900 mb-2">
-                         {status === 'syncing' ? 'Syncing...' : totalPending > 0 ? 'Changes Pending' : 'All Systems Synced'}
+                         {status === 'syncing' ? 'Syncing...' : status === 'checking' ? 'Checking Conflicts...' : totalPending > 0 ? 'Changes Pending' : 'All Systems Synced'}
                       </h3>
                       {stats.last_sync && (
                           <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-widest">
@@ -130,19 +188,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                       )}
                       <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">
 
-                        {status === 'syncing' ? 'Please wait while we exchange data with HQ.' : 'Push local orders to the cloud and pull latest inventory.'}
+                        {status === 'syncing' || status === 'checking' ? 'Please wait while we exchange data with HQ.' : 'Push local orders to the cloud and pull latest inventory.'}
                      </p>
 
                       <div className="flex flex-col gap-3 max-w-sm mx-auto">
                         <button 
                             onClick={() => handleSync('upsert')}
-                            disabled={isConfiguring || status === 'syncing'}
+                            disabled={isConfiguring || status === 'syncing' || status === 'checking'}
                             className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 ${
-                                status === 'syncing' ? 'bg-slate-200 text-slate-400 cursor-not-allowed' :
+                                status === 'syncing' || status === 'checking' ? 'bg-slate-200 text-slate-400 cursor-not-allowed' :
                                 `${themeClasses.bg} text-white ${themeClasses.bgHover} ${themeClasses.shadow}`
                             }`}
                         >
-                            {status === 'syncing' ? 'Processing...' : totalPending > 0 ? 'Sync & Push' : 'Incremental Sync'}
+                            {status === 'syncing' ? 'Processing...' : status === 'checking' ? 'Checking...' : totalPending > 0 ? 'Sync & Push' : 'Incremental Sync'}
                         </button>
 
                         <button 
@@ -254,6 +312,18 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                     confirmText="Overwrite"
                     onConfirm={confirmModal.onConfirm}
                     onCancel={() => setConfirmModal(null)}
+                />
+            )}
+
+            {showConflictResolver && (
+                <ConflictResolver
+                    conflicts={conflicts}
+                    onResolve={handleResolveConflicts}
+                    onCancel={() => {
+                        setShowConflictResolver(false);
+                        setStatus('idle');
+                        addLog('Sync cancelled by user.');
+                    }}
                 />
             )}
         </div>

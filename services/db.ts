@@ -605,6 +605,22 @@ class LocalDB {
         }
 
         await this.db.transaction('rw', this.db.items, async () => {
+             // Conflict Resolution Logic:
+             // If we have pending local changes that were NOT pushed (e.g. because of error or partial sync),
+             // we need to decide. 
+             // BUT, performSync puts everything in 'pending' status into the push payload.
+             // If push succeeded, status is 'synced'.
+             // So if we are here, push succeeded. The only conflicts are if cloud has NEWER data 
+             // that overwrites our just-pushed data? No, last write wins.
+             // REAL CONFLICT: We pulled data BEFORE pushing?
+             // The current logic is Push (lines 532) THEN Pull (lines 574).
+             // If Push succeeds, local items are 'synced'. Then we blindly overwrite with Cloud.
+             // This is safe IF Cloud includes our just-pushed changes.
+             
+             // However, for robust Conflict Resolution feature request:
+             // We need a mode to PULL FIRST, detect conflicts, then RESOLVE, then PUSH.
+             // This method performSync is the "Blind Sync".
+             
              await this.db.items.clear();
              await this.db.items.bulkPut(result.pulledItems!);
         });
@@ -635,6 +651,134 @@ class LocalDB {
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+  }
+
+  // --- Conflict Detection ---
+  async checkForConflicts(): Promise<{
+      hasConflicts: boolean;
+      conflicts: any[]; // Typed as ConflictItem[] in UI
+      cloudData?: { items: Item[], customers: Customer[], orders: Order[] };
+  }> {
+      const settings = this.getSettings();
+      if (!settings.google_sheet_id) throw new Error("Google Sheet ID not configured");
+
+      // 1. Pull Cloud Data (without pushing)
+      // We need a way to tell syncData to ONLY pull.
+      // But syncData takes arrays to push. We can pass empty arrays?
+      // No, that might imply deleting if backend isn't smart.
+      // Actually backend /sync just processes what it gets. If we send empty, it updates nothing and returns all.
+      
+      const result = await sheetsService.syncData(
+          settings.google_sheet_id,
+          [], [], [], // Send nothing
+          'upsert'
+      );
+
+      if (!result.success || !result.pulledItems || !result.pulledCustomers) {
+          throw new Error("Failed to fetch cloud data for conflict check");
+      }
+
+      const conflicts: any[] = [];
+      const localItems = this.getItems();
+      const localCustomers = this.getCustomers();
+
+      // Check Items
+      result.pulledItems.forEach(cloudItem => {
+          const localItem = localItems.find(i => i.item_id === cloudItem.item_id);
+          if (localItem && localItem.sync_status === 'pending') {
+              // Compare content (ignoring metadata)
+              const hasDiff = 
+                  localItem.item_display_name !== cloudItem.item_display_name ||
+                  localItem.unit_value !== cloudItem.unit_value ||
+                  localItem.current_stock_qty !== cloudItem.current_stock_qty;
+              
+              if (hasDiff) {
+                  conflicts.push({
+                      type: 'item',
+                      id: localItem.item_id,
+                      local: localItem,
+                      cloud: cloudItem
+                  });
+              }
+          }
+      });
+
+      // Check Customers
+      result.pulledCustomers.forEach(cloudCustomer => {
+          const localCustomer = localCustomers.find(c => c.customer_id === cloudCustomer.customer_id);
+          if (localCustomer && localCustomer.sync_status === 'pending') {
+              const hasDiff = 
+                  localCustomer.shop_name !== cloudCustomer.shop_name ||
+                  localCustomer.outstanding_balance !== cloudCustomer.outstanding_balance;
+              
+              if (hasDiff) {
+                  conflicts.push({
+                      type: 'customer',
+                      id: localCustomer.customer_id,
+                      local: localCustomer,
+                      cloud: cloudCustomer
+                  });
+              }
+          }
+      });
+
+      return {
+          hasConflicts: conflicts.length > 0,
+          conflicts,
+          cloudData: {
+              items: result.pulledItems,
+              customers: result.pulledCustomers,
+              orders: result.pulledOrders || []
+          }
+      };
+  }
+
+  async resolveConflictsAndSync(
+      resolutions: { [id: string]: 'local' | 'cloud' },
+      cloudData: { items: Item[], customers: Customer[], orders: Order[] }
+  ): Promise<void> {
+      // 1. Apply Resolutions
+      await this.db.transaction('rw', [this.db.items, this.db.customers], async () => {
+          
+          // Apply Item Resolutions
+          for (const item of cloudData.items) {
+              const resolution = resolutions[item.item_id];
+              if (resolution === 'cloud') {
+                  // Overwrite local with cloud
+                  await this.db.items.put(item);
+              } else if (resolution === 'local') {
+                  // Keep local (it's already there and pending), do nothing.
+                  // It will be pushed in the next step.
+              } else {
+                  // No conflict, just update (Last Write Wins from Cloud for non-conflicting)
+                  const local = this.cache.items.find(i => i.item_id === item.item_id);
+                  if (!local || local.sync_status !== 'pending') {
+                      await this.db.items.put(item);
+                  }
+              }
+          }
+
+          // Apply Customer Resolutions
+          for (const cust of cloudData.customers) {
+              const resolution = resolutions[cust.customer_id];
+              if (resolution === 'cloud') {
+                  await this.db.customers.put(cust);
+              } else if (resolution === 'local') {
+                  // Keep local
+              } else {
+                  const local = this.cache.customers.find(c => c.customer_id === cust.customer_id);
+                  if (!local || local.sync_status !== 'pending') {
+                      await this.db.customers.put(cust);
+                  }
+              }
+          }
+      });
+
+      // 2. Refresh Cache
+      await this.refreshCache();
+
+      // 3. Perform Normal Sync (Push pending)
+      await this.performSync();
   }
 }
 
