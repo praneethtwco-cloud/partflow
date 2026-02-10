@@ -244,6 +244,54 @@ export const InventoryList: React.FC = () => {
     });
   };
 
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setIsLoading(true);
+      try {
+          const data = await parseCsv(file);
+          let successCount = 0;
+
+          for (const row of data) {
+              // Basic Validation
+              if (!row.item_display_name && !row.Name && !row.name) continue;
+
+              const newItem: Item = {
+                  item_id: generateUUID(),
+                  item_display_name: row.item_display_name || row.Name || row.name || '',
+                  item_name: row.item_name || row.InternalName || row.item_display_name || row.Name || '',
+                  item_number: row.item_number || row.SKU || row.sku || '',
+                  vehicle_model: row.vehicle_model || row.Model || row.model || '',
+                  source_brand: row.source_brand || row.Brand || row.brand || '',
+                  category: row.category || row.Category || 'Uncategorized',
+                  unit_value: parseFloat(row.unit_value || row.Price || row.price || '0'),
+                  current_stock_qty: parseInt(row.current_stock_qty || row.Qty || row.quantity || '0'),
+                  low_stock_threshold: parseInt(row.low_stock_threshold || row.Limit || '10'),
+                  is_out_of_stock: (row.current_stock_qty || row.Qty || 0) <= 0,
+                  status: 'active',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  sync_status: 'pending'
+              };
+
+              await db.saveItem(newItem);
+              successCount++;
+          }
+
+          setItems(db.getItems());
+          showToast(`Successfully imported ${successCount} items`, "success");
+      } catch (error) {
+          console.error("Import failed:", error);
+          showToast("Failed to import CSV file", "error");
+      } finally {
+          setIsLoading(false);
+          if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+          }
+      }
+  };
+
   const filteredItems = items.filter(item => {
     const matchesSearch = item.item_display_name.toLowerCase().includes(filter.toLowerCase()) ||
         item.item_number.toLowerCase().includes(filter.toLowerCase());

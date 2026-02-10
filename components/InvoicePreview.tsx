@@ -13,7 +13,7 @@ interface InvoicePreviewProps {
     onClose: () => void;
 }
 
-export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settings, onClose }) => {
+const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settings, onClose }) => {
     const { showToast } = useToast();
     
     // Pagination Logic
@@ -292,3 +292,5 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer,
         </div>
     );
 };
+
+export default InvoicePreview;

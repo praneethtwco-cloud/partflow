@@ -3,6 +3,7 @@ import { db } from '../services/db';
 import { SyncStats } from '../types';
 import { API_CONFIG } from '../config';
 import { useToast } from '../context/ToastContext';
+import { useTheme } from '../context/ThemeContext';
 import { Modal } from './ui/Modal';
 import { ConflictResolver, ConflictItem } from './ui/ConflictResolver';
 

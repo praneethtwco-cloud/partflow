@@ -4,7 +4,7 @@ import { CustomerList } from './components/CustomerList';
 import { InventoryList } from './components/InventoryList';
 import { OrderBuilder } from './components/OrderBuilder';
 import { SyncDashboard } from './components/SyncDashboard';
-import { InvoicePreview } from './components/InvoicePreview';
+import InvoicePreview from './components/InvoicePreview';
 import { OrderHistory } from './components/OrderHistory';
 import { Settings } from './components/Settings';
 import { Dashboard } from './components/Dashboard';

@@ -3,7 +3,7 @@ import { db } from '../services/db';
 import { Customer, Item, Order } from '../types';
 import { pdfService } from '../services/pdf';
 import { formatCurrency } from '../utils/currency';
-import { InvoicePreview } from './InvoicePreview';
+import InvoicePreview from './InvoicePreview';
 import { cleanText } from '../utils/cleanText';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
