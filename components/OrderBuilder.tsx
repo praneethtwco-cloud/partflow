@@ -121,7 +121,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         if (isNaN(qty) || qty <= 0) return;
         
         if (settings.stock_tracking_enabled && qty > selectedItem.current_stock_qty) {
-            alert(`Insufficient stock. Only ${selectedItem.current_stock_qty} available.`);
+            showToast(`Insufficient stock. Only ${selectedItem.current_stock_qty} available.`, "error");
             return;
         }
 
@@ -130,7 +130,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
              const newLines = [...lines];
              const newQty = newLines[existingLineIndex].quantity + qty;
              if (settings.stock_tracking_enabled && newQty > selectedItem.current_stock_qty) {
-                 alert("Total quantity exceeds stock.");
+                 showToast("Total quantity exceeds stock.", "error");
                  return;
              }
              newLines[existingLineIndex].quantity = newQty;
@@ -173,7 +173,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         if (settings.stock_tracking_enabled && delta > 0) {
             const item = items.find(i => i.item_id === line.item_id);
             if (item && newQty > item.current_stock_qty) {
-                alert(`Insufficient stock. Only ${item.current_stock_qty} available.`);
+                showToast(`Insufficient stock. Only ${item.current_stock_qty} available.`, "error");
                 return;
             }
         }

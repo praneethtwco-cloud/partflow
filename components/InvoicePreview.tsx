@@ -4,6 +4,8 @@ import { pdfService } from '../services/pdf';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 
+import { useToast } from '../context/ToastContext';
+
 interface InvoicePreviewProps {
     order: Order;
     customer: Customer;
@@ -12,6 +14,7 @@ interface InvoicePreviewProps {
 }
 
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settings, onClose }) => {
+    const { showToast } = useToast();
     
     // Pagination Logic
     const ITEMS_PER_PAGE_1 = 20; 
@@ -54,7 +57,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer,
             await pdfService.generateInvoice(order, customer, settings, '.invoice-page');
         } catch (error) {
             console.error(error);
-            alert("Failed to generate PDF.");
+            showToast("Failed to generate PDF.", "error");
         }
     };
 
@@ -63,7 +66,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer,
             await pdfService.shareInvoice(order, customer, settings, '.invoice-page');
         } catch (error) {
             console.error(error);
-            alert("Failed to share PDF.");
+            showToast("Failed to share PDF.", "error");
         }
     };
 

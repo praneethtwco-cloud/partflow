@@ -5,6 +5,8 @@ import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 
+import { useToast } from '../context/ToastContext';
+
 interface ShopProfileProps {
     customer: Customer;
     onBack: () => void;
@@ -12,6 +14,7 @@ interface ShopProfileProps {
 }
 
 export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onViewInvoice }) => {
+    const { showToast } = useToast();
     const [orders, setOrders] = useState<Order[]>([]);
     
     // Settlement Modal
@@ -33,7 +36,7 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
         if (!settleOrder) return;
         const amount = parseFloat(paymentAmount);
         if (isNaN(amount) || amount <= 0) {
-            alert("Please enter a valid amount");
+            showToast("Please enter a valid amount", "warning");
             return;
         }
 

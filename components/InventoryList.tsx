@@ -83,7 +83,7 @@ export const InventoryList: React.FC = () => {
 
   const handleSaveItem = async () => {
     if (!newItem.item_display_name || !newItem.item_number || !newItem.unit_value) {
-        showAlert("Missing Info", "Name, SKU, and Price are required", "danger");
+        showToast("Name, SKU, and Price are required", "error");
         return;
     }
 
@@ -96,7 +96,7 @@ export const InventoryList: React.FC = () => {
     );
 
     if (isDuplicate) {
-        showAlert("Duplicate Detected", "An item with this Name, Model, and Country already exists.", "danger");
+        showToast("An item with this Name, Model, and Country already exists.", "error");
         return;
     }
 
@@ -200,7 +200,7 @@ export const InventoryList: React.FC = () => {
       if (!adjustItem || !adjustQty) return;
       const qty = parseInt(adjustQty);
       if (isNaN(qty) || qty <= 0) {
-          alert("Please enter a valid quantity");
+          showToast("Please enter a valid quantity", "warning");
           return;
       }
 
@@ -224,11 +224,21 @@ export const InventoryList: React.FC = () => {
 
   const handleDeleteItem = async () => {
     if (!editingItem) return;
-    if (window.confirm("Are you sure you want to delete this item? It will be marked as inactive.")) {
-        await db.deleteItem(editingItem.item_id);
-        setItems([...db.getItems()]);
-        closeAddForm();
-    }
+    
+    setAlertConfig({
+        isOpen: true,
+        title: "Delete Item?",
+        message: "Are you sure you want to delete this item? It will be marked as inactive.",
+        type: 'danger',
+        confirmText: "Delete",
+        onConfirm: async () => {
+            await db.deleteItem(editingItem.item_id);
+            setItems([...db.getItems()]);
+            closeAddForm();
+            setAlertConfig(null);
+        },
+        onCancel: () => setAlertConfig(null)
+    });
   };
 
   const filteredItems = items.filter(item => {

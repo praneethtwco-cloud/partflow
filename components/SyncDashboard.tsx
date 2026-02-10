@@ -3,7 +3,7 @@ import { db } from '../services/db';
 import { SyncStats } from '../types';
 import { API_CONFIG } from '../config';
 import { useToast } from '../context/ToastContext';
-import { useTheme } from '../context/ThemeContext';
+import { Modal } from './ui/Modal';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -147,9 +147,13 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
                         <button 
                             onClick={() => {
-                                if(window.confirm("This will overwrite the Google Sheet with your current local data. Continue?")) {
-                                    handleSync('overwrite');
-                                }
+                                setConfirmModal({
+                                    isOpen: true,
+                                    onConfirm: () => {
+                                        handleSync('overwrite');
+                                        setConfirmModal(null);
+                                    }
+                                });
                             }}
                             disabled={isConfiguring || status === 'syncing'}
                             className="w-full py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all"
@@ -239,6 +243,18 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                         ))}
                     </div>
                 </div>
+            )}
+
+            {confirmModal && (
+                <Modal
+                    isOpen={confirmModal.isOpen}
+                    title="Overwrite Cloud Data?"
+                    message="This will overwrite the Google Sheet with your current local data. This action cannot be undone."
+                    type="danger"
+                    confirmText="Overwrite"
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(null)}
+                />
             )}
         </div>
     );

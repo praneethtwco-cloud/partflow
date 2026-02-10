@@ -34,7 +34,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
 
   const handleSaveCustomer = async () => {
     if (!newCustomer.shop_name || !newCustomer.city_ref) {
-        alert("Shop Name and City are required");
+        showToast("Shop Name and City are required", "error");
         return;
     }
 
