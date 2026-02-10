@@ -118,17 +118,14 @@ def health():
     }
     return jsonify(diag)
 
-@app.route('/debug-env', methods=['GET'])
-def debug_env():
-    json_raw = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    b64_raw = os.environ.get('GOOGLE_SERVICE_ACCOUNT_B64')
-    return jsonify({
-        "JSON_VAR": {"exists": json_raw is not None, "length": len(json_raw) if json_raw else 0},
-        "B64_VAR": {"exists": b64_raw is not None, "length": len(b64_raw) if b64_raw else 0}
-    })
-
 @app.route('/register', methods=['POST'])
 def register():
+    # Only allow registration if authenticated as existing admin
+    # OR if this is the very first user (bootstrapping)
+    # For now, simplistic check: Require Auth Header
+    if not check_auth():
+         return jsonify({"success": False, "message": "Unauthorized: Admin access required to register new users"}), 401
+    
     data = request.json
     username, password, full_name = data.get('username'), data.get('password'), data.get('full_name')
     if not username or not password:
@@ -141,7 +138,7 @@ def register():
 def login():
     data = request.json
     user = authenticate_user(data.get('username'), data.get('password'))
-    if user: return jsonify({"success": True, "user": user, "token": API_KEY})
+    if user: return jsonify({"success": True, "user": user, "token": user['token']})
     return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
 @app.route('/change-password', methods=['POST'])
