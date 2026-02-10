@@ -51,8 +51,8 @@ def sanitize_value(value):
     return value
 
 def upsert_rows(service, spreadsheet_id, sheet_name, headers, data, id_column_index=0):
-    # Fetch existing
-    range_name = f"'{sheet_name}'!A1:Z1000"
+    # Fetch existing - Fetch all data (A:Z) instead of 1000 limit
+    range_name = f"'{sheet_name}'!A:Z"
     try:
         result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
         rows = result.get('values', [])

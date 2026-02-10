@@ -5,7 +5,6 @@ import { jsonToCsv, downloadCsv } from '../utils/csv';
 import { generateSKU } from '../utils/skuGenerator';
 import SEED_DATA from '../src/config/seed-data.json';
 import APP_SETTINGS from '../src/config/app-settings.json';
-import USER_CONFIG from '../src/config/users.json';
 
 // Keys for LocalStorage (Legacy / Cache Flags)
 const STORAGE_KEYS = {
@@ -29,13 +28,6 @@ const SEED_SETTINGS: CompanySettings = {
     category_enabled: false
 }; 
 
-const SEED_USERS: User[] = USER_CONFIG.users.map((u, index) => ({
-    id: `user-${index + 1}`,
-    username: u.username,
-    password: u.password,
-    role: u.role as 'admin' | 'rep',
-    full_name: u.rep_name
-}));
 // --- Dexie Database Schema ---
 class PartFlowDB extends Dexie {
     customers!: Table<Customer, string>;
@@ -113,7 +105,6 @@ class LocalDB {
       let itemsToSave = SEED_ITEMS;
       let ordersToSave: Order[] = [];
       let settingsToSave = SEED_SETTINGS;
-      let usersToSave = SEED_USERS;
 
       if (legCustomers) {
           console.log("Migrating Customers from LocalStorage...");
@@ -163,7 +154,6 @@ class LocalDB {
               if (migratedCustomers.length > 0) await this.db.customers.bulkPut(migratedCustomers);
               if (itemsToSave.length > 0) await this.db.items.bulkPut(itemsToSave);
               if (migratedOrders.length > 0) await this.db.orders.bulkPut(migratedOrders);
-              if (usersToSave.length > 0) await this.db.users.bulkPut(usersToSave);
               
               await this.db.settings.put({ ...settingsToSave, id: 'main' } as any);
           });
