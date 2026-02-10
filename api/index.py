@@ -19,11 +19,28 @@ if CURRENT_DIR not in sys.path:
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from api.utils import get_sheets_service, get_google_config, check_auth as check_api_key, API_KEY
 from api.auth_service import init_auth, create_user, authenticate_user, update_user_password
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS Configuration
+# In production, specific origins should be set. For now, allow all (mobile app context)
+# but we can restrict methods/headers.
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Rate Limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Payload Size Limit (4MB to stay under Vercel's 4.5MB)
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024 
 
 # Initialize Auth System
 init_auth()
@@ -135,6 +152,7 @@ def register():
     return jsonify({"success": False, "message": "Username already exists"}), 400
 
 @app.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     data = request.json
     user = authenticate_user(data.get('username'), data.get('password'))
@@ -163,6 +181,7 @@ def keepalive():
     return jsonify({"status": "alive", "timestamp": datetime.datetime.now().isoformat()})
 
 @app.route('/sync', methods=['POST'])
+@limiter.limit("10 per minute")
 def sync():
     if not check_auth(): return jsonify({"success": False, "message": "Unauthorized"}), 401
     data = request.json
