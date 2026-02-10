@@ -199,7 +199,7 @@ function AppContent() {
       case 'inventory':
         return <InventoryList />;
       case 'orders':
-        if (!selectedCustomer && !editingOrder) {
+        if (!selectedCustomer && !editingOrder && !draftOrder) {
             return (
                 <div className="space-y-4">
                     <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl text-center">
