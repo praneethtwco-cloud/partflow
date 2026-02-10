@@ -117,6 +117,11 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer,
                                 {/* Header */}
                                 {isFirstPage ? (
                                     <div className="text-center border-b-2 border-black pb-2 mb-5">
+                                        {settings.logo_base64 ? (
+                                            <div className="flex justify-center mb-4">
+                                                <img src={settings.logo_base64} alt="Logo" className="h-16 object-contain" />
+                                            </div>
+                                        ) : null}
                                         <h1 className="text-[28px] font-black text-black m-0 leading-none uppercase tracking-tighter">{settings.company_name}</h1>
                                         <p className="mt-1 font-medium">{cleanText(settings.address)}</p>
                                         <p className="m-0 font-medium text-slate-700">Tel: {settings.phone} | Email: vidushan.motors@gmail.com</p>

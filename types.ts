@@ -112,6 +112,7 @@ export interface CompanySettings {
   stock_tracking_enabled: boolean;
   category_enabled: boolean; // New Setting
   google_sheet_id?: string;
+  logo_base64?: string;
 }
 
 export interface StockAdjustment extends BaseEntity {

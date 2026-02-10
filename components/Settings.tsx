@@ -23,6 +23,25 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });
     const [passMsg, setPassMsg] = useState({ text: '', type: 'info' as 'info' | 'danger' | 'success' });
 
+    // Logo Upload
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 500 * 1024) { // 500KB limit
+            setMessage('Logo file too large (max 500KB)');
+            setTimeout(() => setMessage(''), 3000);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setSettings(prev => ({ ...prev, logo_base64: base64 }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSave = () => {
         db.saveSettings(settings);
         setMessage('Settings saved successfully!');
@@ -174,6 +193,32 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     />
                     
                     <div className="space-y-3">
+                        {/* Logo Upload */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-wider">Company Logo</label>
+                            <div className="flex items-center gap-4">
+                                {settings.logo_base64 ? (
+                                    <div className="relative group">
+                                        <img src={settings.logo_base64} alt="Company Logo" className="w-16 h-16 object-contain rounded-lg border border-slate-200" />
+                                        <button 
+                                            onClick={() => setSettings(s => ({ ...s, logo_base64: undefined }))}
+                                            className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </div>
+                                )}
+                                <label className={`cursor-pointer ${themeClasses.bgSoft} ${themeClasses.text} text-xs font-bold px-4 py-2 rounded-xl hover:opacity-80 transition-opacity`}>
+                                    Upload Image
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                                </label>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Company Name</label>
                             <input 
