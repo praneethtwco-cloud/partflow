@@ -1,6 +1,7 @@
 export const themeColors = {
     indigo: {
         name: 'Indigo',
+        hex: '#4f46e5',
         bg: 'bg-indigo-600',
         bgHover: 'hover:bg-indigo-700',
         bgSoft: 'bg-indigo-50',
@@ -14,6 +15,7 @@ export const themeColors = {
     },
     blue: {
         name: 'Ocean',
+        hex: '#2563eb',
         bg: 'bg-blue-600',
         bgHover: 'hover:bg-blue-700',
         bgSoft: 'bg-blue-50',
@@ -27,6 +29,7 @@ export const themeColors = {
     },
     violet: {
         name: 'Royal',
+        hex: '#7c3aed',
         bg: 'bg-violet-600',
         bgHover: 'hover:bg-violet-700',
         bgSoft: 'bg-violet-50',
@@ -40,6 +43,7 @@ export const themeColors = {
     },
     emerald: {
         name: 'Emerald',
+        hex: '#059669',
         bg: 'bg-emerald-600',
         bgHover: 'hover:bg-emerald-700',
         bgSoft: 'bg-emerald-50',
@@ -53,6 +57,7 @@ export const themeColors = {
     },
     rose: {
         name: 'Rose',
+        hex: '#e11d48',
         bg: 'bg-rose-600',
         bgHover: 'hover:bg-rose-700',
         bgSoft: 'bg-rose-50',
@@ -66,6 +71,7 @@ export const themeColors = {
     },
     amber: {
         name: 'Amber',
+        hex: '#f59e0b',
         bg: 'bg-amber-500', // Amber 600 is too dark/orange sometimes
         bgHover: 'hover:bg-amber-600',
         bgSoft: 'bg-amber-50',
@@ -79,6 +85,7 @@ export const themeColors = {
     },
     slate: {
         name: 'Graphite',
+        hex: '#334155',
         bg: 'bg-slate-700',
         bgHover: 'hover:bg-slate-800',
         bgSoft: 'bg-slate-100',

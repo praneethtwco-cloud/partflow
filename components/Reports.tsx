@@ -13,7 +13,10 @@ interface ReportsProps {
     onOpenProfile?: (customer: Customer) => void;
 }
 
+import { useTheme } from '../context/ThemeContext';
+
 export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
+    const { themeClasses } = useTheme();
     const [orders, setOrders] = useState<Order[]>([]);
     const [items, setItems] = useState<Item[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -128,8 +131,8 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                             <AreaChart data={salesTrend}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor={themeClasses.hex} stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor={themeClasses.hex} stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -155,7 +158,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                                 <Area 
                                     type="monotone" 
                                     dataKey="total" 
-                                    stroke="#4f46e5" 
+                                    stroke={themeClasses.hex} 
                                     strokeWidth={3}
                                     fillOpacity={1} 
                                     fill="url(#colorSales)" 

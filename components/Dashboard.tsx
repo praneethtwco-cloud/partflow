@@ -197,8 +197,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                         <AreaChart data={trendData}>
                             <defs>
                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor={themeClasses.hex} stopOpacity={0.2}/>
+                                    <stop offset="95%" stopColor={themeClasses.hex} stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <XAxis 
@@ -217,7 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                             <Area 
                                 type="monotone" 
                                 dataKey="sales" 
-                                stroke="#4f46e5" 
+                                stroke={themeClasses.hex} 
                                 strokeWidth={3}
                                 fillOpacity={1} 
                                 fill="url(#colorSales)" 
