@@ -42,9 +42,16 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const filteredOrders = orders.filter(o => o.order_date >= dateRange.start && o.order_date <= dateRange.end);
     
     // Aggregations
-    const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.net_total, 0);
+    const totalRevenue = filteredOrders.reduce((sum, o) => {
+        // Exclude cancelled or failed orders from revenue
+        if (o.delivery_status === 'failed' || o.delivery_status === 'cancelled') return sum;
+        return sum + o.net_total;
+    }, 0);
+    
     const customerStats: Record<string, number> = {};
     filteredOrders.forEach(o => {
+        // Exclude cancelled or failed orders from stats
+        if (o.delivery_status === 'failed' || o.delivery_status === 'cancelled') return;
         customerStats[o.customer_id] = (customerStats[o.customer_id] || 0) + o.net_total;
     });
 
@@ -52,7 +59,15 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
         .sort((a, b) => b[1] - a[1])
         .map(([id, total]) => {
             const customer = customers.find(c => c.customer_id === id);
-            const customerOrders = filteredOrders.filter(o => o.customer_id === id);
+            // Include cancelled/failed orders for the detail view, but filter for calculations if needed?
+            // Actually, usually "Performance" reports exclude cancellations.
+            // Let's filter them out for the aggregate numbers.
+            const customerOrders = filteredOrders.filter(o => 
+                o.customer_id === id && 
+                o.delivery_status !== 'failed' && 
+                o.delivery_status !== 'cancelled'
+            );
+            
             return {
                 id,
                 name: customer?.shop_name || 'Unknown',
@@ -69,8 +84,8 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const salesTrend = React.useMemo(() => {
         const trendMap: Record<string, number> = {};
         
-        // Fill gaps logic could go here, but for now specific dates
         filteredOrders.forEach(o => {
+            if (o.delivery_status === 'failed' || o.delivery_status === 'cancelled') return;
             trendMap[o.order_date] = (trendMap[o.order_date] || 0) + o.net_total;
         });
 
@@ -285,9 +300,16 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const renderCustomerDetails = () => {
         const customer = customers.find(c => c.customer_id === selectedId);
         const custOrders = filteredOrders.filter(o => o.customer_id === selectedId);
-        const totalPurchased = custOrders.reduce((sum, o) => sum + o.net_total, 0);
-        const totalPaid = custOrders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
-        const totalBalance = custOrders.reduce((sum, o) => sum + (o.balance_due || 0), 0);
+        
+        // Filter out cancelled/failed orders for total calculations
+        const validOrders = custOrders.filter(o => 
+            o.delivery_status !== 'failed' && 
+            o.delivery_status !== 'cancelled'
+        );
+        
+        const totalPurchased = validOrders.reduce((sum, o) => sum + o.net_total, 0);
+        const totalPaid = validOrders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
+        const totalBalance = validOrders.reduce((sum, o) => sum + (o.balance_due || 0), 0);
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2">
