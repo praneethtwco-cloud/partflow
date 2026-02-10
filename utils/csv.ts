@@ -1,13 +1,7 @@
+import Papa from 'papaparse';
+
 export function jsonToCsv(data: any[]): string {
-  if (data.length === 0) return '';
-  const headers = Object.keys(data[0]);
-  const rows = data.map(obj => 
-    headers.map(header => {
-      const val = obj[header];
-      return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
-    }).join(',')
-  );
-  return [headers.join(','), ...rows].join('\n');
+  return Papa.unparse(data);
 }
 
 export function downloadCsv(csv: string, filename: string) {
@@ -22,4 +16,19 @@ export function downloadCsv(csv: string, filename: string) {
     link.click();
     document.body.removeChild(link);
   }
+}
+
+export function parseCsv(file: File): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                resolve(results.data);
+            },
+            error: (error) => {
+                reject(error);
+            }
+        });
+    });
 }

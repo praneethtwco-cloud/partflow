@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Order, Customer, DeliveryStatus } from '../types';
 import { db } from '../services/db';
 import { pdfService } from '../services/pdf';
+import { jsonToCsv, downloadCsv } from '../utils/csv';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
@@ -18,6 +19,14 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     const [orders, setOrders] = useState<Order[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [filter, setFilter] = useState('');
+    
+    // Advanced Filters
+    const [showFilters, setShowFilters] = useState(false);
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [deliveryFilter, setDeliveryFilter] = useState<DeliveryStatus | 'all'>('all');
+    const [customerFilter, setCustomerFilter] = useState('all');
+
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
@@ -38,10 +47,21 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     };
     const getCustomer = (id: string) => customers.find(c => c.customer_id === id);
 
-    const filteredOrders = orders.filter(o => 
-        getCustomerName(o.customer_id).toLowerCase().includes(filter.toLowerCase()) ||
-        o.order_id.toLowerCase().includes(filter.toLowerCase())
-    );
+    const filteredOrders = orders.filter(o => {
+        const matchesSearch = getCustomerName(o.customer_id).toLowerCase().includes(filter.toLowerCase()) ||
+                              o.order_id.toLowerCase().includes(filter.toLowerCase());
+        
+        const matchesDate = (!dateRange.start || o.order_date >= dateRange.start) &&
+                            (!dateRange.end || o.order_date <= dateRange.end);
+                            
+        const matchesStatus = statusFilter === 'all' || o.payment_status === statusFilter;
+        
+        const matchesDelivery = deliveryFilter === 'all' || (o.delivery_status || 'pending') === deliveryFilter;
+        
+        const matchesCustomer = customerFilter === 'all' || o.customer_id === customerFilter;
+
+        return matchesSearch && matchesDate && matchesStatus && matchesDelivery && matchesCustomer;
+    });
 
     const groupedOrders = filteredOrders.slice(0, visibleCount).reduce((groups, order) => {
         const date = order.order_date;
@@ -57,6 +77,28 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
         if (customer) {
             pdfService.shareInvoice(order, customer, db.getSettings());
         }
+    };
+
+    const handleExport = () => {
+        if (filteredOrders.length === 0) {
+            alert("No orders to export");
+            return;
+        }
+        
+        const exportData = filteredOrders.map(o => ({
+            Order_ID: o.order_id,
+            Date: o.order_date,
+            Customer: getCustomerName(o.customer_id),
+            Net_Total: o.net_total,
+            Paid: o.paid_amount,
+            Balance: o.balance_due,
+            Payment_Status: o.payment_status,
+            Delivery_Status: o.delivery_status || 'pending',
+            Items_Count: o.lines.length
+        }));
+
+        const csv = jsonToCsv(exportData);
+        downloadCsv(csv, `Orders_Export_${new Date().toISOString().split('T')[0]}.csv`);
     };
 
     const handleDelete = async (order: Order) => {
@@ -103,14 +145,85 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
 
     return (
         <div className="space-y-4 pb-20 md:pb-0">
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 sticky top-0 z-20 mx-2 mt-2">
-                <input 
-                    type="text"
-                    placeholder="Search by shop name or order ID..."
-                    className={`w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 ${themeClasses.ring} outline-none transition-shadow`}
-                    value={filter}
-                    onChange={e => setFilter(e.target.value)}
-                />
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 sticky top-0 z-20 mx-2 mt-2 space-y-3">
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                             <svg className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <input 
+                            type="text"
+                            placeholder="Search by shop name or order ID..."
+                            className={`w-full pl-10 p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 ${themeClasses.ring} outline-none transition-shadow`}
+                            value={filter}
+                            onChange={e => setFilter(e.target.value)}
+                        />
+                    </div>
+                    <button 
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-2.5 rounded-xl border transition-colors ${showFilters ? `${themeClasses.bgSoft} ${themeClasses.text} ${themeClasses.border}` : 'bg-white border-slate-300 text-slate-500'}`}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    </button>
+                    <button 
+                        onClick={handleExport}
+                        className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-md hover:bg-slate-800 transition-colors`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export
+                    </button>
+                </div>
+
+                {showFilters && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 animate-in slide-in-from-top-2">
+                        <div className="col-span-2 md:col-span-1">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date Range</label>
+                            <div className="flex gap-2">
+                                <input type="date" className="w-full p-2 border border-slate-200 rounded-lg text-xs" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} />
+                                <input type="date" className="w-full p-2 border border-slate-200 rounded-lg text-xs" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Payment Status</label>
+                            <select className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white" value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
+                                <option value="all">All Payments</option>
+                                <option value="paid">Paid</option>
+                                <option value="partial">Partial</option>
+                                <option value="unpaid">Unpaid</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Delivery</label>
+                            <select className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white" value={deliveryFilter} onChange={e => setDeliveryFilter(e.target.value as any)}>
+                                <option value="all">All Deliveries</option>
+                                <option value="pending">Pending</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="out_for_delivery">Out for Delivery</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Customer</label>
+                            <select className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white" value={customerFilter} onChange={e => setCustomerFilter(e.target.value)}>
+                                <option value="all">All Shops</option>
+                                {customers.map(c => (
+                                    <option key={c.customer_id} value={c.customer_id}>{cleanText(c.shop_name)}</option>
+                                ))}
+                            </select>
+                        </div>
+                         <button 
+                            onClick={handleExport}
+                            className={`md:hidden col-span-2 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-md mt-2`}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Export CSV
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="pb-20">
