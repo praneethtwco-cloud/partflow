@@ -348,20 +348,34 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {custOrders.sort((a,b) => b.order_date.localeCompare(a.order_date)).map(o => (
-                                <tr key={o.order_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => { setSelectedOrder(o); setView('invoice'); }}>
-                                    <td className="px-4 py-4 text-slate-500 font-mono text-xs">{o.order_date}</td>
-                                    <td className="px-4 py-4 font-bold text-indigo-600">{settings.invoice_prefix}{o.order_id.substring(0, 6).toUpperCase()}</td>
-                                    <td className="px-4 py-4 uppercase text-[9px] font-black">{o.delivery_status || 'pending'}</td>
-                                    <td className="px-4 py-4 text-center">
-                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${o.payment_status === 'paid' ? 'border-emerald-200 text-emerald-600' : 'border-rose-200 text-rose-600'}`}>
-                                            {o.payment_status || 'unpaid'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-4 text-right text-slate-400">{o.lines.length}</td>
-                                    <td className="px-4 py-4 text-right font-black">{formatCurrency(o.net_total, false)}</td>
-                                </tr>
-                            ))}
+                            {custOrders.sort((a,b) => b.order_date.localeCompare(a.order_date)).map(o => {
+                                const isInvalid = o.delivery_status === 'failed' || o.delivery_status === 'cancelled';
+                                return (
+                                    <tr 
+                                        key={o.order_id} 
+                                        className={`hover:bg-slate-50 cursor-pointer group ${isInvalid ? 'opacity-50' : ''}`}
+                                        onClick={() => {
+                                            setSelectedOrder(o);
+                                            setView('invoice');
+                                        }}
+                                    >
+                                        <td className="px-4 py-4 text-slate-500 font-mono text-xs">{o.order_date}</td>
+                                        <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline">
+                                            {settings.invoice_prefix}{o.order_id.substring(0, 6).toUpperCase()}
+                                        </td>
+                                        <td className="px-4 py-4 uppercase text-[9px] font-black">{o.delivery_status || 'pending'}</td>
+                                        <td className="px-4 py-4 text-center">
+                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${o.payment_status === 'paid' ? 'border-emerald-200 text-emerald-600' : 'border-rose-200 text-rose-600'}`}>
+                                                {o.payment_status || 'unpaid'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-right text-slate-400">{o.lines.length}</td>
+                                        <td className={`px-4 py-4 text-right font-black ${isInvalid ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                                            {formatCurrency(o.net_total, false)}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                         <tfoot className="bg-slate-900 text-white font-black">
                             <tr><td colSpan={5} className="px-4 py-2 text-right uppercase text-[9px] text-slate-400">Total Billed</td><td className="px-4 py-2 text-right">{formatCurrency(totalPurchased, false)}</td></tr>
