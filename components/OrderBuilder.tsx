@@ -468,7 +468,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                             <select 
                                 className="w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0"
                                 value={sortOrder}
-                                onChange={e => setSortOrder(e.target.value as any)}
+                                onChange={e => setSortOrder(e.target.value as 'A-Z' | 'Price-High' | 'Price-Low')}
                             >
                                 <option value="A-Z">Name A-Z</option>
                                 <option value="Price-High">Price High</option>

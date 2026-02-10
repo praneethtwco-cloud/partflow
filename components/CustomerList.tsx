@@ -85,8 +85,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
   };
 
   const toggleCustomerStatus = async (customer: Customer) => {
-      const updatedStatus = customer.status === 'active' ? 'inactive' : 'active';
-      const updatedCustomer = { ...customer, status: updatedStatus as any, sync_status: 'pending' as const };
+      const updatedStatus: 'active' | 'inactive' = customer.status === 'active' ? 'inactive' : 'active';
+      const updatedCustomer: Customer = { 
+          ...customer, 
+          status: updatedStatus, 
+          sync_status: 'pending' as const 
+      };
       await db.saveCustomer(updatedCustomer);
       setCustomers([...db.getCustomers()]);
       showToast(`Shop ${updatedStatus}`, "info");
@@ -322,7 +326,17 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                                 className={`text-slate-400 hover:${themeClasses.text} p-1 cursor-pointer`}
                                 role="button"
                                 tabIndex={0}
-                                onKeyDown={(e) => e.key === 'Enter' && startEdit(e, customer)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        // Create a synthetic event
+                                        const syntheticEvent = {
+                                            ...e,
+                                            stopPropagation: () => e.stopPropagation(),
+                                            preventDefault: () => e.preventDefault()
+                                        } as unknown as React.MouseEvent;
+                                        startEdit(syntheticEvent, customer);
+                                    }
+                                }}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                             </div>

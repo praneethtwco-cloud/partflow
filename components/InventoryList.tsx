@@ -166,7 +166,7 @@ export const InventoryList: React.FC = () => {
           message: `Are you sure you want to mark "${cleanText(item.item_display_name)}" as ${action}?`,
           type: item.is_out_of_stock ? 'success' : 'danger',
           onConfirm: async () => {
-              const updatedItem = { 
+              const updatedItem: Item = { 
                   ...item, 
                   is_out_of_stock: !item.is_out_of_stock, 
                   sync_status: 'pending' as const, 
@@ -184,7 +184,7 @@ export const InventoryList: React.FC = () => {
 
           },
           onCancel: () => setAlertConfig(null)
-      } as any);
+      });
   };
 
   const openAdjustModal = (e: React.MouseEvent, item: Item) => {
@@ -316,15 +316,15 @@ export const InventoryList: React.FC = () => {
                         onChange={e => setCountryFilter(e.target.value)}
                     />
                 </div>
-                <select 
-                    className={`w-full md:w-auto px-4 py-2 border border-slate-300 rounded-xl text-sm bg-white font-bold text-slate-600 focus:ring-2 ${themeClasses.ring} outline-none`}
-                    value={sortOrder}
-                    onChange={e => setSortOrder(e.target.value as any)}
-                >
-                    <option value="A-Z">Name (A-Z)</option>
-                    <option value="High-Low">Stock (High to Low)</option>
-                    <option value="Low-High">Stock (Low to High)</option>
-                </select>
+                    <select 
+                        className={`w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0`}
+                        value={sortOrder}
+                        onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
+                    >
+                        <option value="A-Z">Name A-Z</option>
+                        <option value="Price-High">Price High</option>
+                        <option value="Price-Low">Price Low</option>
+                    </select>
                 
                 <button 
                     onClick={() => setShowAddForm(true)}
@@ -354,7 +354,7 @@ export const InventoryList: React.FC = () => {
                 <select 
                     className="w-full col-span-2 px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-600 focus:outline-none"
                     value={sortOrder}
-                    onChange={e => setSortOrder(e.target.value as any)}
+                    onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
                 >
                     <option value="A-Z">Sort by Name (A-Z)</option>
                     <option value="High-Low">Stock: High to Low</option>
