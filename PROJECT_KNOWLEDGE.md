@@ -65,6 +65,7 @@ Flask 3.0.2 (Python Web Framework)
 - **Password Storage**: bcrypt hashing (rounds=12).
 - **API Security**: Secrets loaded from environment variables (no hardcoded keys).
 - **Headers**: CSP, HSTS, X-Frame-Options configured in `vercel.json`.
+- **Protection**: Rate limiting (Flask-Limiter) and CORS restrictions.
 
 ---
 
