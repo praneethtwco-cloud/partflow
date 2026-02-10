@@ -96,6 +96,23 @@ function AppContent() {
   }, []);
 
   const handleSelectCustomer = (customer: Customer) => {
+    // Check if switching customer while draft exists
+    if (selectedCustomer && selectedCustomer.customer_id !== customer.customer_id && (draftOrder?.lines?.length || 0) > 0) {
+        setConfirmConfig({
+            isOpen: true,
+            title: "Switch Customer?",
+            message: `You have an active cart for ${selectedCustomer.shop_name}. Switching to ${customer.shop_name} will clear it. Continue?`,
+            onConfirm: () => {
+                setDraftOrder(null);
+                setEditingOrder(null);
+                setSelectedCustomer(customer);
+                navigateTo('orders');
+                setConfirmConfig(null);
+            }
+        });
+        return;
+    }
+
     setSelectedCustomer(customer);
     navigateTo('orders');
   };
