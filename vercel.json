@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "echo 'Skipping frontend build - Backend Only'",
+  "buildCommand": "mkdir -p dist && echo 'Backend Only' > dist/index.html",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/(.*)",
