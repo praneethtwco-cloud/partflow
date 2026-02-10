@@ -4,6 +4,7 @@ import { db } from '../services/db';
 import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
 import { generateSKU } from '../utils/skuGenerator';
+import { parseCsv } from '../utils/csv';
 import { useToast } from '../context/ToastContext';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
@@ -47,6 +48,8 @@ export const InventoryList: React.FC = () => {
   const [adjustQty, setAdjustQty] = useState('');
   const [adjustType, setAdjustType] = useState<'restock' | 'damage'>('restock');
   const [adjustReason, setAdjustReason] = useState('');
+  
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const settings = db.getSettings();
 
@@ -316,16 +319,32 @@ export const InventoryList: React.FC = () => {
                         onChange={e => setCountryFilter(e.target.value)}
                     />
                 </div>
-                    <select 
-                        className={`w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0`}
-                        value={sortOrder}
-                        onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
-                    >
-                        <option value="A-Z">Name A-Z</option>
-                        <option value="Price-High">Price High</option>
-                        <option value="Price-Low">Price Low</option>
-                    </select>
+                <select 
+                    className={`w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0`}
+                    value={sortOrder}
+                    onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
+                >
+                    <option value="A-Z">Name A-Z</option>
+                    <option value="Price-High">Price High</option>
+                    <option value="Price-Low">Price Low</option>
+                </select>
                 
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept=".csv" 
+                    onChange={handleImportCSV} 
+                />
+                
+                <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`hidden md:flex bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 shadow-sm transition-all active:scale-95 items-center gap-2 font-bold text-sm shrink-0`}
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Import
+                </button>
+
                 <button 
                     onClick={() => setShowAddForm(true)}
                     className={`hidden md:flex ${themeClasses.bg} text-white px-6 py-2 rounded-xl ${themeClasses.bgHover} shadow-md transition-all active:scale-95 items-center gap-2 font-bold text-sm shrink-0`}
@@ -360,6 +379,13 @@ export const InventoryList: React.FC = () => {
                     <option value="High-Low">Stock: High to Low</option>
                     <option value="Low-High">Stock: Low to High</option>
                 </select>
+                <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full col-span-2 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-600 flex items-center justify-center gap-2"
+                >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                     Import CSV
+                </button>
             </div>
          )}
 
