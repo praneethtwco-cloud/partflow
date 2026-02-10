@@ -115,14 +115,44 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
 
             {/* Actions Bar */}
             <div className="px-4 py-2 bg-slate-50 flex gap-2">
+                <a 
+                    href={`tel:${customer.phone}`}
+                    className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    Call
+                </a>
+                <a 
+                    href={`sms:${customer.phone}`}
+                    className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    Message
+                </a>
                 <button 
                     onClick={handleGenerateStatement}
                     disabled={isGenerating}
-                    className={`flex-1 bg-white border border-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 ${isGenerating ? 'opacity-50' : ''}`}
+                    className={`flex-1 bg-indigo-600 text-white py-3 rounded-xl text-xs font-bold shadow-md shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2 ${isGenerating ? 'opacity-50' : ''}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    {isGenerating ? 'Generating...' : 'Print Statement'}
+                    {isGenerating ? '...' : 'Statement'}
                 </button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="px-4 py-2 grid grid-cols-2 gap-3">
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Total Spent</p>
+                    <p className="text-xl font-black text-slate-800">
+                        {formatCurrency(orders.reduce((sum, o) => sum + o.net_total, 0))}
+                    </p>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Credit Limit</p>
+                    <p className="text-xl font-black text-slate-800">
+                        {customer.credit_limit ? formatCurrency(customer.credit_limit) : 'Unlimited'}
+                    </p>
+                </div>
             </div>
 
             {/* Content */}
