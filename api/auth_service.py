@@ -1,6 +1,7 @@
 import os
 import uuid
 import datetime
+import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from api.utils import get_sheets_service
 import api.database as sqlite_db
@@ -8,6 +9,8 @@ import api.database as sqlite_db
 # Configuration
 AUTH_SHEET_ID = os.environ.get('GOOGLE_SHEET_ID')
 USERS_SHEET_NAME = 'Users'
+JWT_SECRET = os.environ.get('JWT_SECRET', 'dev_jwt_secret_change_me')
+JWT_EXPIRATION_HOURS = 24
 
 def get_auth_mode():
     if AUTH_SHEET_ID and get_sheets_service():
@@ -44,12 +47,22 @@ def init_auth():
             ).execute()
             
             # Create Default Admin
-            create_user_sheets('admin', 'admin123', 'Administrator', 'admin')
+            # SECURITY: Use a strong default password if env var not set
+            admin_pw = os.environ.get('ADMIN_DEFAULT_PASSWORD', 'admin123') 
+            create_user_sheets('admin', admin_pw, 'Administrator', 'admin')
             
     except Exception as e:
         print(f"Failed to initialize Auth Sheet: {e}")
-        # Fallback to SQLite if Sheets fails? 
-        # Better to fail loudly or just log it. For now, log.
+
+def generate_token(user_id, username, role):
+    payload = {
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=JWT_EXPIRATION_HOURS),
+        'iat': datetime.datetime.utcnow(),
+        'sub': str(user_id),
+        'username': username,
+        'role': role
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
 def _get_all_users_sheet():
     service = get_sheets_service()
@@ -110,11 +123,13 @@ def authenticate_user_sheets(username, password):
     user = next((u for u in users if u['username'].lower() == username.lower()), None)
     
     if user and user['status'] == 'active' and check_password_hash(user['password_hash'], password):
+        token = generate_token(user['id'], user['username'], user['role'])
         return {
             "id": user['id'],
             "username": user['username'],
             "full_name": user['full_name'],
-            "role": user['role']
+            "role": user['role'],
+            "token": token
         }
     return None
 
@@ -156,7 +171,14 @@ def create_user(username, password, full_name=None, role='rep'):
 def authenticate_user(username, password):
     if get_auth_mode() == 'sheets':
         return authenticate_user_sheets(username, password)
-    return sqlite_db.authenticate_user(username, password)
+    
+    # SQLite Fallback
+    user = sqlite_db.authenticate_user(username, password)
+    if user:
+        token = generate_token(user['id'], user['username'], user['role'])
+        user['token'] = token
+        return user
+    return None
 
 def update_user_password(user_id, old_password, new_password):
     if get_auth_mode() == 'sheets':
