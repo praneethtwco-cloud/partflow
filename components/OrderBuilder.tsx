@@ -153,6 +153,13 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         setQtyInput('1');
     };
 
+    // Memoize the items lookup to avoid repeated iterations
+    const itemsMap = React.useMemo(() => {
+        const map = new Map<string, Item>();
+        items.forEach(i => map.set(i.item_id, i));
+        return map;
+    }, [items]);
+
     const removeLine = (lineId: string) => {
         setLines(lines.filter(l => l.line_id !== lineId));
     };
@@ -171,7 +178,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
 
         // Stock check
         if (settings.stock_tracking_enabled && delta > 0) {
-            const item = items.find(i => i.item_id === line.item_id);
+            const item = itemsMap.get(line.item_id);
             if (item && newQty > item.current_stock_qty) {
                 showToast(`Insufficient stock. Only ${item.current_stock_qty} available.`, "error");
                 return;
@@ -630,9 +637,9 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                             <div className="flex-1 min-w-0 pr-2">
                                                 <div className={`text-xs font-bold ${themeClasses.textDark} break-words leading-snug`}>{cleanText(line.item_name)}</div>
                                                 <div className="text-[10px] text-slate-500 font-medium flex gap-1 mt-0.5">
-                                                    <span>{items.find(i => i.item_id === line.item_id)?.vehicle_model || ''}</span>
+                                                    <span>{itemsMap.get(line.item_id)?.vehicle_model || ''}</span>
                                                     <span>•</span>
-                                                    <span>{items.find(i => i.item_id === line.item_id)?.source_brand || ''}</span>
+                                                    <span>{itemsMap.get(line.item_id)?.source_brand || ''}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-1.5">
                                                     <div className="flex items-center bg-slate-50 rounded-lg overflow-hidden border border-slate-200">

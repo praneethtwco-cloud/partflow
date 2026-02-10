@@ -63,7 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
         // Initial update
         updateWidget();
 
-        const interval = setInterval(updateWidget, 5000);
+        const interval = setInterval(updateWidget, 30000);
         return () => clearInterval(interval);
     }, []);
 

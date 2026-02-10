@@ -22,7 +22,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
 
   useEffect(() => {
     refreshStats();
-    const interval = setInterval(refreshStats, 2000);
+    const interval = setInterval(refreshStats, 30000);
     return () => clearInterval(interval);
   }, [isSyncing]);
 
