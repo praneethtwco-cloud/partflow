@@ -46,6 +46,7 @@ export interface Customer extends BaseEntity {
   secondary_discount_rate?: number; // Secondary discount 0.0 to 1.0
   outstanding_balance: number; // Track credit
   credit_period: number; // New: Credit period in days (e.g. 30, 60, 90)
+  credit_limit?: number; // Maximum credit allowed
   status: EntityStatus;
 }
 
@@ -59,6 +60,8 @@ export interface Order extends BaseEntity {
   discount_value: number;
   secondary_discount_rate?: number;
   secondary_discount_value?: number;
+  tax_rate?: number; // 0.0 to 1.0
+  tax_value?: number;
   net_total: number;
   credit_period?: number; // Snapshot of credit terms at time of order
   
@@ -108,6 +111,7 @@ export interface CompanySettings {
   invoice_prefix: string;
   footer_note: string;
   currency_symbol: string;
+  tax_rate?: number; // Default tax rate (0.0 to 1.0)
   auto_sku_enabled: boolean;
   stock_tracking_enabled: boolean;
   category_enabled: boolean; // New Setting

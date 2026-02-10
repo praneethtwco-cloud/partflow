@@ -309,14 +309,25 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Inv. Prefix</label>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Tax Rate (%)</label>
                                 <input 
+                                    type="number"
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                                    value={settings.invoice_prefix}
-                                    onChange={e => setSettings({...settings, invoice_prefix: e.target.value})}
-                                    placeholder="INV-"
+                                    value={settings.tax_rate ? settings.tax_rate * 100 : ''}
+                                    onChange={e => setSettings({...settings, tax_rate: parseFloat(e.target.value) / 100})}
+                                    placeholder="0"
                                 />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Inv. Prefix</label>
+                            <input 
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                value={settings.invoice_prefix}
+                                onChange={e => setSettings({...settings, invoice_prefix: e.target.value})}
+                                placeholder="INV-"
+                            />
                         </div>
                         
                         <div>

@@ -244,6 +244,16 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer,
                                                             </td>
                                                         </tr>
                                                     )}
+                                                    {(order.tax_value || 0) > 0 && (
+                                                        <tr>
+                                                            <td className="px-3 py-2 text-left font-bold text-slate-600 uppercase text-[9px]">
+                                                                Tax - {((order.tax_rate || 0) * 100).toFixed(1)}%
+                                                            </td>
+                                                            <td className="px-3 py-2 text-right font-black text-slate-800">
+                                                                +{formatCurrency(order.tax_value || 0, false)}
+                                                            </td>
+                                                        </tr>
+                                                    )}
                                                     <tr className="bg-slate-100 border-y border-black">
                                                         <td className="px-3 py-3 text-left font-black text-[14px] uppercase tracking-tighter">Net Total</td>
                                                         <td className="px-3 py-3 text-right font-black text-[16px]">

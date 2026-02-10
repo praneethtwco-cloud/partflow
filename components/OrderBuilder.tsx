@@ -29,6 +29,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const [orderDate, setOrderDate] = useState(draftState?.order_date || editingOrder?.order_date || new Date().toISOString().split('T')[0]);
     const [discountRate, setDiscountRate] = useState<number>((draftState?.discount_rate !== undefined ? draftState.discount_rate : (editingOrder ? editingOrder.discount_rate : (existingCustomer?.discount_rate || 0))) * 100);
     const [secondaryDiscountRate, setSecondaryDiscountRate] = useState<number>((draftState?.secondary_discount_rate !== undefined ? draftState.secondary_discount_rate : (editingOrder ? (editingOrder.secondary_discount_rate || 0) : (existingCustomer?.secondary_discount_rate || 0))) * 100);
+    const [taxRate, setTaxRate] = useState<number>((draftState?.tax_rate !== undefined ? draftState.tax_rate : (editingOrder ? (editingOrder.tax_rate || 0) : (settings.tax_rate || 0))) * 100);
     
     // UI State
     const [catalogSearch, setCatalogSearch] = useState('');
@@ -103,16 +104,19 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                 lines,
                 order_date: orderDate,
                 discount_rate: discountRate / 100,
-                secondary_discount_rate: secondaryDiscountRate / 100
+                secondary_discount_rate: secondaryDiscountRate / 100,
+                tax_rate: taxRate / 100
             });
         }
-    }, [lines, orderDate, discountRate, secondaryDiscountRate]);
+    }, [lines, orderDate, discountRate, secondaryDiscountRate, taxRate]);
 
     const grossTotal = lines.reduce((sum, line) => sum + line.line_total, 0);
     const primaryDiscountValue = grossTotal * (discountRate / 100);
     const amountAfterPrimary = grossTotal - primaryDiscountValue;
     const secondaryDiscountValue = amountAfterPrimary * (secondaryDiscountRate / 100);
-    const netTotal = amountAfterPrimary - secondaryDiscountValue;
+    const amountAfterDiscounts = amountAfterPrimary - secondaryDiscountValue;
+    const taxValue = amountAfterDiscounts * (taxRate / 100);
+    const netTotal = amountAfterDiscounts + taxValue;
 
     const addItem = () => {
         if (!selectedItem) return;
@@ -197,6 +201,18 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const initiateCheckout = () => {
         if (!customer) return;
         if (lines.length === 0) return;
+
+        // Credit Limit Check
+        const currentBalance = customer.outstanding_balance || 0;
+        const creditLimit = customer.credit_limit || 0;
+        const newTotalBalance = currentBalance + netTotal;
+
+        if (creditLimit > 0 && newTotalBalance > creditLimit && paymentType !== 'cash') {
+             // Warn user but allow proceed if they pay cash?
+             // Or strict block? Let's use a Toast warning for now, maybe block if unpaid.
+             showToast(`Warning: Credit Limit Exceeded (Limit: ${formatCurrency(creditLimit)}, New Balance: ${formatCurrency(newTotalBalance)})`, "warning");
+        }
+
         setPaymentAmount('0'); // Default to 0 as requested
         setShowPaymentModal(true);
     };
@@ -240,6 +256,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             discount_value: primaryDiscountValue,
             secondary_discount_rate: secondaryDiscountRate / 100,
             secondary_discount_value: secondaryDiscountValue,
+            tax_rate: taxRate / 100,
+            tax_value: taxValue,
             net_total: netTotal,
             credit_period: customer.credit_period || 90,
             
@@ -732,6 +750,29 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         </div>
                                     </div>
                                 )}
+                                
+                                <div className="flex justify-between items-center text-sm text-slate-600">
+                                    <span>Tax (%)</span>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="number" 
+                                            step="0.1" 
+                                            min="0"
+                                            max="100"
+                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                            value={taxRate}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => {
+                                                let val = parseFloat(e.target.value) || 0;
+                                                if (val < 0) val = 0;
+                                                if (val > 100) val = 100;
+                                                setTaxRate(val);
+                                            }}
+                                        />
+                                        <span className="text-slate-800">+{formatCurrency(taxValue)}</span>
+                                    </div>
+                                </div>
+
                                 <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-200">
                                     <span>Total</span>
                                     <span>{formatCurrency(netTotal)}</span>

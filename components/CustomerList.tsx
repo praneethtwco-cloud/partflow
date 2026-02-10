@@ -47,6 +47,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
         discount_rate: (newCustomer.discount_rate ?? (editingCustomer.discount_rate * 100)) / 100,
         secondary_discount_rate: (newCustomer.secondary_discount_rate ?? ((editingCustomer.secondary_discount_rate || 0) * 100)) / 100,
         credit_period: newCustomer.credit_period ?? editingCustomer.credit_period ?? 90,
+        credit_limit: newCustomer.credit_limit ?? editingCustomer.credit_limit ?? 0,
         status: newCustomer.status || editingCustomer.status,
         updated_at: new Date().toISOString(),
         sync_status: 'pending'
@@ -59,6 +60,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
         discount_rate: (newCustomer.discount_rate || 0) / 100,
         secondary_discount_rate: (newCustomer.secondary_discount_rate || 0) / 100,
         credit_period: newCustomer.credit_period || 90,
+        credit_limit: newCustomer.credit_limit || 0,
         status: 'active',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -296,6 +298,10 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Credit (Days)</label>
                             <input type="number" step="1" className={`w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 ${themeClasses.ring} outline-none text-sm font-bold ${themeClasses.text}`} value={newCustomer.credit_period || ''} onChange={e => setNewCustomer({...newCustomer, credit_period: parseInt(e.target.value)})} placeholder="90" />
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Credit Limit (Amount)</label>
+                        <input type="number" className={`w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 ${themeClasses.ring} outline-none text-sm font-bold`} value={newCustomer.credit_limit || ''} onChange={e => setNewCustomer({...newCustomer, credit_limit: parseFloat(e.target.value)})} placeholder="No Limit" />
                     </div>
                 </div>
                 <div className="p-4 md:p-6 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0 pb-safe">
