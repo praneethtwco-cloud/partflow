@@ -4,6 +4,8 @@ import { db } from '../services/db';
 import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
+import { pdfService } from '../services/pdf';
+import { useTheme } from '../context/ThemeContext';
 
 import { useToast } from '../context/ToastContext';
 
@@ -14,8 +16,10 @@ interface ShopProfileProps {
 }
 
 export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onViewInvoice }) => {
+    const { themeClasses } = useTheme();
     const { showToast } = useToast();
     const [orders, setOrders] = useState<Order[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
     
     // Settlement Modal
     const [settleOrder, setSettleOrder] = useState<Order | null>(null);
@@ -64,6 +68,18 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
         setPaymentRef('');
     };
 
+    const handleGenerateStatement = async () => {
+        setIsGenerating(true);
+        try {
+            await pdfService.generatePdfFromElement('#statement-template', `Statement_${cleanText(customer.shop_name)}_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to generate statement", "error");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const unpaidOrders = orders.filter(o => o.payment_status !== 'paid');
     const paidOrders = orders.filter(o => o.payment_status === 'paid');
 
@@ -95,6 +111,18 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                         <span className="text-lg font-black text-rose-600">{formatCurrency(customer.outstanding_balance)}</span>
                     </div>
                 )}
+            </div>
+
+            {/* Actions Bar */}
+            <div className="px-4 py-2 bg-slate-50 flex gap-2">
+                <button 
+                    onClick={handleGenerateStatement}
+                    disabled={isGenerating}
+                    className={`flex-1 bg-white border border-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 ${isGenerating ? 'opacity-50' : ''}`}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    {isGenerating ? 'Generating...' : 'Print Statement'}
+                </button>
             </div>
 
             {/* Content */}
@@ -223,6 +251,67 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                     </div>
                 </div>
             )}
+            {/* Hidden Statement Template */}
+            <div id="statement-template" className="hidden bg-white p-8 w-[210mm] mx-auto text-slate-900">
+                <div id="pdf-header" className="hidden">
+                    <div className="text-center border-b-2 border-slate-900 pb-4 mb-6">
+                        <h1 className="text-2xl font-black uppercase">{db.getSettings().company_name}</h1>
+                        <p className="text-sm text-slate-600">{cleanText(db.getSettings().address)}</p>
+                        <p className="text-sm text-slate-600">Tel: {db.getSettings().phone}</p>
+                        <h2 className="text-xl font-bold mt-4 uppercase underline">Customer Statement</h2>
+                    </div>
+                    
+                    <div className="flex justify-between mb-8">
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase">Statement For:</p>
+                            <p className="text-lg font-bold">{cleanText(customer.shop_name)}</p>
+                            <p className="text-sm">{cleanText(customer.address)}</p>
+                            <p className="text-sm">{cleanText(customer.city_ref)}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs font-bold text-slate-400 uppercase">Date:</p>
+                            <p className="font-bold">{new Date().toLocaleDateString()}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase mt-2">Total Due:</p>
+                            <p className="text-xl font-black text-rose-600">{formatCurrency(customer.outstanding_balance)}</p>
+                        </div>
+                    </div>
+
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="border-b-2 border-slate-200 text-left">
+                                <th className="py-2 font-bold uppercase text-xs">Date</th>
+                                <th className="py-2 font-bold uppercase text-xs">Invoice #</th>
+                                <th className="py-2 text-right font-bold uppercase text-xs">Amount</th>
+                                <th className="py-2 text-right font-bold uppercase text-xs">Paid</th>
+                                <th className="py-2 text-right font-bold uppercase text-xs">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {unpaidOrders.map(order => (
+                                <tr key={order.order_id} className="border-b border-slate-100">
+                                    <td className="py-3">{order.order_date}</td>
+                                    <td className="py-3 font-mono">{order.order_id.substring(0,6).toUpperCase()}</td>
+                                    <td className="py-3 text-right">{formatCurrency(order.net_total, false)}</td>
+                                    <td className="py-3 text-right">{formatCurrency(order.paid_amount, false)}</td>
+                                    <td className="py-3 text-right font-bold">{formatCurrency(order.balance_due, false)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr className="border-t-2 border-slate-900 font-bold">
+                                <td colSpan={2} className="py-4 text-right uppercase text-xs">Total Outstanding</td>
+                                <td className="py-4 text-right">{formatCurrency(unpaidOrders.reduce((s, o) => s + o.net_total, 0), false)}</td>
+                                <td className="py-4 text-right">{formatCurrency(unpaidOrders.reduce((s, o) => s + o.paid_amount, 0), false)}</td>
+                                <td className="py-4 text-right text-rose-600 text-lg">{formatCurrency(customer.outstanding_balance, false)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div className="mt-12 text-center text-xs text-slate-400 italic">
+                        <p>Thank you for your business.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
