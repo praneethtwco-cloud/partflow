@@ -1,3 +1,8 @@
+# Output
+dev-output.log
+invoice.pdf
+invoice.html
+
 # Logs
 logs
 *.log
