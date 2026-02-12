@@ -75,27 +75,41 @@
         body * {
           visibility: hidden;
         }
-        #printable-invoice, #printable-invoice * {
+        .invoice-page, .invoice-page * {
           visibility: visible;
         }
-        #printable-invoice {
+        .invoice-page {
           position: absolute;
           left: 0;
           top: 0;
           width: 100%;
+          height: 100%;
           margin: 0;
-          padding: 20px;
+          padding: 15mm;
           background: white;
+          box-shadow: none;
+          page-break-after: always;
+        }
+        .invoice-page:last-child {
+          page-break-after: avoid;
         }
         .no-print {
           display: none !important;
         }
+      }
+      
+      /* Additional styles for html2canvas compatibility */
+      .invoice-page {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
       }
     </style>
 </head>
 
   <body>
     <div id="root"></div>
-  <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

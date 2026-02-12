@@ -280,11 +280,17 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                             checked={settings.stock_tracking_enabled}
                             onChange={val => setSettings({...settings, stock_tracking_enabled: val})}
                         />
-                        <ToggleRow 
+                        <ToggleRow
                             label="Item Categories"
                             description="Group parts by categories (Engine, etc)."
                             checked={settings.category_enabled}
                             onChange={val => setSettings({...settings, category_enabled: val})}
+                        />
+                        <ToggleRow
+                            label="Show SKU in Item Cards"
+                            description="Display SKU in item selection cards (Order Builder)."
+                            checked={settings.show_sku_in_item_cards || false}
+                            onChange={val => setSettings({...settings, show_sku_in_item_cards: val})}
                         />
                     </div>
                 </div>

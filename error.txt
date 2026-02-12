@@ -1,0 +1,36 @@
+pdf.ts:153 
+ PDF Generation failed: Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+generatePdfFromElement	@	pdf.ts:153
+ShopProfile.tsx:79 
+ Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+pdf.ts:106 Generating PDF from selector: #statement-template
+pdf.ts:153 
+ PDF Generation failed: Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+ShopProfile.tsx:79 
+ Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+pdf.ts:106 Generating PDF from selector: #statement-template
+pdf.ts:153 
+ PDF Generation failed: Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+ShopProfile.tsx:79 
+ Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+pdf.ts:106 Generating PDF from selector: #statement-template
+pdf.ts:153 
+ PDF Generation failed: Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)
+ShopProfile.tsx:79 
+ Error: Invalid argument passed to jsPDF.scale
+    at Object.generatePdfFromElement (pdf.ts:132:11)
+    at async handleGenerateStatement (ShopProfile.tsx:77:13)

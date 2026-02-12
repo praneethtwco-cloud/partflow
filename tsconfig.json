@@ -10,6 +10,7 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "types": [
       "node"
     ],
@@ -19,6 +20,7 @@
     "allowJs": true,
     "strict": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "paths": {
       "@/*": [
         "./*"
@@ -27,6 +29,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   }
 }
