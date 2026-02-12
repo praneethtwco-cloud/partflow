@@ -423,14 +423,9 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 if (isOutOfStock) return null;
                                                 
                                                 return (
-                                                    <div 
+                                                    <div
                                                         key={item.item_id}
-                                                        onClick={() => {
-                                                            setSelectedItem(item);
-                                                            setCatalogSearch('');
-                                                            setIsSearchFocused(false);
-                                                        }}
-                                                        className={`p-3 flex justify-between items-center transition-colors cursor-pointer active:bg-slate-100 ${isInCart(item.item_id) ? `${themeClasses.bgSoft}/50` : 'hover:bg-slate-50'}`}
+                                                        className={`p-3 flex justify-between items-center transition-colors ${isInCart(item.item_id) ? `${themeClasses.bgSoft}/50` : 'hover:bg-slate-50'}`}
                                                     >
                                                         <div className="min-w-0 flex items-center gap-2">
                                                             {isInCart(item.item_id) && <span className={`w-1.5 h-1.5 ${themeClasses.bg} rounded-full`}></span>}
@@ -439,16 +434,32 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                         <p className="text-[10px] text-slate-400 font-mono truncate">
                                                             {settings.show_sku_in_item_cards && (
                                                                 <>
-                                                                    {cleanText(item.item_number)} • 
+                                                                    {cleanText(item.item_number)} •
                                                                 </>
                                                             )}
                                                             {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}
                                                         </p>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right shrink-0 ml-2">
-                                                            <p className={`text-xs font-black ${isInCart(item.item_id) ? themeClasses.text : themeClasses.text}`}>{formatCurrency(item.unit_value)}</p>
-                                                            {isInCart(item.item_id) && <span className={`text-[8px] font-black ${themeClasses.text} uppercase tracking-tighter`}>Added</span>}
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-right">
+                                                                <p className={`text-xs font-black ${isInCart(item.item_id) ? themeClasses.text : themeClasses.text}`}>{formatCurrency(item.unit_value)}</p>
+                                                                {isInCart(item.item_id) && <span className={`text-[8px] font-black ${themeClasses.text} uppercase tracking-tighter`}>Added</span>}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedItem(item);
+                                                                    setCatalogSearch('');
+                                                                    setIsSearchFocused(false);
+                                                                }}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold min-w-[60px] ${
+                                                                    isInCart(item.item_id) 
+                                                                        ? 'bg-slate-200 text-slate-600' 
+                                                                        : `${themeClasses.bg} text-white`
+                                                                }`}
+                                                            >
+                                                                {isInCart(item.item_id) ? 'Added' : 'Add'}
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 );
@@ -527,15 +538,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 : item.is_out_of_stock;
 
                             return (
-                                <div 
-                                    key={item.item_id} 
-                                    onClick={() => !isOutOfStock && setSelectedItem(item)}
+                                <div
+                                    key={item.item_id}
                                     className={`bg-white rounded-2xl border shadow-sm transition-all relative overflow-hidden ${
-                                        isOutOfStock 
-                                        ? 'border-rose-200 bg-rose-50/30 cursor-not-allowed opacity-75' 
+                                        isOutOfStock
+                                        ? 'border-rose-200 bg-rose-50/30 cursor-not-allowed opacity-75'
                                         : isInCart(item.item_id)
-                                            ? `${themeClasses.border} ${themeClasses.bgSoft}/30 cursor-pointer active:scale-[0.98]`
-                                            : `border-slate-200 hover:${themeClasses.border.replace('200', '300')} hover:shadow-md cursor-pointer active:scale-[0.98]`
+                                            ? `${themeClasses.border} ${themeClasses.bgSoft}/30`
+                                            : `border-slate-200 hover:${themeClasses.border.replace('200', '300')} hover:shadow-md`
                                     } ${selectedItem?.item_id === item.item_id ? `${themeClasses.border.replace('200', '500')} ring-2 ${themeClasses.ring.replace('focus:', '')} ring-offset-2` : ''}`}
                                 >
                                     <div className={`p-2 flex justify-between items-center relative z-10`}>
@@ -569,17 +579,31 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
 
                                             </div>
                                         </div>
-                                        
-                                        <div className="text-right pl-2">
-                                            <div className={`font-black text-sm ${isOutOfStock ? 'text-rose-400' : 'text-slate-900'}`}>{formatCurrency(item.unit_value)}</div>
-                                            {settings.stock_tracking_enabled && (
-                                                <div className={`text-[9px] font-bold mt-0.5 px-1.5 py-0.5 rounded-full inline-block ${item.current_stock_qty > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-100 text-rose-700'}`}>
-                                                    {item.current_stock_qty} in stock
-                                                </div>
+
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="text-right">
+                                                <div className={`font-black text-sm ${isOutOfStock ? 'text-rose-400' : 'text-slate-900'}`}>{formatCurrency(item.unit_value)}</div>
+                                                {settings.stock_tracking_enabled && (
+                                                    <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block ${item.current_stock_qty > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-100 text-rose-700'}`}>
+                                                        {item.current_stock_qty} in stock
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {!isOutOfStock && (
+                                                <button
+                                                    onClick={() => setSelectedItem(item)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold min-w-[60px] ${
+                                                        isInCart(item.item_id) 
+                                                            ? 'bg-slate-200 text-slate-600' 
+                                                            : `${themeClasses.bg} text-white`
+                                                    }`}
+                                                >
+                                                    {isInCart(item.item_id) ? 'Added' : 'Add'}
+                                                </button>
                                             )}
                                         </div>
                                     </div>
-                                    {!isOutOfStock && <div className={`absolute inset-0 bg-gradient-to-r ${themeClasses.gradient.split(' ')[0]}/0 to-${themeClasses.gradient.split(' ')[0].replace('from-', '')}/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />}
+                                    {!isOutOfStock && <div className={`absolute inset-0 bg-gradient-to-r ${themeClasses.gradient.split(' ')[0]}/0 to-${themeClasses.gradient.split(' ')[0].replace('from-', '')}/50 opacity-0 transition-opacity pointer-events-none`} />}
                                 </div>
                             );
                         })}
@@ -630,13 +654,9 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         })
                                         .slice(0, 20)
                                         .map(item => (
-                                            <div 
+                                            <div
                                                 key={item.item_id}
-                                                onClick={() => {
-                                                    setSelectedItem(item);
-                                                    setCartSearch('');
-                                                }}
-                                                className={`p-3 flex justify-between items-center transition-colors cursor-pointer active:bg-slate-100 ${isInCart(item.item_id) ? `${themeClasses.bgSoft}/50` : 'hover:bg-slate-50'}`}
+                                                className={`p-3 flex justify-between items-center transition-colors ${isInCart(item.item_id) ? `${themeClasses.bgSoft}/50` : 'hover:bg-slate-50'}`}
                                             >
                                                 <div className="min-w-0 flex items-center gap-2">
                                                     {isInCart(item.item_id) && <span className={`w-1.5 h-1.5 ${themeClasses.bg} rounded-full`}></span>}
@@ -645,7 +665,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                         <p className="text-[10px] text-slate-400 font-mono truncate">
                                                             {settings.show_sku_in_item_cards && (
                                                                 <>
-                                                                    {cleanText(item.item_number)} • 
+                                                                    {cleanText(item.item_number)} •
                                                                 </>
                                                             )}
                                                             {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}
@@ -653,9 +673,24 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                     </div>
 
                                                 </div>
-                                                <div className="text-right shrink-0 ml-2">
-                                                    <p className={`text-xs font-black ${isInCart(item.item_id) ? themeClasses.text : themeClasses.text}`}>{formatCurrency(item.unit_value)}</p>
-                                                    {isInCart(item.item_id) && <span className={`text-[8px] font-black ${themeClasses.text} uppercase tracking-tighter`}>Added</span>}
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-right">
+                                                        <p className={`text-xs font-black ${isInCart(item.item_id) ? themeClasses.text : themeClasses.text}`}>{formatCurrency(item.unit_value)}</p>
+                                                        {isInCart(item.item_id) && <span className={`text-[8px] font-black ${themeClasses.text} uppercase tracking-tighter`}>Added</span>}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedItem(item);
+                                                            setCartSearch('');
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold min-w-[60px] ${
+                                                            isInCart(item.item_id) 
+                                                                ? 'bg-slate-200 text-slate-600' 
+                                                                : `${themeClasses.bg} text-white`
+                                                        }`}
+                                                    >
+                                                        {isInCart(item.item_id) ? 'Added' : 'Add'}
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))
