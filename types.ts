@@ -115,6 +115,7 @@ export interface CompanySettings {
   auto_sku_enabled: boolean;
   stock_tracking_enabled: boolean;
   category_enabled: boolean; // New Setting
+  show_sku_in_item_cards?: boolean; // New Setting - default false
   google_sheet_id?: string;
   logo_base64?: string;
 }

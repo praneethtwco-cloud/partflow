@@ -345,22 +345,25 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)]">
             
             {/* Header */}
-            <div className={`bg-white p-4 border-b border-slate-200 flex justify-between items-center rounded-t-xl shadow-sm shrink-0 transition-all ${isSearchFocused ? 'md:flex hidden' : 'flex'}`}>
-                <div>
-                    <h2 className="text-lg font-bold text-slate-800">{cleanText(customer.shop_name)}</h2>
-                    <div className="text-xs text-slate-500 flex items-center gap-2">
+            <div className={`bg-white p-4 border-b border-slate-200 rounded-t-xl shadow-sm shrink-0 transition-all ${isSearchFocused ? 'md:flex hidden' : 'flex'} relative`}>
+                <button 
+                    onClick={onCancel} 
+                    className="absolute top-4 right-4 text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full z-10"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div className="flex flex-col items-center w-full">
+                    <h2 className="text-lg font-bold text-slate-800 text-center mt-2">{cleanText(customer.shop_name)}</h2>
+                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
                         <span>Invoice Date:</span>
-                        <input 
-                            type="date" 
-                            value={orderDate} 
-                            onChange={e => setOrderDate(e.target.value)} 
-                            className={`bg-slate-50 border-none p-0 text-xs focus:ring-0 ${themeClasses.text} font-medium`} 
+                        <input
+                            type="date"
+                            value={orderDate}
+                            onChange={e => setOrderDate(e.target.value)}
+                            className={`bg-slate-50 border-none p-0 text-xs focus:ring-0 ${themeClasses.text} font-medium`}
                         />
                     </div>
                 </div>
-                <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
             </div>
 
             {/* Mobile Tabs */}
@@ -433,7 +436,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                             {isInCart(item.item_id) && <span className={`w-1.5 h-1.5 ${themeClasses.bg} rounded-full`}></span>}
                                                             <div className="min-w-0">
                                                                 <p className={`text-xs font-bold truncate ${isInCart(item.item_id) ? themeClasses.textDark : 'text-slate-800'}`}>{cleanText(item.item_display_name)}</p>
-                                                        <p className="text-[10px] text-slate-400 font-mono truncate">{cleanText(item.item_number)} • {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}</p>
+                                                        <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                            {settings.show_sku_in_item_cards && (
+                                                                <>
+                                                                    {cleanText(item.item_number)} • 
+                                                                </>
+                                                            )}
+                                                            {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}
+                                                        </p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0 ml-2">
@@ -545,11 +555,15 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 </div>
                                                 <div className="flex items-center gap-1 mt-0.5 text-[10px] leading-none text-slate-500">
                                                     <>
-                                                        <span className={`font-black ${themeClasses.text} font-mono text-xs`}>{cleanText(item.item_number)}</span>
+                                                        {settings.show_sku_in_item_cards && (
+                                                            <>
+                                                                <span className={`font-black ${themeClasses.text} font-mono text-xs`}>{cleanText(item.item_number)}</span>
+                                                                <span className="text-slate-300">•</span>
+                                                            </>
+                                                        )}
+                                                        <span className={`uppercase font-bold ${themeClasses.text} text-[11px]`}>{cleanText(item.vehicle_model)}</span>
                                                         <span className="text-slate-300">•</span>
-                                                        <span className={`uppercase font-bold ${themeClasses.text}`}>{cleanText(item.vehicle_model)}</span>
-                                                        <span className="text-slate-300">•</span>
-                                                        <span className={themeClasses.text}>{cleanText(item.source_brand)}</span>
+                                                        <span className={`${themeClasses.text} text-[11px]`}>{cleanText(item.source_brand)}</span>
                                                     </>
                                                 </div>
 
@@ -628,7 +642,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                     {isInCart(item.item_id) && <span className={`w-1.5 h-1.5 ${themeClasses.bg} rounded-full`}></span>}
                                                     <div className="min-w-0">
                                                         <p className={`text-xs font-bold truncate ${isInCart(item.item_id) ? themeClasses.textDark : 'text-slate-800'}`}>{cleanText(item.item_display_name)}</p>
-                                                        <p className="text-[10px] text-slate-400 font-mono truncate">{cleanText(item.item_number)} • {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}</p>
+                                                        <p className="text-[10px] text-slate-400 font-mono truncate">
+                                                            {settings.show_sku_in_item_cards && (
+                                                                <>
+                                                                    {cleanText(item.item_number)} • 
+                                                                </>
+                                                            )}
+                                                            {cleanText(item.vehicle_model)} • {cleanText(item.source_brand)}
+                                                        </p>
                                                     </div>
 
                                                 </div>
@@ -660,7 +681,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         <li key={line.line_id} className="p-3 flex justify-between items-start hover:bg-white transition-colors group bg-white border-b border-slate-100 last:border-0">
                                             <div className="flex-1 min-w-0 pr-2">
                                                 <div className={`text-xs font-bold ${themeClasses.textDark} break-words leading-snug`}>{cleanText(line.item_name)}</div>
-                                                <div className="text-[10px] text-slate-500 font-medium flex gap-1 mt-0.5">
+                                                <div className="text-[11px] text-slate-500 font-medium flex gap-1 mt-0.5">
                                                     <span>{itemsMap.get(line.item_id)?.vehicle_model || ''}</span>
                                                     <span>•</span>
                                                     <span>{itemsMap.get(line.item_id)?.source_brand || ''}</span>

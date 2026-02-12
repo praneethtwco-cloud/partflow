@@ -7,7 +7,7 @@ import InvoicePreview from './InvoicePreview';
 import { cleanText } from '../utils/cleanText';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-type ReportView = 'overview' | 'revenue' | 'category' | 'customer' | 'stock' | 'invoice' | 'performance';
+type ReportView = 'overview' | 'revenue' | 'category' | 'customer' | 'stock' | 'invoice' | 'performance' | 'aging';
 
 interface ReportsProps {
     onOpenProfile?: (customer: Customer) => void;
@@ -25,9 +25,9 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
     const [stockFilter, setStockFilter] = useState<'all' | 'out' | 'in'>('all');
-    const [dateRange, setDateRange] = useState({ 
-        start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0], 
-        end: new Date().toISOString().split('T')[0] 
+    const [dateRange, setDateRange] = useState({
+        start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
     });
 
     const settings = db.getSettings();
@@ -40,14 +40,14 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
 
     // Filtered data
     const filteredOrders = orders.filter(o => o.order_date >= dateRange.start && o.order_date <= dateRange.end);
-    
+
     // Aggregations
     const totalRevenue = filteredOrders.reduce((sum, o) => {
         // Exclude cancelled or failed orders from revenue
         if (o.delivery_status === 'failed' || o.delivery_status === 'cancelled') return sum;
         return sum + o.net_total;
     }, 0);
-    
+
     const customerStats: Record<string, number> = {};
     filteredOrders.forEach(o => {
         // Exclude cancelled or failed orders from stats
@@ -62,12 +62,12 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
             // Include cancelled/failed orders for the detail view, but filter for calculations if needed?
             // Actually, usually "Performance" reports exclude cancellations.
             // Let's filter them out for the aggregate numbers.
-            const customerOrders = filteredOrders.filter(o => 
-                o.customer_id === id && 
-                o.delivery_status !== 'failed' && 
+            const customerOrders = filteredOrders.filter(o =>
+                o.customer_id === id &&
+                o.delivery_status !== 'failed' &&
                 o.delivery_status !== 'cancelled'
             );
-            
+
             return {
                 id,
                 name: customer?.shop_name || 'Unknown',
@@ -83,17 +83,17 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
 
     const salesTrend = React.useMemo(() => {
         const trendMap: Record<string, number> = {};
-        
+
         filteredOrders.forEach(o => {
             if (o.delivery_status === 'failed' || o.delivery_status === 'cancelled') return;
             trendMap[o.order_date] = (trendMap[o.order_date] || 0) + o.net_total;
         });
 
         return Object.entries(trendMap)
-            .map(([date, total]) => ({ 
-                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
+            .map(([date, total]) => ({
+                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                 originalDate: date,
-                total 
+                total
             }))
             .sort((a, b) => a.originalDate.localeCompare(b.originalDate));
     }, [filteredOrders]);
@@ -117,11 +117,16 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
 
     const renderOverview = () => (
         <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div onClick={() => handleDrillDown('performance')} className="bg-indigo-600 p-6 rounded-3xl text-white shadow-xl shadow-indigo-100 cursor-pointer active:scale-95 transition-transform">
                     <p className="text-[10px] uppercase font-bold text-indigo-200 tracking-widest mb-1">Period Revenue</p>
                     <p className="text-3xl font-black">{formatCurrency(totalRevenue)}</p>
                     <p className="mt-4 text-[10px] underline">View Performance Report →</p>
+                </div>
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm cursor-pointer" onClick={() => handleDrillDown('aging')}>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">A/R Aging</p>
+                    <p className="text-3xl font-black text-slate-800">{filteredOrders.filter(o => o.balance_due && o.balance_due > 0).length} Unpaid</p>
+                    <p className="text-[10px] font-bold text-indigo-600 mt-2">View Aging Report →</p>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm cursor-pointer" onClick={() => handleDrillDown('stock')}>
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Inventory Health</p>
@@ -146,37 +151,37 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                             <AreaChart data={salesTrend}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={themeClasses.hex} stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor={themeClasses.hex} stopOpacity={0}/>
+                                        <stop offset="5%" stopColor={themeClasses.hex} stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor={themeClasses.hex} stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="date" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 'bold'}} 
+                                <XAxis
+                                    dataKey="date"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 'bold' }}
                                     dy={10}
                                 />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 'bold'}} 
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 'bold' }}
                                     tickFormatter={(value) => `${value / 1000}k`}
                                 />
-                                <Tooltip 
-                                    contentStyle={{backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}}
-                                    itemStyle={{color: '#fff', fontWeight: 'bold', fontSize: '12px'}}
-                                    labelStyle={{color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase'}}
-                                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    itemStyle={{ color: '#fff', fontWeight: 'bold', fontSize: '12px' }}
+                                    labelStyle={{ color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase' }}
+                                    formatter={(value: number | undefined) => [formatCurrency(value || 0), 'Revenue']}
                                 />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="total" 
-                                    stroke={themeClasses.hex} 
+                                <Area
+                                    type="monotone"
+                                    dataKey="total"
+                                    stroke={themeClasses.hex}
                                     strokeWidth={3}
-                                    fillOpacity={1} 
-                                    fill="url(#colorSales)" 
+                                    fillOpacity={1}
+                                    fill="url(#colorSales)"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -258,16 +263,16 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                     <tfoot className="bg-slate-50 border-t-2 border-slate-900">
                         <tr className="font-black">
                             <td colSpan={2} className="px-2 py-4 uppercase text-[10px]">Grand Total (Period)</td>
-                            <td className="px-2 py-4 text-right">{formatCurrency(topCustomers.reduce((s,c) => s + c.totalGross, 0), false)}</td>
-                            <td className="px-2 py-4 text-right text-rose-600">-{formatCurrency(topCustomers.reduce((s,c) => s + (c.totalDisc1 + c.totalDisc2), 0), false)}</td>
+                            <td className="px-2 py-4 text-right">{formatCurrency(topCustomers.reduce((s, c) => s + c.totalGross, 0), false)}</td>
+                            <td className="px-2 py-4 text-right text-rose-600">-{formatCurrency(topCustomers.reduce((s, c) => s + (c.totalDisc1 + c.totalDisc2), 0), false)}</td>
                             <td className="px-2 py-4 text-right text-indigo-600">{formatCurrency(totalRevenue, false)}</td>
-                            <td className="px-2 py-4 text-right text-emerald-600">{formatCurrency(topCustomers.reduce((s,c) => s + c.totalPaid, 0), false)}</td>
-                            <td className="px-2 py-4 text-right text-rose-600">{formatCurrency(topCustomers.reduce((s,c) => s + c.totalBalance, 0), false)}</td>
+                            <td className="px-2 py-4 text-right text-emerald-600">{formatCurrency(topCustomers.reduce((s, c) => s + c.totalPaid, 0), false)}</td>
+                            <td className="px-2 py-4 text-right text-rose-600">{formatCurrency(topCustomers.reduce((s, c) => s + c.totalBalance, 0), false)}</td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            
+
             {/* Mobile Card View for Performance */}
             <div className="md:hidden space-y-3">
                 {topCustomers.map((c, i) => (
@@ -300,13 +305,13 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const renderCustomerDetails = () => {
         const customer = customers.find(c => c.customer_id === selectedId);
         const custOrders = filteredOrders.filter(o => o.customer_id === selectedId);
-        
+
         // Filter out cancelled/failed orders for total calculations
-        const validOrders = custOrders.filter(o => 
-            o.delivery_status !== 'failed' && 
+        const validOrders = custOrders.filter(o =>
+            o.delivery_status !== 'failed' &&
             o.delivery_status !== 'cancelled'
         );
-        
+
         const totalPurchased = validOrders.reduce((sum, o) => sum + o.net_total, 0);
         const totalPaid = validOrders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
         const totalBalance = validOrders.reduce((sum, o) => sum + (o.balance_due || 0), 0);
@@ -326,7 +331,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                         <p className="text-xs text-slate-500 font-bold">{cleanText(customer?.city_ref || '')} • {customer?.phone}</p>
                     </div>
                     {customer && onOpenProfile && (
-                        <button 
+                        <button
                             onClick={() => onOpenProfile(customer)}
                             className="bg-white text-indigo-600 px-4 py-2.5 rounded-xl text-xs font-bold border border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center gap-2 transition-colors shrink-0 ml-4"
                         >
@@ -348,11 +353,11 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {custOrders.sort((a,b) => b.order_date.localeCompare(a.order_date)).map(o => {
+                            {custOrders.sort((a, b) => b.order_date.localeCompare(a.order_date)).map(o => {
                                 const isInvalid = o.delivery_status === 'failed' || o.delivery_status === 'cancelled';
                                 return (
-                                    <tr 
-                                        key={o.order_id} 
+                                    <tr
+                                        key={o.order_id}
                                         className={`hover:bg-slate-50 cursor-pointer group ${isInvalid ? 'opacity-50' : ''}`}
                                         onClick={() => {
                                             setSelectedOrder(o);
@@ -387,7 +392,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
 
                 {/* Mobile Card View for Customer Details */}
                 <div className="md:hidden space-y-3">
-                    {custOrders.sort((a,b) => b.order_date.localeCompare(a.order_date)).map(o => (
+                    {custOrders.sort((a, b) => b.order_date.localeCompare(a.order_date)).map(o => (
                         <div key={o.order_id} onClick={() => { setSelectedOrder(o); setView('invoice'); }} className="bg-slate-50 p-4 rounded-xl border border-slate-100 active:scale-[0.98] transition-transform">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
@@ -421,6 +426,183 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                         </div>
                     </div>
                 </div>
+            </div>
+        );
+    };
+
+    const renderAgingReport = () => {
+        // Calculate aging buckets for each order
+        const today = new Date();
+        const agingOrders = filteredOrders.map(order => {
+            const orderDate = new Date(order.order_date);
+            const daysDiff = Math.floor((today.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            let bucket = 'Current';
+            if (daysDiff > 90) bucket = 'Over 90 Days';
+            else if (daysDiff > 60) bucket = '61-90 Days';
+            else if (daysDiff > 30) bucket = '31-60 Days';
+            else if (daysDiff > 0) bucket = '1-30 Days';
+            
+            return {
+                ...order,
+                daysOld: daysDiff,
+                agingBucket: bucket
+            };
+        });
+
+        // Group orders by aging bucket
+        const groupedByAging = agingOrders.reduce((acc, order) => {
+            if (!acc[order.agingBucket]) {
+                acc[order.agingBucket] = [];
+            }
+            acc[order.agingBucket].push(order);
+            return acc;
+        }, {} as Record<string, Order[]>);
+
+        // Calculate totals for each bucket
+        const agingTotals = Object.entries(groupedByAging).map(([bucket, orders]) => {
+            const total = orders.reduce((sum, order) => sum + (order.balance_due || 0), 0);
+            return { bucket, total, count: orders.length };
+        });
+
+        return (
+            <div className="animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex justify-between items-center mb-6 no-print">
+                    <button onClick={() => setView('performance')} className="text-xs font-black text-indigo-600 uppercase">← Back to Performance</button>
+                    <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print Report
+                    </button>
+                </div>
+
+                {/* Aging Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    {agingTotals.map((aging, index) => (
+                        <div 
+                            key={index} 
+                            className={`p-4 rounded-2xl border ${
+                                aging.bucket === 'Current' ? 'bg-blue-50 border-blue-200' :
+                                aging.bucket === '1-30 Days' ? 'bg-green-50 border-green-200' :
+                                aging.bucket === '31-60 Days' ? 'bg-yellow-50 border-yellow-200' :
+                                aging.bucket === '61-90 Days' ? 'bg-orange-50 border-orange-200' :
+                                'bg-red-50 border-red-200'
+                            }`}
+                        >
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{aging.bucket}</p>
+                            <p className="text-xl font-black text-slate-900">{formatCurrency(aging.total)}</p>
+                            <p className="text-xs text-slate-500 mt-1">{aging.count} invoices</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Invoice List by Aging Bucket */}
+                {Object.entries(groupedByAging).map(([bucket, orders]) => (
+                    <div key={bucket} className="mb-8">
+                        <h3 className="font-black text-slate-800 uppercase text-sm mb-4 border-b pb-2 border-slate-200">
+                            {bucket} ({orders.length} invoices)
+                        </h3>
+                        
+                        <div className="overflow-x-auto hidden md:block">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                                        <th className="px-4 py-4">Date</th>
+                                        <th className="px-4 py-4">Invoice #</th>
+                                        <th className="px-4 py-4">Customer</th>
+                                        <th className="px-4 py-4">Days Old</th>
+                                        <th className="px-4 py-4 text-right">Amount</th>
+                                        <th className="px-4 py-4 text-right">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {orders
+                                        .sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime())
+                                        .map(order => {
+                                            const customer = customers.find(c => c.customer_id === order.customer_id);
+                                            return (
+                                                <tr 
+                                                    key={order.order_id} 
+                                                    className="hover:bg-slate-50 cursor-pointer group"
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setView('invoice');
+                                                    }}
+                                                >
+                                                    <td className="px-4 py-4 text-slate-500 font-mono text-xs">{order.order_date}</td>
+                                                    <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline">
+                                                        {settings.invoice_prefix}{order.order_id.substring(0, 6).toUpperCase()}
+                                                    </td>
+                                                    <td className="px-4 py-4 font-medium text-slate-700">{cleanText(customer?.shop_name || 'Unknown')}</td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className={`inline-block px-2 py-1 rounded-full text-[9px] font-black ${
+                                                            order.daysOld > 90 ? 'bg-red-100 text-red-700' :
+                                                            order.daysOld > 60 ? 'bg-orange-100 text-orange-700' :
+                                                            order.daysOld > 30 ? 'bg-yellow-100 text-yellow-700' :
+                                                            order.daysOld > 0 ? 'bg-green-100 text-green-700' :
+                                                            'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                            {order.daysOld} days
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right font-mono text-xs">{formatCurrency(order.net_total, false)}</td>
+                                                    <td className={`px-4 py-4 text-right font-black ${order.balance_due && order.balance_due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                        {formatCurrency(order.balance_due || 0, false)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile Card View for Aging */}
+                        <div className="md:hidden space-y-3">
+                            {orders
+                                .sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime())
+                                .map(order => {
+                                    const customer = customers.find(c => c.customer_id === order.customer_id);
+                                    return (
+                                        <div 
+                                            key={order.order_id} 
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setView('invoice');
+                                            }}
+                                            className="bg-slate-50 p-4 rounded-xl border border-slate-100 active:scale-[0.98] transition-transform"
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                        {settings.invoice_prefix}{order.order_id.substring(0, 6).toUpperCase()}
+                                                    </span>
+                                                    <p className="text-xs font-bold text-slate-500 mt-1">{order.order_date}</p>
+                                                    <p className="text-xs text-slate-600 mt-1">{cleanText(customer?.shop_name || 'Unknown')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className={`text-sm font-black ${order.balance_due && order.balance_due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                        {formatCurrency(order.balance_due || 0)}
+                                                    </span>
+                                                    <span className={`block text-[9px] font-black px-1.5 py-0.5 rounded mt-1 ${
+                                                        order.daysOld > 90 ? 'bg-red-100 text-red-700' :
+                                                        order.daysOld > 60 ? 'bg-orange-100 text-orange-700' :
+                                                        order.daysOld > 30 ? 'bg-yellow-100 text-yellow-700' :
+                                                        order.daysOld > 0 ? 'bg-green-100 text-green-700' :
+                                                        'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                        {order.daysOld} days
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200 mt-2">
+                                                <span className="text-[10px] font-bold text-slate-400">Total: {formatCurrency(order.net_total)}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">{order.lines.length} items</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                ))}
             </div>
         );
     };
@@ -488,9 +670,9 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 no-print shrink-0 py-4">
                 <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase tracking-tighter">Business Intelligence</h2>
                 <div className="flex items-center justify-between md:justify-start gap-2 bg-white p-2 rounded-xl border border-slate-100 shadow-sm w-full md:w-auto">
-                    <input type="date" className="flex-1 md:w-auto text-xs font-bold text-slate-600 bg-transparent outline-none" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} />
+                    <input type="date" className="flex-1 md:w-auto text-xs font-bold text-slate-600 bg-transparent outline-none" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
                     <span className="text-slate-300">→</span>
-                    <input type="date" className="flex-1 md:w-auto text-xs font-bold text-slate-600 bg-transparent outline-none" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} />
+                    <input type="date" className="flex-1 md:w-auto text-xs font-bold text-slate-600 bg-transparent outline-none" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
                 </div>
             </div>
 
@@ -499,7 +681,10 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                     <h1 className="text-[32px] font-black uppercase text-black m-0 tracking-tighter">{settings.company_name}</h1>
                     <p className="text-[12px] font-bold text-slate-600 mt-1">{cleanText(settings.address)}</p>
                     <div className="mt-6 inline-block bg-slate-900 text-white px-6 py-2 rounded-lg font-black text-sm tracking-widest uppercase">
-                        {view === 'overview' ? 'Performance Summary' : view === 'performance' ? 'Sales Performance Report' : 'Account Ledger'}
+                        {view === 'overview' ? 'Performance Summary' : 
+                         view === 'performance' ? 'Sales Performance Report' : 
+                         view === 'aging' ? 'Accounts Receivable Aging' : 
+                         'Account Ledger'}
                     </div>
                     <div className="flex justify-between mt-8 text-[10px] font-black text-slate-500 uppercase">
                         <span>Audit Period: {dateRange.start} to {dateRange.end}</span>
@@ -511,6 +696,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                 {view === 'performance' && renderPerformanceReport()}
                 {view === 'customer' && renderCustomerDetails()}
                 {view === 'stock' && renderStockReport()}
+                {view === 'aging' && renderAgingReport()}
                 {view === 'invoice' && selectedOrder && (
                     <InvoicePreview order={selectedOrder} customer={customers.find(c => c.customer_id === selectedOrder.customer_id)!} settings={settings} onClose={() => setView('customer')} />
                 )}
