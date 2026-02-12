@@ -29,6 +29,7 @@ function AppContent() {
   const [profileCustomer, setProfileCustomer] = useState<Customer | null>(null); 
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [invoiceSourceTab, setInvoiceSourceTab] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [dbInitialized, setDbInitialized] = useState(false);
@@ -132,10 +133,19 @@ function AppContent() {
     setActiveOrder(null);
     setEditingOrder(null);
     setSelectedCustomer(null);
-    navigateTo('history');
+    // Go back to the source tab where the invoice was opened from
+    if (invoiceSourceTab) {
+      setActiveTab(invoiceSourceTab);
+      setInvoiceSourceTab(null);
+    } else {
+      // If no source tab recorded, go to history
+      navigateTo('history');
+    }
   };
 
   const handleViewInvoice = (order: Order) => {
+      // Store the current tab as the source when opening invoice
+      setInvoiceSourceTab(activeTab);
       const customers = db.getCustomers();
       const customer = customers.find(c => c.customer_id === order.customer_id);
       if (customer) {
