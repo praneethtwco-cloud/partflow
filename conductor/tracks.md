@@ -16,3 +16,18 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Sales Reporting Dashboard**
   *Link: [./tracks/sales_reports_20260212/](./tracks/sales_reports_20260212/)*
+
+---
+
+- [x] **Track: Secure Advanced Sync Options**
+*Link: [./tracks/secure_advanced_sync_20260213/](./tracks/secure_advanced_sync_20260213/)*
+
+---
+
+- [x] **Track: Mobile Order Builder UI/UX Enhancement**
+*Link: [./tracks/mobile_order_builder_ux_20260213/](./tracks/mobile_order_builder_ux_20260213/)*
+
+---
+
+- [x] **Track: Dashboard UI/UX Enhancement**
+*Link: [./tracks/dashboard_ui_ux_enhancement_20260213/](./tracks/dashboard_ui_ux_enhancement_20260213/)*

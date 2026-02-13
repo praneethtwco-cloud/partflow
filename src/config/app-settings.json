@@ -6,5 +6,6 @@
   "invoice_prefix": "VM-",
   "footer_note": "Thank you for your business. Goods once sold cannot be returned.",
   "currency_symbol": "Rs.",
-  "google_sheet_id": ""
+  "google_sheet_id": "",
+  "show_advanced_sync_options": false
 }

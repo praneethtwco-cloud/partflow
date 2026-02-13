@@ -118,6 +118,7 @@ export interface CompanySettings {
   show_sku_in_item_cards?: boolean; // New Setting - default false
   google_sheet_id?: string;
   logo_base64?: string;
+  show_advanced_sync_options?: boolean; // New Setting for advanced sync options visibility
 }
 
 export interface StockAdjustment extends BaseEntity {

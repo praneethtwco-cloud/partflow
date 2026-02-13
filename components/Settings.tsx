@@ -292,6 +292,12 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                             checked={settings.show_sku_in_item_cards || false}
                             onChange={val => setSettings({...settings, show_sku_in_item_cards: val})}
                         />
+                        <ToggleRow
+                            label="Show Advanced Sync Options"
+                            description="Show advanced sync options on the sync page (requires re-accessing the page)"
+                            checked={settings.show_advanced_sync_options || false}
+                            onChange={val => setSettings({...settings, show_advanced_sync_options: val})}
+                        />
                     </div>
                 </div>
 

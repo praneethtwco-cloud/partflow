@@ -21,7 +21,8 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const [isConfiguring, setIsConfiguring] = useState(false);
     const [serviceEmail, setServiceEmail] = useState('');
     const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, onConfirm: () => void} | null>(null);
-    
+    const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
     // Conflict State
     const [showConflictResolver, setShowConflictResolver] = useState(false);
     const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
@@ -35,6 +36,14 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         } else {
             setIsConfiguring(true);
         }
+
+        // According to requirements: "The toggle should reset each time the sync page is accessed"
+        // This means we should start with advanced options hidden by default
+        // The setting in the Settings page determines whether the user has the option to show them
+        // If the setting is false, advanced options are never shown
+        // If the setting is true, the toggle is available but resets each visit
+        const hasAdvancedOptionAccess = !!settings.show_advanced_sync_options;
+        setShowAdvancedOptions(hasAdvancedOptionAccess && false); // Always start as false to reset each visit
 
         // Fetch real service account email from backend
         const checkBackend = async () => {
@@ -193,7 +202,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                      </p>
 
                       <div className="flex flex-col gap-3 max-w-sm mx-auto">
-                        <button 
+                        <button
                             onClick={() => handleSync('upsert')}
                             disabled={isConfiguring || status === 'syncing' || status === 'checking'}
                             className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 ${
@@ -204,32 +213,65 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                             {status === 'syncing' ? 'Processing...' : status === 'checking' ? 'Checking...' : totalPending > 0 ? 'Sync & Push' : 'Incremental Sync'}
                         </button>
 
-                        <button 
-                            onClick={() => {
-                                setConfirmModal({
-                                    isOpen: true,
-                                    onConfirm: () => {
-                                        handleSync('overwrite');
-                                        setConfirmModal(null);
-                                    }
-                                });
-                            }}
-                            disabled={isConfiguring || status === 'syncing'}
-                            className="w-full py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all"
-                        >
-                            Upload All to Cloud (Overwrite)
-                        </button>
-                      </div>
+                        {/* Advanced Options Toggle Hint */}
+                        {!showAdvancedOptions && !!db.getSettings().show_advanced_sync_options && (
+                            <div className="text-center pt-2">
+                                <button 
+                                    onClick={() => setShowAdvancedOptions(true)}
+                                    className={`text-xs ${themeClasses.text} italic underline`}
+                                >
+                                    Show advanced sync options
+                                </button>
+                            </div>
+                        )}
 
-                      {status !== 'syncing' && (
-                          <button 
-                             onClick={handleRefreshOnly}
-                             className={`mt-4 ${themeClasses.text} font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto`}
-                          >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              Download Latest Master Record (Pull)
-                          </button>
-                      )}
+                        {/* Show message if user doesn't have access to advanced options */}
+                        {!showAdvancedOptions && !db.getSettings().show_advanced_sync_options && (
+                            <div className="text-center pt-2">
+                                <span className={`text-xs ${themeClasses.text} italic`}>
+                                    Advanced options available in Settings
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Only show advanced options if user has access AND the toggle is on */}
+                        {showAdvancedOptions && !!db.getSettings().show_advanced_sync_options && (
+                          <>
+                            <button
+                                onClick={() => {
+                                    setConfirmModal({
+                                        isOpen: true,
+                                        onConfirm: () => {
+                                            handleSync('overwrite');
+                                            setConfirmModal(null);
+                                        }
+                                    });
+                                }}
+                                disabled={isConfiguring || status === 'syncing'}
+                                className="w-full py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all"
+                            >
+                                Upload All to Cloud (Overwrite)
+                            </button>
+
+                            {status !== 'syncing' && (
+                                <button
+                                   onClick={handleRefreshOnly}
+                                   className={`mt-2 ${themeClasses.text} font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    Download Latest Master Record (Pull)
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setShowAdvancedOptions(false)}
+                                className="w-full py-2 mt-2 border border-slate-200 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all"
+                            >
+                                Hide Advanced Options
+                            </button>
+                          </>
+                        )}
+                      </div>
                 </div>
 
 

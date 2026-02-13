@@ -337,17 +337,34 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         return 0;
     });
 
+    // State for header visibility and filter visibility
+    const [headerVisible, setHeaderVisible] = useState(true);
+    const [filtersVisible, setFiltersVisible] = useState(false);
+
+    // Handle scroll to show/hide header
+    const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+        const scrollTop = e.currentTarget.scrollTop;
+        // Show header when at top or scrolling up, hide when scrolling down
+        if (scrollTop > 10) {
+            setHeaderVisible(scrollTop < (e.currentTarget.scrollHeight - e.currentTarget.clientHeight - 10));
+        } else {
+            setHeaderVisible(true);
+        }
+    };
+
     const isInCart = (itemId: string) => lines.some(l => l.item_id === itemId);
 
     if (!customer) return <div className="p-4 text-center">Please select a customer first.</div>;
 
     return (
         <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)]">
-            
-            {/* Header */}
-            <div className={`bg-white p-4 border-b border-slate-200 rounded-t-xl shadow-sm shrink-0 transition-all ${isSearchFocused ? 'md:flex hidden' : 'flex'} relative`}>
-                <button 
-                    onClick={onCancel} 
+
+            {/* Header - conditionally rendered based on scroll and mobile view */}
+            <div className={`bg-white p-4 border-b border-slate-200 rounded-t-xl shadow-sm shrink-0 transition-all duration-300 ${
+                headerVisible || mobileTab === 'cart' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+            } ${isSearchFocused ? 'md:flex hidden' : 'flex'} relative`}>
+                <button
+                    onClick={onCancel}
                     className="absolute top-4 right-4 text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full z-10"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
@@ -387,7 +404,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                 
                 {/* Catalog Pane (Left on Desktop, Tab 1 on Mobile) */}
                 <div className={`w-full md:w-3/5 flex flex-col h-full ${mobileTab === 'catalog' ? 'block' : 'hidden md:flex'}`}>
-                    {/* Search & Scan */}
+                    {/* Search & Filters */}
                     <div className="p-3 bg-white border-b border-slate-100 space-y-2">
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1">
@@ -396,32 +413,32 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                                     </svg>
                                 </div>
-                                <input 
-                                    placeholder="Search parts or SKU..." 
+                                <input
+                                    placeholder="Search parts or SKU..."
                                     className={`block w-full pl-9 pr-10 p-2.5 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 ${themeClasses.ring}`}
                                     value={catalogSearch}
                                     onChange={e => setCatalogSearch(e.target.value)}
                                 />
                                 {catalogSearch && (
-                                    <button 
+                                    <button
                                         onClick={() => setCatalogSearch('')}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 )}
-                                
+
                                 {/* Catalog Search Dropdown */}
                                 {isSearchFocused && catalogSearch.trim().length > 0 && (
                                     <div className="hidden md:block absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-xl z-[70] max-h-96 overflow-y-auto divide-y divide-slate-50">
                                         {filteredItems.length > 0 ? (
                                             filteredItems.slice(0, 20).map(item => {
-                                                const isOutOfStock = settings.stock_tracking_enabled 
-                                                    ? item.current_stock_qty <= 0 
+                                                const isOutOfStock = settings.stock_tracking_enabled
+                                                    ? item.current_stock_qty <= 0
                                                     : item.is_out_of_stock;
-                                                
+
                                                 if (isOutOfStock) return null;
-                                                
+
                                                 return (
                                                     <div
                                                         key={item.item_id}
@@ -453,8 +470,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                                     setIsSearchFocused(false);
                                                                 }}
                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold min-w-[60px] ${
-                                                                    isInCart(item.item_id) 
-                                                                        ? 'bg-slate-200 text-slate-600' 
+                                                                    isInCart(item.item_id)
+                                                                        ? 'bg-slate-200 text-slate-600'
                                                                         : `${themeClasses.bg} text-white`
                                                                 }`}
                                                             >
@@ -473,7 +490,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 )}
                             </div>
                             <div className="flex gap-2">
-                                <button 
+                                <button
                                     onClick={() => setShowOutOfStock(!showOutOfStock)}
                                     className={`p-2.5 rounded-lg transition-colors ${!showOutOfStock ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}
                                     title={showOutOfStock ? "Hide Out of Stock" : "Show Out of Stock"}
@@ -484,17 +501,21 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                                     )}
                                 </button>
-                                <button 
-                                    onClick={() => setShowScanner(!showScanner)}
-                                    className={`p-2.5 rounded-lg transition-colors ${showScanner ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}
+                                {/* Replaced scanner button with filter toggle button */}
+                                <button
+                                    onClick={() => setFiltersVisible(!filtersVisible)}
+                                    className={`p-2.5 rounded-lg transition-colors ${filtersVisible ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v-3m0 4h3m-3 4h3m-6 0h3m0-4h.01M9 16h.01" /></svg>
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                 </button>
                             </div>
                         </div>
-                        
-                        <div className={`flex gap-2 overflow-x-auto no-scrollbar transition-all ${isSearchFocused ? 'hidden md:flex' : 'flex'}`}>
-                            <select 
+
+                        {/* Collapsible filters */}
+                        <div className={`flex gap-2 overflow-x-auto no-scrollbar transition-all duration-300 ease-in-out ${
+                            filtersVisible ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+                        } ${isSearchFocused ? 'hidden md:flex' : 'flex'}`}>
+                            <select
                                 className="w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0"
                                 value={modelFilter}
                                 onChange={e => setModelFilter(e.target.value)}
@@ -502,7 +523,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 <option value="All">All Models</option>
                                 {availableModels.filter(m => m !== 'All').map(m => <option key={String(m)} value={String(m)}>{cleanText(String(m))}</option>)}
                             </select>
-                            <select 
+                            <select
                                 className="w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0"
                                 value={countryFilter}
                                 onChange={e => setCountryFilter(e.target.value)}
@@ -510,7 +531,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 <option value="All">All Origins</option>
                                 {availableCountries.filter(c => c !== 'All').map(c => <option key={String(c)} value={String(c)}>{cleanText(String(c))}</option>)}
                             </select>
-                            <select 
+                            <select
                                 className="w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0"
                                 value={sortOrder}
                                 onChange={e => setSortOrder(e.target.value as 'A-Z' | 'Price-High' | 'Price-Low')}
@@ -531,10 +552,13 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                     )}
                     
                     {/* Item List */}
-                    <div className={`flex-1 overflow-y-auto p-2 md:p-4 space-y-1.5 ${(isSearchFocused && catalogSearch.trim().length > 0) ? 'md:hidden' : ''}`}>
+                    <div 
+                        className={`flex-1 overflow-y-auto p-2 md:p-4 space-y-1.5 ${(isSearchFocused && catalogSearch.trim().length > 0) ? 'md:hidden' : ''}`} 
+                        onScroll={handleScroll}
+                    >
                             {filteredItems.map(item => {
-                            const isOutOfStock = settings.stock_tracking_enabled 
-                                ? item.current_stock_qty <= 0 
+                            const isOutOfStock = settings.stock_tracking_enabled
+                                ? item.current_stock_qty <= 0
                                 : item.is_out_of_stock;
 
                             return (
@@ -593,8 +617,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 <button
                                                     onClick={() => setSelectedItem(item)}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold min-w-[60px] ${
-                                                        isInCart(item.item_id) 
-                                                            ? 'bg-slate-200 text-slate-600' 
+                                                        isInCart(item.item_id)
+                                                            ? 'bg-slate-200 text-slate-600'
                                                             : `${themeClasses.bg} text-white`
                                                     }`}
                                                 >
