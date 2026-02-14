@@ -19,10 +19,10 @@ interface SyncDashboardProps {
 export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) => {
     const { themeClasses } = useTheme();
     const { showToast } = useToast();
-    const [stats, setStats] = useState<SyncStats>(db.getSyncStats());
+    const [stats, setStats] = useState<SyncStats>({ pendingCustomers: 0, pendingItems: 0, pendingOrders: 0, pendingAdjustments: 0 });
     const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error' | 'checking'>('idle');
     const [logs, setLogs] = useState<string[]>([]);
-    const [sheetId, setSheetId] = useState('');
+    const [sheetId, setSheetId] = useState('supabase'); // Default to 'supabase' for Supabase sync
     const [isConfiguring, setIsConfiguring] = useState(false);
     const [serviceEmail, setServiceEmail] = useState('');
     const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, onConfirm: () => void} | null>(null);
@@ -39,24 +39,28 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const [lastAutoSync, setLastAutoSync] = useState<string | null>(null);
 
     useEffect(() => {
-        setStats(db.getSyncStats());
-        const settings = db.getSettings();
+        const loadData = async () => {
+            const stats = await db.getSyncStats();
+            setStats(stats);
+            const settings = db.getSettings();
 
-        // Check if Supabase is configured (we can check for any relevant setting)
-        // For now, we'll assume if we reach this point, Supabase is configured
-        // since the migration should have been done
+            // Check if Supabase is configured (we can check for any relevant setting)
+            // For now, we'll assume if we reach this point, Supabase is configured
+            // since the migration should have been done
 
-        // According to requirements: "The toggle should reset each time the sync page is accessed"
-        // This means we should start with advanced options hidden by default
-        // The setting in the Settings page determines whether the user has the option to show them
-        // If the setting is false, advanced options are never shown
-        // If the setting is true, the toggle is available but resets each visit
-        const hasAdvancedOptionAccess = !!settings.show_advanced_sync_options;
-        setShowAdvancedOptions(hasAdvancedOptionAccess && false); // Always start as false to reset each visit
+            // According to requirements: "The toggle should reset each time the sync page is accessed"
+            // This means we should start with advanced options hidden by default
+            // The setting in the Settings page determines whether the user has the option to show them
+            // If the setting is false, advanced options are never shown
+            // If the setting is true, the toggle is available but resets each visit
+            const hasAdvancedOptionAccess = !!settings.show_advanced_sync_options;
+            setShowAdvancedOptions(hasAdvancedOptionAccess && false); // Always start as false to reset each visit
 
-        // For Supabase, we don't need a service email like Google Sheets
-        // We can set a placeholder or remove this functionality
-        setServiceEmail('Supabase Authentication');
+            // For Supabase, we don't need a service email like Google Sheets
+            // We can set a placeholder or remove this functionality
+            setServiceEmail('Supabase Authentication');
+        };
+        loadData();
     }, []);
 
     // Auto-sync functionality when coming online
@@ -89,7 +93,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                 setStatus('success');
                 setLastAutoSync(new Date().toISOString());
                 showToast("Auto-sync completed successfully!", "success");
-                setStats(db.getSyncStats());
+                setStats(await db.getSyncStats());
                 onSyncComplete();
             } else {
                 setStatus('error');
@@ -129,7 +133,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                 await db.performSync((msg) => addLog(msg), 'overwrite');
                 setStatus('success');
                 showToast("Sync completed successfully!", "success");
-                setStats(db.getSyncStats());
+                setStats(await db.getSyncStats());
                 onSyncComplete();
             } catch (e: any) {
                 console.error(e);
@@ -161,7 +165,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
             setStatus('success');
             showToast("Sync completed successfully!", "success");
-            setStats(db.getSyncStats());
+            setStats(await db.getSyncStats());
             onSyncComplete();
         } catch (e: any) {
             console.error(e);
@@ -180,7 +184,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             await db.resolveConflictsAndSync(resolutions, cloudBuffer);
             setStatus('success');
             showToast("Sync completed successfully!", "success");
-            setStats(db.getSyncStats());
+            setStats(await db.getSyncStats());
             onSyncComplete();
         } catch (e: any) {
             console.error(e);
@@ -200,7 +204,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             await db.performSync((msg) => addLog(msg), 'upsert');
             setStatus('success');
             showToast("Master records downloaded", "success");
-            setStats(db.getSyncStats());
+            setStats(await db.getSyncStats());
             onSyncComplete();
         } catch (e: any) {
             setStatus('error');
@@ -356,7 +360,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             </div>
 
             {/* CSV Import Component */}
-            <CsvImportComponent onImportComplete={() => setStats(db.getSyncStats())} />
+            <CsvImportComponent onImportComplete={async () => setStats(await db.getSyncStats())} />
 
             {/* Import Log Viewer Button */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">

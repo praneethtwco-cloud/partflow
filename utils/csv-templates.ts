@@ -15,17 +15,22 @@ export const CSV_TEMPLATES: Record<string, CsvTemplate> = {
     name: 'Customers',
     description: 'Template for importing customer data',
     headers: [
-      'ID',
-      'Shop Name',
-      'Address',
-      'Phone',
-      'City',
-      'Discount 1',
-      'Discount 2',
-      'Balance',
-      'Credit Period',
-      'Status',
-      'Last Updated',
+      'customer_id',
+      'shop_name',
+      'address',
+      'phone',
+      'city_ref',
+      'city',
+      'discount_rate',
+      'discount_1',
+      'discount_2',
+      'secondary_discount_rate',
+      'outstanding_balance',
+      'balance',
+      'credit_period',
+      'credit_limit',
+      'status',
+      'last_updated',
       'created_at',
       'updated_at',
       'sync_status'
@@ -35,15 +40,20 @@ export const CSV_TEMPLATES: Record<string, CsvTemplate> = {
       'John\'s Auto Repair',
       '123 Main St, City, Country',
       '+1234567890',
+      'city_ref_001',
       'New York',
-      '0.1',
-      '0.05',
-      '0.00',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
       '30',
+      '0',
       'active',
-      '2023-01-01T00:00:00.000Z',
-      '2023-01-01T00:00:00.000Z',
-      '2023-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
       'pending'
     ]
   },
@@ -76,14 +86,14 @@ export const CSV_TEMPLATES: Record<string, CsvTemplate> = {
       'Toyota Camry',
       'Genuine Toyota',
       'Brakes',
-      '45.99',
-      '25',
-      '5',
+      '1500.00',
+      '50',
+      '10',
       'false',
       'active',
-      '2023-01-01T00:00:00.000Z',
-      '2023-01-01T00:00:00.000Z',
-      '2023-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
+      '2024-01-01T00:00:00.000Z',
       'pending'
     ]
   },
@@ -306,16 +316,49 @@ export function validateCsvAgainstTemplate(csvString: string, templateName: stri
   // Check that all rows have the same number of columns as headers
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const cells = row.split(',').map(cell => cell.trim());
-    
-    if (cells.length !== headers.length) {
-      errors.push(`Row ${i + 1} has ${cells.length} columns, expected ${headers.length}`);
+    // Parse CSV properly handling quoted fields
+    const cells = parseCsvRow(row);
+
+    // Calculate expected columns (use template headers or actual header row)
+    const expectedCols = headers.length;
+
+    if (cells.length !== expectedCols) {
+      errors.push(`Row ${i + 1} has ${cells.length} columns, expected ${expectedCols}`);
+      if (errors.length > 5) {
+        errors.push('...and more errors (fix first 5 and try again)');
+        break;
+      }
     }
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,
     warnings
   };
+}
+
+/**
+ * Parse a CSV row handling quoted fields
+ */
+function parseCsvRow(row: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
 }

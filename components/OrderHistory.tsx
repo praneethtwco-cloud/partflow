@@ -271,7 +271,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                             </button>
                                             
-                                            {order.sync_status !== 'synced' && (order.delivery_status === 'pending' || !order.delivery_status) && onEditOrder && (
+                                            {(order.delivery_status === 'pending' || !order.delivery_status) && onEditOrder && (
                                                 <button 
                                                     onClick={() => onEditOrder(order)}
                                                     className="p-2 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"

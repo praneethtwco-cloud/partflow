@@ -13,6 +13,7 @@ import { Register } from './components/Register';
 import { Reports } from './components/Reports';
 import { Customer, Order } from './types';
 import { db } from './services/db';
+import { autoSyncService } from './services/auto-sync';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -86,15 +87,29 @@ function AppContent() {
     // Initialize DB and Load Cache on Boot
     const startUp = async () => {
         try {
-            await db.initialize();
+            // Add timeout to prevent indefinite hanging
+            const initPromise = db.initialize();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Database initialization timeout (10s)')), 10000)
+            );
+            
+            await Promise.race([initPromise, timeoutPromise]);
             setDbInitialized(true);
         } catch (e: any) {
             console.error("Database Initialization Failed:", e);
-            setInitError(e.message || "Unknown Database Error");
+            setInitError(e.message || "Database initialization timeout. Please refresh the page.");
         }
     };
     startUp();
   }, []);
+
+  React.useEffect(() => {
+    if (isAuthenticated && dbInitialized) {
+      autoSyncService.start();
+    } else {
+      autoSyncService.stop();
+    }
+  }, [isAuthenticated, dbInitialized]);
 
   const handleSelectCustomer = (customer: Customer) => {
     // Check if switching customer while draft exists
@@ -281,6 +296,22 @@ function AppContent() {
             onSync={() => navigateTo('sync')}
             isSyncing={isSyncing}
             hasActiveDraft={!!(draftOrder?.lines?.length || editingOrder)}
+            isOrderScreen={activeTab === 'orders' && (!!selectedCustomer || !!editingOrder)}
+            orderShopName={selectedCustomer?.shop_name || (editingOrder ? db.getCustomers().find(c => c.customer_id === editingOrder.customer_id)?.shop_name : undefined)}
+            onOrderClose={() => {
+                setConfirmConfig({
+                    isOpen: true,
+                    title: editingOrder ? "Discard Changes?" : "Abandon Order?",
+                    message: "Are you sure? Any unsaved changes will be lost.",
+                    onConfirm: () => {
+                        setSelectedCustomer(null);
+                        setEditingOrder(null);
+                        setDraftOrder(null);
+                        navigateTo(editingOrder ? 'history' : 'home');
+                        setConfirmConfig(null);
+                    }
+                });
+            }}
         >
         {renderContent()}
         </Layout>

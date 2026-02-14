@@ -10,9 +10,23 @@ interface LayoutProps {
   onSync: () => void;
   isSyncing: boolean;
   hasActiveDraft?: boolean;
+  // OrderBuilder specific props for mobile
+  orderShopName?: string;
+  onOrderClose?: () => void;
+  isOrderScreen?: boolean;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, onSync, isSyncing, hasActiveDraft }) => {
+export const Layout: React.FC<LayoutProps> = ({ 
+  children, 
+  activeTab, 
+  onTabChange, 
+  onSync, 
+  isSyncing, 
+  hasActiveDraft,
+  orderShopName,
+  onOrderClose,
+  isOrderScreen
+}) => {
   const { themeClasses } = useTheme();
   const [stats, setStats] = useState<SyncStats>({ pendingCustomers: 0, pendingItems: 0, pendingOrders: 0, pendingAdjustments: 0 });
 
@@ -127,18 +141,38 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
         </div>
       </header>
 
-      {/* Mobile Header (Simplified) */}
+      {/* Mobile Header */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-3 sticky top-0 z-40 no-print">
         <div className="flex justify-between items-center">
+          {/* Left: Close button + Shop name (for Order screen) or Logo (for other screens) */}
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 ${themeClasses.bg} rounded-lg flex items-center justify-center text-white font-bold text-xs ${themeClasses.shadow} shadow-lg`}>PF</div>
-            <h1 className="text-sm font-black tracking-wider text-slate-800">
-              PARTFLOW
-            </h1>
+            {isOrderScreen && onOrderClose ? (
+              // Order screen: show close button and shop name
+              <>
+                <button
+                  onClick={onOrderClose}
+                  className="p-1.5 bg-rose-100 text-rose-600 rounded-full hover:bg-rose-200 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <h1 className="text-sm font-bold text-slate-800 truncate max-w-[180px]">
+                  {orderShopName || 'New Order'}
+                </h1>
+              </>
+            ) : (
+              // Other screens: show logo
+              <>
+                <div className={`w-8 h-8 ${themeClasses.bg} rounded-lg flex items-center justify-center text-white font-bold text-xs ${themeClasses.shadow} shadow-lg`}>PF</div>
+                <h1 className="text-sm font-black tracking-wider text-slate-800">
+                  PARTFLOW
+                </h1>
+              </>
+            )}
           </div>
 
+          {/* Right: Sync button and pending count */}
           <div className="flex items-center gap-2">
-            {totalPending > 0 && (
+            {totalPending > 0 && !isOrderScreen && (
               <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-full border border-amber-100">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 <span className="text-[10px] font-bold">{totalPending} Pending</span>

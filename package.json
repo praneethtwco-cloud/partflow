@@ -12,6 +12,7 @@
     "test:auth": "tsx test-auth-sync.ts"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.0.0",
     "@capacitor/android": "^8.0.2",
     "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.2",

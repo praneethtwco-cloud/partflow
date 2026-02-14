@@ -63,11 +63,11 @@ export const DatabaseClearButtons: React.FC = () => {
         const supabaseClient = supabaseService.getSupabaseClient();
 
         // Clear all tables in the cloud database
-        // Delete all records from all tables
-        // Using a simple approach: delete all records without conditions
+        // Delete all records - use .neq to match all records
         const { error: customersError } = await supabaseClient
           .from('customers')
-          .delete(); // Delete all records without conditions
+          .delete()
+          .neq('customer_id', ''); // Match all records
 
         if (customersError) {
           throw new Error(`Error clearing customers: ${customersError.message}`);
@@ -75,7 +75,8 @@ export const DatabaseClearButtons: React.FC = () => {
 
         const { error: itemsError } = await supabaseClient
           .from('items')
-          .delete(); // Delete all records without conditions
+          .delete()
+          .neq('item_id', ''); // Match all records
 
         if (itemsError) {
           throw new Error(`Error clearing items: ${itemsError.message}`);
@@ -83,7 +84,8 @@ export const DatabaseClearButtons: React.FC = () => {
 
         const { error: ordersError } = await supabaseClient
           .from('orders')
-          .delete(); // Delete all records without conditions
+          .delete()
+          .neq('order_id', ''); // Match all records
 
         if (ordersError) {
           throw new Error(`Error clearing orders: ${ordersError.message}`);
@@ -91,7 +93,8 @@ export const DatabaseClearButtons: React.FC = () => {
 
         const { error: usersError } = await supabaseClient
           .from('users')
-          .delete(); // Delete all records without conditions
+          .delete()
+          .neq('id', ''); // Match all records
 
         if (usersError) {
           throw new Error(`Error clearing users: ${usersError.message}`);
@@ -99,7 +102,8 @@ export const DatabaseClearButtons: React.FC = () => {
 
         const { error: adjustmentsError } = await supabaseClient
           .from('stock_adjustments')
-          .delete(); // Delete all records without conditions
+          .delete()
+          .neq('adjustment_id', ''); // Match all records
 
         if (adjustmentsError) {
           throw new Error(`Error clearing adjustments: ${adjustmentsError.message}`);

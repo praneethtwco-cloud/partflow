@@ -40,9 +40,6 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         return 0;
     };
     
-    // Approval Status State
-    const [approvalStatus, setApprovalStatus] = useState<'draft' | 'pending_approval' | 'approved'>(editingOrder?.approval_status || 'draft');
-    
     // Invoice Number State
     const [invoiceNumber, setInvoiceNumber] = useState<string>(() => {
         if (editingOrder) {
@@ -185,12 +182,6 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     // Effect to validate invoice number when it changes
     useEffect(() => {
         if (!useSuggestedInvoiceNumber && invoiceNumber) {
-            // Skip validation if editing a synced order that is approved
-            if (editingOrder && editingOrder.approval_status === 'approved') {
-                setInvoiceNumberError('');
-                return;
-            }
-
             // Validate that the invoice number follows the correct format (prefix + number)
             const settings = db.getSettings();
             const prefix = settings.invoice_prefix || 'INV';
@@ -219,8 +210,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const grossTotal = lines.reduce((sum, line) => sum + line.line_total, 0);
     const primaryDiscountValue = grossTotal * (discountRate / 100);
     const amountAfterPrimary = grossTotal - primaryDiscountValue;
-    // Check if editing is disabled based on approval status
-    const isEditingDisabled = editingOrder && editingOrder.approval_status === 'approved';
+    // Allow editing for all orders (including synced/approved ones)
+    const isEditingDisabled = false;
 
     const secondaryDiscountValue = amountAfterPrimary * (secondaryDiscountRate / 100);
     const amountAfterDiscounts = amountAfterPrimary - secondaryDiscountValue;
@@ -329,12 +320,6 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const handleFinalizeOrder = async () => {
         if (!customer) return;
 
-        // Check if editing is disabled based on approval status
-        if (isEditingDisabled) {
-            showToast("Editing is locked for approved invoices", "error");
-            return;
-        }
-
         // Validate invoice number before proceeding
         if (!invoiceNumber) {
             showToast("Please enter an invoice number", "error");
@@ -399,7 +384,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             delivery_status: editingOrder?.delivery_status || 'pending',
             lines: finalLines,
             invoice_number: invoiceNumber, // Use the user-specified invoice number
-            approval_status: approvalStatus, // Set the approval status
+            approval_status: editingOrder?.approval_status || 'approved', // Default to approved
             // Preserve the original invoice number for sync tracking if this was previously synced
             original_invoice_number: editingOrder?.original_invoice_number || editingOrder?.invoice_number,
             created_at: editingOrder?.created_at || new Date().toISOString(),
@@ -491,30 +476,39 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     return (
         <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)]">
 
-            {/* Header - conditionally rendered based on scroll and mobile view */}
-            <div className={`bg-white p-4 border-b border-slate-200 rounded-t-xl shadow-sm shrink-0 transition-all duration-300 ${
-                headerVisible || mobileTab === 'cart' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-            } ${isSearchFocused ? 'md:flex hidden' : 'flex'} relative`}>
-                <button
-                    onClick={onCancel}
-                    className="absolute top-4 right-4 text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full z-10"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-                <div className="flex flex-col items-center w-full">
-                    <h2 className="text-lg font-bold text-slate-800 text-center mt-2">{cleanText(customer.shop_name)}</h2>
-                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
-                        <span>Invoice Date:</span>
-                        <input
-                            type="date"
-                            value={orderDate}
-                            onChange={e => setOrderDate(e.target.value)}
-                            className={`bg-slate-50 border-none p-0 text-xs focus:ring-0 ${themeClasses.text} font-medium`}
-                        />
+            {/* Header */}
+            <div className={`bg-white px-4 py-3 border-b border-slate-200 rounded-t-xl shadow-sm shrink-0 transition-all duration-300 ${isSearchFocused ? 'md:block hidden' : 'block'}`}>
+                <div className="flex items-center justify-between gap-2">
+                    {/* Left: Customer Name - Hidden on mobile (now in header title bar) */}
+                    <div className="hidden md:flex items-center gap-2 min-w-0">
+                        <button
+                            onClick={onCancel}
+                            className="text-white bg-rose-500 hover:bg-rose-600 p-1.5 rounded-full shrink-0"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        <h2 className="text-sm md:text-base font-bold text-slate-800 truncate">{cleanText(customer.shop_name)}</h2>
+                        {editingOrder && editingOrder.sync_status === 'synced' && (
+                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">SYNCED</span>
+                        )}
                     </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
-                        <span>Invoice #:</span>
+
+                    {/* Right: Invoice Info - All in one row */}
+                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                        {/* Invoice Date */}
                         <div className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <input
+                                type="date"
+                                value={orderDate}
+                                onChange={e => setOrderDate(e.target.value)}
+                                className="bg-slate-50 border border-slate-200 text-xs rounded px-1.5 py-1 font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none w-28 md:w-32"
+                            />
+                        </div>
+
+                        {/* Invoice Number */}
+                        <div className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             <input
                                 type="text"
                                 value={invoiceNumber}
@@ -522,59 +516,30 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                     setInvoiceNumber(e.target.value);
                                     setUseSuggestedInvoiceNumber(false);
                                 }}
-                                className={`bg-slate-50 border border-slate-200 p-1 text-xs rounded ${invoiceNumberError ? 'border-rose-500' : 'border-slate-200'} focus:ring-2 ${themeClasses.ring} font-medium w-24 text-center`}
-                                placeholder="Invoice #"
+                                className={`bg-slate-50 border text-xs rounded px-1.5 py-1 font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none w-20 md:w-24 ${invoiceNumberError ? 'border-rose-500' : 'border-slate-200'}`}
+                                placeholder="INV#"
                             />
                             <button
                                 onClick={() => setUseSuggestedInvoiceNumber(!useSuggestedInvoiceNumber)}
-                                className={`p-1 rounded ${useSuggestedInvoiceNumber ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
-                                title={useSuggestedInvoiceNumber ? "Using suggested number" : "Use suggested number"}
+                                className={`p-1 rounded shrink-0 ${useSuggestedInvoiceNumber ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+                                title={useSuggestedInvoiceNumber ? "Using suggested" : "Use suggested"}
                             >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
                         </div>
-                        {invoiceNumberError && (
-                            <div className="text-[10px] text-rose-600 font-medium">{invoiceNumberError}</div>
-                        )}
                     </div>
-                    
-                    {/* Approval Status Selector */}
-                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
-                        <span>Approval:</span>
-                        <select
-                            value={approvalStatus}
-                            onChange={e => setApprovalStatus(e.target.value as 'draft' | 'pending_approval' | 'approved')}
-                            className={`bg-slate-50 border border-slate-200 p-1 text-xs rounded ${approvalStatus === 'approved' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-50 border-slate-200'} font-medium`}
-                            disabled={approvalStatus === 'approved'} /* Prevent changing status once approved */
-                        >
-                            <option value="draft">Draft</option>
-                            <option value="pending_approval">Pending Approval</option>
-                            <option value="approved">Approved</option>
-                        </select>
-                    </div>
-                    
-                    {editingOrder && editingOrder.sync_status === 'synced' && (
-                        <div className="flex items-center gap-1">
-                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-tighter">SYNCED</span>
-                            <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    )}
-                    {invoiceNumberError && (
-                        <div className="text-[10px] text-rose-600 font-medium mt-1">{invoiceNumberError}</div>
-                    )}
-                    {editingOrder && editingOrder.sync_status === 'synced' && (
-                        <div className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            This invoice has been synced to Google Sheets
-                        </div>
-                    )}
                 </div>
+
+                {/* Error Messages */}
+                {invoiceNumberError && (
+                    <div className="text-[10px] text-rose-600 font-medium mt-1">{invoiceNumberError}</div>
+                )}
+                {editingOrder && editingOrder.sync_status === 'synced' && (
+                    <div className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        Synced to cloud
+                    </div>
+                )}
             </div>
 
             {/* Mobile Tabs */}

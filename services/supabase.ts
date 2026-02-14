@@ -8,6 +8,7 @@ import {
   User 
 } from '../types';
 import { SUPABASE_CONFIG } from '../config';
+import { getSupabaseClient } from './supabase-client';
 
 interface SupabaseSyncResult {
   success: boolean;
@@ -32,14 +33,7 @@ class SupabaseService {
   private currentLogs: string[] = [];
 
   constructor() {
-    const supabaseUrl = SUPABASE_CONFIG.URL;
-    const supabaseAnonKey = SUPABASE_CONFIG.ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables. Please check your .env configuration.');
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    this.supabase = getSupabaseClient();
   }
 
   private addLog(msg: string) {
@@ -133,11 +127,13 @@ class SupabaseService {
       return result;
     };
 
-    // Check if user is authenticated
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated. Please log in to sync data.');
-    }
+    // Note: Authentication check removed - using anon policies for sync
+    // This allows sync without requiring user login
+    // If you want auth-required sync, uncomment the following:
+    // const { data: { session } } = await this.supabase.auth.getSession();
+    // if (!session) {
+    //   throw new Error('User not authenticated. Please log in to sync data.');
+    // }
 
     // Upload customers
     if (data.customers.length > 0) {
@@ -160,14 +156,24 @@ class SupabaseService {
     // Upload items
     if (data.items.length > 0) {
       this.addLog(`Uploading ${data.items.length} items to Supabase...`);
-      const transformedItems = data.items.map(transformDates);
+      
+      // Transform items: map app's item_name to Supabase's internal_name
+      const transformedItems = data.items.map(item => {
+        const transformed = transformDates(item);
+        // Map app's item_name to Supabase's internal_name
+        if (transformed.item_name && !transformed.internal_name) {
+          transformed.internal_name = transformed.item_name;
+        }
+        return transformed;
+      });
+      
       const { error } = await this.supabase
         .from('items')
         .upsert(transformedItems, {
           onConflict: 'item_id',
           ignoreDuplicates: false
         })
-        .select(); // Adding .select() to ensure proper response
+        .select();
 
       if (error) {
         console.error('Item upload error details:', error);
@@ -175,13 +181,19 @@ class SupabaseService {
       }
     }
 
-    // Upload orders
+    // Upload orders (without lines)
     if (data.orders.length > 0) {
       this.addLog(`Uploading ${data.orders.length} orders to Supabase...`);
-      const transformedOrders = data.orders.map(transformDates);
+      
+      // Remove 'lines' field from orders before uploading (lines stored separately)
+      const ordersWithoutLines = data.orders.map(order => {
+        const { lines, ...orderWithoutLines } = order;
+        return transformDates(orderWithoutLines);
+      });
+      
       const { error } = await this.supabase
         .from('orders')
-        .upsert(transformedOrders, {
+        .upsert(ordersWithoutLines, {
           onConflict: 'order_id',
           ignoreDuplicates: false
         })
@@ -190,6 +202,29 @@ class SupabaseService {
       if (error) {
         console.error('Order upload error details:', error);
         throw new Error(`Failed to upload orders: ${error.message}`);
+      }
+      
+      // Upload order lines separately
+      const allLines = data.orders.flatMap(order => 
+        (order.lines || []).map(line => ({
+          ...line,
+          order_id: order.order_id
+        }))
+      );
+      
+      if (allLines.length > 0) {
+        this.addLog(`Uploading ${allLines.length} order lines to Supabase...`);
+        const { error: linesError } = await this.supabase
+          .from('order_lines')
+          .upsert(allLines, {
+            onConflict: 'line_id',
+            ignoreDuplicates: false
+          });
+        
+        if (linesError) {
+          console.error('Order lines upload error:', linesError);
+          this.addLog(`Warning: Failed to upload some order lines: ${linesError.message}`);
+        }
       }
     }
 
@@ -259,11 +294,12 @@ class SupabaseService {
   }
 
   private async pullLatestData() {
-    // Check if user is authenticated
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated. Please log in to sync data.');
-    }
+    // Note: Authentication check removed - using anon policies for sync
+    // If you want auth-required sync, uncomment the following:
+    // const { data: { session } } = await this.supabase.auth.getSession();
+    // if (!session) {
+    //   throw new Error('User not authenticated. Please log in to sync data.');
+    // }
 
     // Pull items
     const { data: items, error: itemsError } = await this.supabase
@@ -274,6 +310,14 @@ class SupabaseService {
       console.error(`Error: Failed to pull items: ${itemsError.message}`);
       console.error('Error details:', itemsError);
     }
+
+    // Transform items from Supabase: map internal_name to app's item_name
+    const transformedItems = (items || []).map(item => {
+      if (item.internal_name && !item.item_name) {
+        return { ...item, item_name: item.internal_name };
+      }
+      return item;
+    });
 
     // Pull customers
     const { data: customers, error: customersError } = await this.supabase
@@ -294,6 +338,21 @@ class SupabaseService {
       console.error(`Error: Failed to pull orders: ${ordersError.message}`);
       console.error('Error details:', ordersError);
     }
+
+    // Pull order_lines and merge into orders
+    const { data: orderLines, error: orderLinesError } = await this.supabase
+      .from('order_lines')
+      .select('*');
+
+    if (orderLinesError) {
+      console.error(`Error: Failed to pull order_lines: ${orderLinesError.message}`);
+    }
+
+    // Merge lines into orders
+    const ordersWithLines = (orders || []).map(order => ({
+      ...order,
+      lines: (orderLines || []).filter(line => line.order_id === order.order_id)
+    }));
 
     // Pull settings
     const { data: settings, error: settingsError } = await this.supabase
@@ -327,9 +386,9 @@ class SupabaseService {
     }
 
     return {
-      items: items || [],
+      items: transformedItems,
       customers: customers || [],
-      orders: orders || [],
+      orders: ordersWithLines,
       settings: settings || [],
       users: users || [],
       adjustments: adjustments || []

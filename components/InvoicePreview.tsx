@@ -166,16 +166,6 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                                 <span className="font-black text-indigo-600">{safeInvNo}</span>
                                             </div>
                                             <div className="flex mb-1 justify-between">
-                                                <span className="font-bold text-slate-500 uppercase text-[10px]">Approval:</span>
-                                                <span className={`font-bold ${
-                                                    order.approval_status === 'approved' ? 'text-emerald-600' : 
-                                                    order.approval_status === 'pending_approval' ? 'text-amber-600' : 
-                                                    'text-slate-600'
-                                                }`}>
-                                                    {order.approval_status?.replace('_', ' ') || 'Draft'}
-                                                </span>
-                                            </div>
-                                            <div className="flex mb-1 justify-between">
                                                 <span className="font-bold text-slate-500 uppercase text-[10px]">Rep:</span>
                                                 <span className="font-bold">{settings.rep_name || 'Vidushan'}</span>
                                             </div>

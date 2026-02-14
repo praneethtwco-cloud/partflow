@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { SUPABASE_CONFIG } from '../config';
 import { supabaseSyncTracker } from './supabase-sync-tracker';
+import { getSupabaseClient } from './supabase-client';
 
 interface QueuedOperation {
   id: string;
@@ -43,14 +44,7 @@ class SupabaseSyncService {
   private storageKey = 'supabase_sync_queue';
 
   constructor() {
-    const supabaseUrl = SUPABASE_CONFIG.URL;
-    const supabaseAnonKey = SUPABASE_CONFIG.ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables. Please check your .env configuration.');
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    this.supabase = getSupabaseClient();
     this.loadQueue();
   }
 
@@ -229,11 +223,12 @@ class SupabaseSyncService {
       return result;
     };
 
-    // Check if user is authenticated
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated. Please log in to sync data.');
-    }
+    // Note: Authentication check removed - using anon policies for sync
+    // If you want auth-required sync, uncomment the following:
+    // const { data: { session } } = await this.supabase.auth.getSession();
+    // if (!session) {
+    //   throw new Error('User not authenticated. Please log in to sync data.');
+    // }
 
     // Upload customers
     if (data.customers.length > 0) {
@@ -259,14 +254,23 @@ class SupabaseSyncService {
     // Upload items
     if (data.items.length > 0) {
       this.addLog(`Uploading ${data.items.length} items to Supabase...`);
-      const transformedItems = data.items.map(transformDates);
+      
+      // Transform items: map app's item_name to Supabase's internal_name
+      const transformedItems = data.items.map(item => {
+        const transformed = transformDates(item);
+        if (transformed.item_name && !transformed.internal_name) {
+          transformed.internal_name = transformed.item_name;
+        }
+        return transformed;
+      });
+      
       const { error } = await this.supabase
         .from('items')
         .upsert(transformedItems, {
           onConflict: 'item_id',
           ignoreDuplicates: false
         })
-        .select(); // Adding .select() to ensure proper response
+        .select();
 
       if (error) {
         console.error('Item upload error details:', error);
@@ -280,10 +284,16 @@ class SupabaseSyncService {
     // Upload orders
     if (data.orders.length > 0) {
       this.addLog(`Uploading ${data.orders.length} orders to Supabase...`);
-      const transformedOrders = data.orders.map(transformDates);
+      
+      // Remove 'lines' field from orders before uploading (lines stored separately)
+      const ordersWithoutLines = data.orders.map(order => {
+        const { lines, ...orderWithoutLines } = order;
+        return transformDates(orderWithoutLines);
+      });
+      
       const { error } = await this.supabase
         .from('orders')
-        .upsert(transformedOrders, {
+        .upsert(ordersWithoutLines, {
           onConflict: 'order_id',
           ignoreDuplicates: false
         })
@@ -295,6 +305,31 @@ class SupabaseSyncService {
         throw new Error(`Failed to upload orders: ${error.message}`);
       } else {
         supabaseSyncTracker.logPushToSupabase('orders', data.orders.length, true, `${mode} mode`);
+      }
+      
+      // Upload order lines separately
+      const allLines = data.orders.flatMap(order => 
+        (order.lines || []).map(line => ({
+          ...line,
+          order_id: order.order_id
+        }))
+      );
+      
+      if (allLines.length > 0) {
+        this.addLog(`Uploading ${allLines.length} order lines to Supabase...`);
+        const { error: linesError } = await this.supabase
+          .from('order_lines')
+          .upsert(allLines, {
+            onConflict: 'line_id',
+            ignoreDuplicates: false
+          });
+        
+        if (linesError) {
+          console.error('Order lines upload error:', linesError);
+          supabaseSyncTracker.logPushToSupabase('orderLines', allLines.length, false, linesError.message);
+        } else {
+          supabaseSyncTracker.logPushToSupabase('orderLines', allLines.length, true, `${mode} mode`);
+        }
       }
     }
 
@@ -377,11 +412,12 @@ class SupabaseSyncService {
   }
 
   private async pullLatestData() {
-    // Check if user is authenticated
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated. Please log in to sync data.');
-    }
+    // Note: Authentication check removed - using anon policies for sync
+    // If you want auth-required sync, uncomment the following:
+    // const { data: { session } } = await this.supabase.auth.getSession();
+    // if (!session) {
+    //   throw new Error('User not authenticated. Please log in to sync data.');
+    // }
 
     // Pull items
     const { data: items, error: itemsError } = await this.supabase
@@ -395,6 +431,14 @@ class SupabaseSyncService {
     } else {
       supabaseSyncTracker.logPullFromSupabase('items', items?.length || 0, true);
     }
+
+    // Transform items from Supabase: map internal_name to app's item_name
+    const transformedItems = (items || []).map(item => {
+      if (item.internal_name && !item.item_name) {
+        return { ...item, item_name: item.internal_name };
+      }
+      return item;
+    });
 
     // Pull customers
     const { data: customers, error: customersError } = await this.supabase
@@ -421,6 +465,22 @@ class SupabaseSyncService {
     } else {
       supabaseSyncTracker.logPullFromSupabase('orders', orders?.length || 0, true);
     }
+
+    // Pull order_lines and merge into orders
+    const { data: orderLines, error: orderLinesError } = await this.supabase
+      .from('order_lines')
+      .select('*');
+
+    if (orderLinesError) {
+      console.error(`Error: Failed to pull order_lines: ${orderLinesError.message}`);
+      supabaseSyncTracker.logPullFromSupabase('order_lines', 0, false, orderLinesError.message);
+    }
+
+    // Merge lines into orders
+    const ordersWithLines = (orders || []).map(order => ({
+      ...order,
+      lines: (orderLines || []).filter(line => line.order_id === order.order_id)
+    }));
 
     // Pull settings
     const { data: settings, error: settingsError } = await this.supabase
@@ -463,9 +523,9 @@ class SupabaseSyncService {
     }
 
     return {
-      items: items || [],
+      items: transformedItems,
       customers: customers || [],
-      orders: orders || [],
+      orders: ordersWithLines,
       settings: settings || [],
       users: users || [],
       adjustments: adjustments || []
@@ -707,6 +767,43 @@ class SupabaseSyncService {
     }
 
     return data;
+  }
+
+  // Method to sign up new user (for first-time login)
+  async signUp(email: string, password: string) {
+    const { data, error } = await this.supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
+  // Method to sign in or sign up (auto-register first-time users)
+  async signInOrSignUp(email: string, password: string) {
+    try {
+      // Try to sign in first
+      return await this.signIn(email, password);
+    } catch (error: any) {
+      // If user doesn't exist, try to sign up
+      if (error.message?.includes('Invalid login') || error.message?.includes('Invalid email')) {
+        try {
+          await this.signUp(email, password);
+          // After signup, try to sign in
+          return await this.signIn(email, password);
+        } catch (signupError: any) {
+          throw new Error(`Could not authenticate: ${signupError.message}`);
+        }
+      }
+      throw error;
+    }
   }
 
   // Method to sign out user

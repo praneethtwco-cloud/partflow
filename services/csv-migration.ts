@@ -66,20 +66,26 @@ export async function updateSchemaForCsvCompatibility(): Promise<void> {
 
 /**
  * Function to transform customer data from CSV format to database format
+ * Supports both old format (Shop Name, Discount 1) and new format (shop_name, discount_1)
  */
 export function transformCustomerFromCsv(csvData: any): any {
   return {
-    customer_id: csvData.ID || csvData.customer_id,
+    customer_id: csvData.ID || csvData.customer_id || csvData['Customer ID'],
     shop_name: csvData['Shop Name'] || csvData.shop_name,
     address: csvData.Address || csvData.address,
     phone: csvData.Phone || csvData.phone,
+    city_ref: csvData.city_ref || csvData['City Ref'] || '',
     city: csvData.City || csvData.city,
-    discount_1: parseFloat(csvData['Discount 1']) || 0,
-    discount_2: parseFloat(csvData['Discount 2']) || 0,
-    balance: parseFloat(csvData.Balance) || 0,
-    credit_period: parseInt(csvData['Credit Period']) || 0,
-    status: csvData.Status || 'active',
-    last_updated: csvData['Last Updated'] || new Date().toISOString(),
+    discount_rate: parseFloat(csvData.discount_rate || csvData['Discount Rate']) || 0,
+    discount_1: parseFloat(csvData.discount_1 || csvData['Discount 1']) || 0,
+    discount_2: parseFloat(csvData.discount_2 || csvData['Discount 2']) || 0,
+    secondary_discount_rate: parseFloat(csvData.secondary_discount_rate || csvData['Secondary Discount Rate']) || 0,
+    outstanding_balance: parseFloat(csvData.outstanding_balance || csvData['Outstanding Balance'] || csvData.Balance) || 0,
+    balance: parseFloat(csvData.balance || csvData.Balance) || 0,
+    credit_period: parseInt(csvData.credit_period || csvData['Credit Period']) || 0,
+    credit_limit: parseFloat(csvData.credit_limit || csvData['Credit Limit']) || 0,
+    status: csvData.Status || csvData.status || 'active',
+    last_updated: csvData.last_updated || csvData['Last Updated'] || new Date().toISOString(),
     
     // Standard fields
     created_at: csvData.created_at || new Date().toISOString(),
@@ -91,27 +97,40 @@ export function transformCustomerFromCsv(csvData: any): any {
 /**
  * Function to transform item data from CSV format to database format
  */
+/**
+ * Function to transform item data from CSV format to database format
+ * Supports both old format and new format
+ */
 export function transformItemFromCsv(csvData: any): any {
-  return {
-    item_id: csvData.ID || csvData.item_id,
-    item_display_name: csvData['Display Name'] || csvData.item_display_name,
-    internal_name: csvData['Internal Name'] || csvData.item_name || '',
-    item_number: csvData.SKU || csvData.item_number,
-    vehicle_model: csvData.Vehicle || csvData.vehicle_model,
-    source_brand: csvData['Brand/Origin'] || csvData.source_brand,
-    category: csvData.Category || csvData.category,
-    unit_value: parseFloat(csvData['Unit Value']) || 0,
-    current_stock_qty: parseInt(csvData['Stock Qty']) || 0,
-    low_stock_threshold: parseInt(csvData['Low Stock Threshold']) || 0,
-    is_out_of_stock: csvData['Out of Stock'] === 'true' || csvData.is_out_of_stock || false,
-    status: csvData.Status || 'active',
-    last_updated: csvData['Last Updated'] || new Date().toISOString(),
+  console.log('CSV Item Data Keys:', Object.keys(csvData));
+  
+  const result = {
+    item_id: csvData.ID || csvData.item_id || csvData['Item ID'] || '',
+    item_display_name: csvData['Display Name'] || csvData.item_display_name || csvData['Item Name'] || csvData.name || '',
+    // CSV "Internal Name" maps to app's "item_name" (which is internal name)
+    item_name: csvData['Internal Name'] || csvData.internal_name || csvData['Internal'] || csvData.internal || '',
+    internal_name: '', // Not used in app
+    item_number: csvData.SKU || csvData.item_number || csvData['Item Number'] || '',
+    vehicle_model: csvData.Vehicle || csvData.vehicle_model || csvData['Vehicle Model'] || '',
+    source_brand: csvData['Brand/Origin'] || csvData.source_brand || csvData.brand || csvData['Brand'] || '',
+    brand_origin: csvData['Brand/Origin'] || csvData.brand_origin || csvData.brand || csvData['Brand'] || '',
+    category: csvData.Category || csvData.category || csvData['Item Category'] || '',
+    unit_value: parseFloat(csvData['Unit Value'] || csvData.unit_value || csvData.price || csvData['Price'] || '0') || 0,
+    current_stock_qty: parseInt(csvData['Stock Qty'] || csvData.current_stock_qty || csvData.stock || csvData['Current Stock'] || csvData['Stock'] || '0') || 0,
+    low_stock_threshold: parseInt(csvData['Low Stock Threshold'] || csvData.low_stock_threshold || csvData['Low Stock'] || '0') || 0,
+    is_out_of_stock: (csvData['Out of Stock'] === 'true' || csvData['Out of Stock'] === true || 
+                      csvData.is_out_of_stock === true || csvData['Is Out of Stock'] === 'true') || false,
+    status: csvData.Status || csvData.status || 'active',
+    last_updated: csvData.last_updated || csvData['Last Updated'] || new Date().toISOString(),
     
     // Standard fields
     created_at: csvData.created_at || new Date().toISOString(),
     updated_at: csvData.updated_at || new Date().toISOString(),
     sync_status: 'pending' as const
   };
+  
+  console.log('Transformed Item:', result);
+  return result;
 }
 
 /**

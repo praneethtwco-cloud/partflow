@@ -7,6 +7,7 @@ import { API_CONFIG } from '../config';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
 import { themeColors, ThemeColor } from '../utils/theme';
+import { DatabaseMigrationComponent } from './DatabaseMigrationComponent';
 
 interface SettingsProps {
     onLogout: () => void;
@@ -152,7 +153,9 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     </div>
                 </div>
                 <button 
-                    onClick={onLogout}
+                    onClick={() => {
+                        onLogout();
+                    }}
                     className="p-3 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 active:scale-90 transition-all border border-rose-100"
                     title="Sign Out"
                 >
@@ -375,6 +378,9 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     />
 
                 </div>
+
+                {/* Section: Database Migration */}
+                <DatabaseMigrationComponent />
 
             </div>
 
