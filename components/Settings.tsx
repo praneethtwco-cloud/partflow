@@ -7,7 +7,6 @@ import { API_CONFIG } from '../config';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
 import { themeColors, ThemeColor } from '../utils/theme';
-import { DatabaseMigrationComponent } from './DatabaseMigrationComponent';
 
 interface SettingsProps {
     onLogout: () => void;
@@ -378,9 +377,6 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     />
 
                 </div>
-
-                {/* Section: Database Migration */}
-                <DatabaseMigrationComponent />
 
             </div>
 
