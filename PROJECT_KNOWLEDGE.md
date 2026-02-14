@@ -144,7 +144,7 @@ vercel deploy
 - `VITE_API_KEY`: Secure backend access key
 - `JWT_SECRET`: Secret for token signing
 - `GOOGLE_SERVICE_ACCOUNT_B64`: Base64 encoded GCP credentials
-- `GOOGLE_SHEET_ID`: Master database Sheet ID
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY`: Supabase database connection credentials
 
 ---
 

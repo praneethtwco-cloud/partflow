@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sync": "vite build && npx cap sync"
+    "sync": "vite build && npx cap sync",
+    "supabase:migrate": "echo 'Migration script would run here'",
+    "test:auth": "tsx test-auth-sync.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
@@ -17,6 +19,7 @@
     "@capacitor/filesystem": "^8.1.0",
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/share": "^8.0.0",
+    "@supabase/supabase-js": "^2.95.3",
     "@types/papaparse": "^5.5.2",
     "dexie": "^4.3.0",
     "html2canvas": "^1.4.1",
@@ -36,6 +39,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0"

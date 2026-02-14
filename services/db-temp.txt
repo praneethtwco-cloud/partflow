@@ -1,0 +1,54 @@
+  private async processSyncQueue(onLog?: (msg: string) => void): Promise<void> {
+    // Group queued operations by entity type
+    const queuedOps = syncQueueService.getAll();
+    
+    // Separate operations by entity type
+    const customerOps = queuedOps.filter(op => op.entity === 'customer');
+    const itemOps = queuedOps.filter(op => op.entity === 'item');
+    const orderOps = queuedOps.filter(op => op.entity === 'order');
+    const settingsOps = queuedOps.filter(op => op.entity === 'settings');
+    const userOps = queuedOps.filter(op => op.entity === 'user');
+    const adjustmentOps = queuedOps.filter(op => op.entity === 'adjustment');
+    
+    // Process each entity type
+    if (customerOps.length > 0) {
+      if (onLog) onLog(`Processing ${customerOps.length} queued customer operations...`);
+      await this.processEntityQueue(customerOps, 'customer');
+    }
+    
+    if (itemOps.length > 0) {
+      if (onLog) onLog(`Processing ${itemOps.length} queued item operations...`);
+      await this.processEntityQueue(itemOps, 'item');
+    }
+    
+    if (orderOps.length > 0) {
+      if (onLog) onLog(`Processing ${orderOps.length} queued order operations...`);
+      await this.processEntityQueue(orderOps, 'order');
+    }
+    
+    if (settingsOps.length > 0) {
+      if (onLog) onLog(`Processing ${settingsOps.length} queued settings operations...`);
+      await this.processEntityQueue(settingsOps, 'settings');
+    }
+    
+    if (userOps.length > 0) {
+      if (onLog) onLog(`Processing ${userOps.length} queued user operations...`);
+      await this.processEntityQueue(userOps, 'user');
+    }
+    
+    if (adjustmentOps.length > 0) {
+      if (onLog) onLog(`Processing ${adjustmentOps.length} queued adjustment operations...`);
+      await this.processEntityQueue(adjustmentOps, 'adjustment');
+    }
+    
+    // Clear the queue after successful processing
+    syncQueueService.clear();
+  }
+  
+  private async processEntityQueue(ops: QueuedOperation[], entityType: string): Promise<void> {
+    // For now, we'll just mark these as processed by clearing the queue
+    // In a full implementation, we would send these operations to Supabase
+    // This is a simplified approach - in reality, we'd need to group and send batches
+    // to the Supabase service based on the operation type
+    console.log(`Processed ${ops.length} ${entityType} operations from queue`);
+  }

@@ -332,19 +332,31 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Inv. Prefix</label>
-                            <input 
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                                value={settings.invoice_prefix}
-                                onChange={e => setSettings({...settings, invoice_prefix: e.target.value})}
-                                placeholder="INV-"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Inv. Prefix</label>
+                                <input
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                    value={settings.invoice_prefix}
+                                    onChange={e => setSettings({...settings, invoice_prefix: e.target.value})}
+                                    placeholder="INV-"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Starting Inv. #</label>
+                                <input
+                                    type="number"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                    value={settings.starting_invoice_number || 1}
+                                    onChange={e => setSettings({...settings, starting_invoice_number: parseInt(e.target.value) || 1})}
+                                    placeholder="1"
+                                />
+                            </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Bill Footer Note</label>
-                            <textarea 
+                            <textarea
                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                                 rows={2}
                                 value={settings.footer_note}
@@ -359,21 +371,9 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <SectionHeader 
                         icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
                         title="Cloud Sync"
-                        subtitle="Google sheets integration"
+                        subtitle="Supabase integration"
                     />
 
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 tracking-wider">Google Sheet ID</label>
-                            <input 
-                                className={`w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-mono focus:bg-white focus:ring-2 ${themeClasses.ring} focus:border-transparent outline-none transition-all`}
-                                value={settings.google_sheet_id}
-                                onChange={e => setSettings({...settings, google_sheet_id: e.target.value})}
-                                placeholder="Enter Sheet ID from URL"
-                            />
-                        <p className="text-[9px] text-slate-400 mt-2 px-1 leading-relaxed">
-                            Sharing your data with Google Sheets requires a valid Sheet ID. You can find this in the URL of your Google Sheet.
-                        </p>
-                    </div>
                 </div>
 
             </div>

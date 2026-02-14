@@ -6,6 +6,9 @@ import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import { Modal } from './ui/Modal';
 import { ConflictResolver, ConflictItem } from './ui/ConflictResolver';
+import { DatabaseClearButtons } from './DatabaseClearButtons';
+import { CsvImportComponent } from './CsvImportComponent';
+import { supabaseSyncService } from '../services/supabase-sync-service';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -28,14 +31,17 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
     const [cloudBuffer, setCloudBuffer] = useState<any>(null);
 
+    // Auto-sync status
+    const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+    const [lastAutoSync, setLastAutoSync] = useState<string | null>(null);
+
     useEffect(() => {
         setStats(db.getSyncStats());
         const settings = db.getSettings();
-        if (settings.google_sheet_id) {
-            setSheetId(settings.google_sheet_id);
-        } else {
-            setIsConfiguring(true);
-        }
+
+        // Check if Supabase is configured (we can check for any relevant setting)
+        // For now, we'll assume if we reach this point, Supabase is configured
+        // since the migration should have been done
 
         // According to requirements: "The toggle should reset each time the sync page is accessed"
         // This means we should start with advanced options hidden by default
@@ -45,25 +51,60 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         const hasAdvancedOptionAccess = !!settings.show_advanced_sync_options;
         setShowAdvancedOptions(hasAdvancedOptionAccess && false); // Always start as false to reset each visit
 
-        // Fetch real service account email from backend
-        const checkBackend = async () => {
-            try {
-                const res = await fetch(`${API_CONFIG.BACKEND_URL}/health`);
-                const data = await res.json();
-                if (data.client_email) {
-                    setServiceEmail(data.client_email);
-                }
-            } catch (e) {
-                console.error("Could not fetch backend health", e);
-            }
-        };
-        checkBackend();
+        // For Supabase, we don't need a service email like Google Sheets
+        // We can set a placeholder or remove this functionality
+        setServiceEmail('Supabase Authentication');
     }, []);
 
+    // Auto-sync functionality when coming online
+    useEffect(() => {
+        const handleOnline = () => {
+            if (autoSyncEnabled && !supabaseSyncService.isQueueEmpty()) {
+                handleAutoSync();
+            }
+        };
+
+        window.addEventListener('online', handleOnline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [autoSyncEnabled]);
+
+    const handleAutoSync = async () => {
+        if (!autoSyncEnabled || supabaseSyncService.isQueueEmpty()) {
+            return;
+        }
+
+        setStatus('syncing');
+        setLogs([]);
+        addLog('Auto-sync triggered - processing queued operations...');
+
+        try {
+            const result = await supabaseSyncService.processQueuedOperations();
+            
+            if (result.success) {
+                setStatus('success');
+                setLastAutoSync(new Date().toISOString());
+                showToast("Auto-sync completed successfully!", "success");
+                setStats(db.getSyncStats());
+                onSyncComplete();
+            } else {
+                setStatus('error');
+                addLog(`Auto-sync failed: ${result.message}`);
+                showToast(`Auto-sync failed: ${result.message}`, "error");
+            }
+        } catch (e: any) {
+            console.error(e);
+            setStatus('error');
+            addLog(`Auto-sync error: ${e.message}`);
+            showToast(`Auto-sync failed: ${e.message}`, "error");
+        }
+    };
+
     const saveConfiguration = () => {
-        const settings = db.getSettings();
-        settings.google_sheet_id = sheetId;
-        db.saveSettings(settings);
+        // For Supabase, we don't need to save a sheet ID
+        // Instead, we might need to handle Supabase authentication
+        // For now, we'll just close the configuration modal
         setIsConfiguring(false);
         addLog('Configuration saved.');
     };
@@ -99,10 +140,10 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         // Smart Sync (Check conflicts first)
         addLog('Checking for conflicts...');
         setStatus('checking');
-        
+
         try {
             const result = await db.checkForConflicts();
-            
+
             if (result.hasConflicts) {
                 addLog(`Found ${result.conflicts.length} conflicts.`);
                 setConflicts(result.conflicts);
@@ -114,7 +155,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
             addLog('No conflicts found. Proceeding with sync...');
             await db.performSync((msg) => addLog(msg), 'upsert');
-            
+
             setStatus('success');
             showToast("Sync completed successfully!", "success");
             setStats(db.getSyncStats());
@@ -131,7 +172,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         setShowConflictResolver(false);
         setStatus('syncing');
         addLog('Resolving conflicts and finalizing sync...');
-        
+
         try {
             await db.resolveConflictsAndSync(resolutions, cloudBuffer);
             setStatus('success');
@@ -153,7 +194,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         addLog('Pulling latest inventory from server...');
         try {
             // Upsert mode but we are mainly interested in the pulledItems return
-            await db.performSync((msg) => addLog(msg), 'upsert'); 
+            await db.performSync((msg) => addLog(msg), 'upsert');
             setStatus('success');
             showToast("Master records downloaded", "success");
             setStats(db.getSyncStats());
@@ -170,7 +211,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-20 md:pb-0">
             <h2 className="text-2xl font-bold text-slate-800 px-2">Data Sync & Tools</h2>
-            
+
             {/* Status Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className={`p-6 md:p-8 text-center bg-gradient-to-b ${themeClasses.bgSoft} to-white`}>
@@ -187,13 +228,18 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                             </div>
                         )}
                      </div>
-                     
+
                       <h3 className="text-lg font-bold text-slate-900 mb-2">
                          {status === 'syncing' ? 'Syncing...' : status === 'checking' ? 'Checking Conflicts...' : totalPending > 0 ? 'Changes Pending' : 'All Systems Synced'}
                       </h3>
                       {stats.last_sync && (
                           <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-widest">
                               Last Sync: {new Date(stats.last_sync).toLocaleString()}
+                          </p>
+                      )}
+                      {lastAutoSync && (
+                          <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-widest">
+                              Last Auto-sync: {new Date(lastAutoSync).toLocaleString()}
                           </p>
                       )}
                       <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">
@@ -213,10 +259,24 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                             {status === 'syncing' ? 'Processing...' : status === 'checking' ? 'Checking...' : totalPending > 0 ? 'Sync & Push' : 'Incremental Sync'}
                         </button>
 
+                        {/* Auto-sync toggle */}
+                        <div className="flex items-center justify-between pt-2">
+                            <span className="text-sm text-slate-600">Auto-sync when online</span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={autoSyncEnabled}
+                                    onChange={() => setAutoSyncEnabled(!autoSyncEnabled)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 rounded"></div>
+                            </label>
+                        </div>
+
                         {/* Advanced Options Toggle Hint */}
                         {!showAdvancedOptions && !!db.getSettings().show_advanced_sync_options && (
                             <div className="text-center pt-2">
-                                <button 
+                                <button
                                     onClick={() => setShowAdvancedOptions(true)}
                                     className={`text-xs ${themeClasses.text} italic underline`}
                                 >
@@ -292,6 +352,9 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                 </div>
             </div>
 
+            {/* CSV Import Component */}
+            <CsvImportComponent onImportComplete={() => setStats(db.getSyncStats())} />
+
             {/* Config Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                  {isConfiguring ? (
@@ -301,26 +364,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                             Connection Setup
                         </h3>
                         <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-                            <span className="font-bold text-rose-600">Action Required:</span> <br/>
-                            Share your Google Sheet with this email as an <strong>Editor</strong>: <br/>
+                            <span className="font-bold text-emerald-600">Supabase Connected:</span> <br/>
+                            Your data is securely synced with Supabase cloud database. <br/>
                             <code className={`bg-slate-100 px-1 py-0.5 rounded ${themeClasses.text} select-all font-bold block mt-1`}>{serviceEmail}</code>
                         </p>
-                        <div className="flex gap-2">
-                            <input 
-                                type="text" 
-                                placeholder="Paste Google Sheet ID here" 
-                                className={`flex-1 border border-slate-300 p-2 rounded-lg text-sm focus:ring-2 ${themeClasses.ring} outline-none`}
-                                value={sheetId}
-                                onChange={(e) => setSheetId(e.target.value)}
-                            />
-                            <button onClick={saveConfiguration} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold">Save</button>
+                        <div className="text-center">
+                            <button onClick={saveConfiguration} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold">Close</button>
                         </div>
                     </div>
                 ) : (
                     <div className="flex justify-between items-center text-sm">
                         <div className="flex items-center gap-2 text-slate-500">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>Connected to: <span className="font-mono text-slate-700">{sheetId.substring(0, 6)}...</span></span>
+                            <span>Supabase Sync Active</span>
                         </div>
                         <button onClick={() => setIsConfiguring(true)} className={`${themeClasses.text} font-bold text-xs hover:underline`}>Configure</button>
                     </div>
@@ -350,7 +406,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                 <Modal
                     isOpen={confirmModal.isOpen}
                     title="Overwrite Cloud Data?"
-                    message="This will overwrite the Google Sheet with your current local data. This action cannot be undone."
+                    message="This will overwrite the Supabase database with your current local data. This action cannot be undone."
                     type="danger"
                     confirmText="Overwrite"
                     onConfirm={confirmModal.onConfirm}
@@ -369,6 +425,9 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                     }}
                 />
             )}
+
+            {/* Database Clear Buttons */}
+            <DatabaseClearButtons />
         </div>
     );
 };

@@ -43,7 +43,6 @@ beforeEach(() => {
   (db.getSettings as jest.MockedFunction<any>).mockReturnValue({
     company_name: 'Test Company',
     show_advanced_sync_options: false, // Default to false
-    google_sheet_id: 'test-sheet-id',
   });
 
   (useTheme as jest.MockedFunction<any>).mockReturnValue({
@@ -76,8 +75,7 @@ describe('SyncDashboard Component', () => {
     (db.getSettings as jest.MockedFunction<any>).mockReturnValue({
       company_name: 'Test Company',
       show_advanced_sync_options: false,
-      google_sheet_id: 'test-sheet-id',
-    });
+      });
 
     render(<SyncDashboard {...defaultProps} />);
     
@@ -89,8 +87,7 @@ describe('SyncDashboard Component', () => {
     (db.getSettings as jest.MockedFunction<any>).mockReturnValue({
       company_name: 'Test Company',
       show_advanced_sync_options: true,
-      google_sheet_id: 'test-sheet-id',
-    });
+      });
 
     render(<SyncDashboard {...defaultProps} />);
     
@@ -110,8 +107,7 @@ describe('SyncDashboard Component', () => {
     (db.getSettings as jest.MockedFunction<any>).mockReturnValue({
       company_name: 'Test Company',
       show_advanced_sync_options: true,
-      google_sheet_id: 'test-sheet-id',
-    });
+      });
 
     render(<SyncDashboard {...defaultProps} />);
     
@@ -134,8 +130,7 @@ describe('SyncDashboard Component', () => {
     (db.getSettings as jest.MockedFunction<any>).mockReturnValue({
       company_name: 'Test Company',
       show_advanced_sync_options: false,
-      google_sheet_id: 'test-sheet-id',
-    });
+      });
 
     render(<SyncDashboard {...defaultProps} />);
     

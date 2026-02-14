@@ -33,7 +33,7 @@ PartFlow Pro is a robust, offline-first mobile and web application designed spec
 
 ### 📱 Enterprise-Grade Mobile UX
 *   **Offline-First:** Powered by **IndexedDB (Dexie.js)**. Work anywhere without an internet connection; data stays on your device.
-*   **Cloud Sync:** Bidirectional sync with **Google Sheets**. Pull inventory updates and push sales records with one tap.
+*   **Cloud Sync:** Bidirectional sync with **Supabase**. Pull inventory updates and push sales records with one tap.
 *   **Android Support:** Fully compiled for Android with a **Native Home Screen Widget** showing today's sales.
 *   **Navigation:** Smart back-button history and themed safety modals.
 
@@ -52,10 +52,10 @@ npm install
 npm run build
 ```
 
-### 3. Google Sheets Integration
-1.  Open the **Sync Data** tab.
-2.  Paste your Google Sheet ID into the configuration field.
-3.  Ensure your Sheet has the required tabs: `items`, `customers`, `orders`, and `stockAdjustments`.
+### 3. Supabase Integration
+1.  Configure your Supabase project credentials in the environment variables.
+2.  Ensure your Supabase database has the required tables: `items`, `customers`, `orders`, and `stock_adjustments`.
+3.  Set up Row Level Security (RLS) policies for data protection.
 
 ### 4. Android Build
 ```bash

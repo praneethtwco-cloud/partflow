@@ -3,9 +3,9 @@
   "address": "NO:16/4A CONSTANTINE LANE, KORALAWELLA, MORATUWA.",
   "phone": "011-2658075 / 077-3316434",
   "rep_name": "Sales Rep A",
-  "invoice_prefix": "VM-",
+  "invoice_prefix": "VM",
+  "starting_invoice_number": 1,
   "footer_note": "Thank you for your business. Goods once sold cannot be returned.",
   "currency_symbol": "Rs.",
-  "google_sheet_id": "",
   "show_advanced_sync_options": false
 }

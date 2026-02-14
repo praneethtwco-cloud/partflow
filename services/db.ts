@@ -1,8 +1,11 @@
 import Dexie, { Table } from 'dexie';
 import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment } from '../types';
-import { sheetsService } from './sheets';
+import { supabaseService } from './supabase';
+import { supabaseSyncService } from './supabase-sync-service';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
 import { generateSKU } from '../utils/skuGenerator';
+import { connectionService } from './connection';
+import { syncQueueService } from './sync-queue';
 import SEED_DATA from '../src/config/seed-data.json';
 import APP_SETTINGS from '../src/config/app-settings.json';
 
@@ -26,7 +29,9 @@ const SEED_SETTINGS: CompanySettings = {
     auto_sku_enabled: true,
     stock_tracking_enabled: false,
     category_enabled: false,
-    show_sku_in_item_cards: false
+    show_sku_in_item_cards: false,
+    invoice_prefix: 'INV',
+    starting_invoice_number: 1
 };
 
 // --- Dexie Database Schema ---
@@ -40,10 +45,10 @@ class PartFlowDB extends Dexie {
 
     constructor() {
         super('PartFlowDB');
-        this.version(6).stores({
+        this.version(10).stores({
             customers: 'customer_id, shop_name, sync_status',
             items: 'item_id, item_number, item_display_name, sync_status, status',
-            orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status',
+            orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status, invoice_number, original_invoice_number, approval_status',
             stockAdjustments: 'adjustment_id, item_id, sync_status',
             settings: 'id',
             users: 'id, username'
@@ -63,6 +68,7 @@ class LocalDB {
       users: User[];
   };
   private initialized: boolean = false;
+  private isOnline: boolean = true;
 
   constructor() {
     this.db = new PartFlowDB();
@@ -83,7 +89,7 @@ class LocalDB {
 
       // Check if migration is needed
       const isInitialized = localStorage.getItem(STORAGE_KEYS.INIT);
-      
+
       if (!isInitialized) {
           await this.migrateOrSeed();
           localStorage.setItem(STORAGE_KEYS.INIT, 'true');
@@ -91,9 +97,42 @@ class LocalDB {
 
       // Load data from Dexie to Memory Cache
       await this.refreshCache();
+
+      // Migrate existing orders to use order_id as invoice_number
+      await this.migrateInvoiceNumbersToOrderIds();
+
+      // Subscribe to connection status changes
+      connectionService.subscribe(this.handleConnectionChange);
+
       this.initialized = true;
       console.log("Database initialized and cache loaded.");
   }
+
+  private handleConnectionChange = (isOnline: boolean) => {
+    this.isOnline = isOnline;
+    console.log(`Connection status changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+
+    // If we're back online and have queued operations, initiate sync
+    if (isOnline && !syncQueueService.isEmpty()) {
+      console.log(`Attempting to sync ${syncQueueService.length()} queued operations`);
+      // Trigger a sync to process queued operations
+      setTimeout(() => {
+        this.performSync().catch(err => {
+          console.error('Error syncing queued operations:', err);
+        });
+      }, 1000); // Delay slightly to ensure connection is stable
+    }
+    
+    // Process the new Supabase sync queue when coming online
+    if (isOnline && !supabaseSyncService.isQueueEmpty()) {
+      console.log(`Attempting to process ${supabaseSyncService.getQueueLength()} operations from Supabase sync queue`);
+      setTimeout(() => {
+        supabaseSyncService.processQueuedOperations().catch(err => {
+          console.error('Error processing Supabase queued operations:', err);
+        });
+      }, 1500); // Slightly longer delay to ensure connection stability
+    }
+  };
 
   private async migrateOrSeed() {
       // 1. Check for legacy LocalStorage data
@@ -179,9 +218,50 @@ class LocalDB {
           this.db.stockAdjustments.toArray(),
           this.db.users.toArray()
       ]);
+      
+      // Migrate existing orders to include approval_status and invoice_number using the new sequential numbering system
+      const settings = (s as CompanySettings) || SEED_SETTINGS;
+      const migratedOrders = o.map(order => {
+          let updatedOrder = { ...order };
+
+          // Set approval_status if not already set
+          if (!order.approval_status) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  approval_status: 'approved' // Default to approved for existing orders to maintain current behavior
+              };
+          }
+
+          // If the order doesn't have an invoice number, we'll keep it as is for now
+          // The sequential numbering will be applied when orders are saved going forward
+          if (!order.invoice_number) {
+              // For existing orders without invoice numbers, we could generate one based on the order date and ID
+              // Or we can leave it empty and let it be generated when the order is next saved
+              // For now, we'll leave it as is to avoid changing existing data unexpectedly
+          }
+
+          // Set original_invoice_number if not already set
+          if (!order.original_invoice_number) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  original_invoice_number: order.invoice_number || updatedOrder.invoice_number
+              };
+          }
+
+          // Set original_invoice_number if not already set
+          if (!order.original_invoice_number) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  original_invoice_number: order.invoice_number || order.order_id
+              };
+          }
+
+          return updatedOrder;
+      });
+
       this.cache.customers = c;
       this.cache.items = i;
-      this.cache.orders = o;
+      this.cache.orders = migratedOrders;
       this.cache.settings = (s as CompanySettings) || SEED_SETTINGS;
       this.cache.adjustments = a;
       this.cache.users = u;
@@ -196,12 +276,69 @@ class LocalDB {
     // Optimistic Update
     const index = this.cache.customers.findIndex(c => c.customer_id === customer.customer_id);
     const customerToSave = { ...customer, sync_status: 'pending' as const, updated_at: new Date().toISOString() };
-    
+
     if (index >= 0) this.cache.customers[index] = customerToSave;
     else this.cache.customers.push(customerToSave);
 
     // Async Persist
     await this.db.customers.put(customerToSave);
+
+    // If offline, add to sync queue
+    if (!this.isOnline) {
+      syncQueueService.enqueue({
+        id: customer.customer_id,
+        entity: 'customer',
+        operation: index >= 0 ? 'update' : 'create',
+        data: customerToSave
+      });
+      
+      // Also add to the new Supabase sync queue
+      supabaseSyncService.enqueue({
+        id: customer.customer_id,
+        entity: 'customer',
+        operation: index >= 0 ? 'update' : 'create',
+        data: customerToSave
+      });
+    } else {
+      // If online, attempt to sync immediately
+      try {
+        // Check if user is authenticated before syncing
+        const { data: { session } } = await supabaseService.getCurrentUser();
+        if (!session) {
+          // If not authenticated, add to queue for later sync
+          supabaseSyncService.enqueue({
+            id: customer.customer_id,
+            entity: 'customer',
+            operation: index >= 0 ? 'update' : 'create',
+            data: customerToSave
+          });
+          return; // Exit early, will sync when authenticated
+        }
+        
+        await supabaseService.syncData(
+          [customerToSave],
+          [],
+          [],
+          [],
+          [],
+          [],
+          'upsert'
+        );
+        // Update sync status to 'synced'
+        const updatedCustomer = { ...customerToSave, sync_status: 'synced' as const };
+        await this.db.customers.put(updatedCustomer);
+        this.cache.customers[this.cache.customers.findIndex(c => c.customer_id === customer.customer_id)] = updatedCustomer;
+      } catch (error) {
+        console.error('Error syncing customer immediately:', error);
+        // If immediate sync fails, add to queue for later
+        supabaseSyncService.enqueue({
+          id: customer.customer_id,
+          entity: 'customer',
+          operation: index >= 0 ? 'update' : 'create',
+          data: customerToSave
+        });
+      }
+    }
   }
 
   async deleteCustomer(customerId: string): Promise<void> {
@@ -230,6 +367,63 @@ class LocalDB {
     else this.cache.items.push(itemToSave);
 
     await this.db.items.put(itemToSave);
+
+    // If offline, add to sync queue
+    if (!this.isOnline) {
+      syncQueueService.enqueue({
+        id: item.item_id,
+        entity: 'item',
+        operation: index >= 0 ? 'update' : 'create',
+        data: itemToSave
+      });
+      
+      // Also add to the new Supabase sync queue
+      supabaseSyncService.enqueue({
+        id: item.item_id,
+        entity: 'item',
+        operation: index >= 0 ? 'update' : 'create',
+        data: itemToSave
+      });
+    } else {
+      // If online, attempt to sync immediately
+      try {
+        // Check if user is authenticated before syncing
+        const { data: { session } } = await supabaseService.getCurrentUser();
+        if (!session) {
+          // If not authenticated, add to queue for later sync
+          supabaseSyncService.enqueue({
+            id: item.item_id,
+            entity: 'item',
+            operation: index >= 0 ? 'update' : 'create',
+            data: itemToSave
+          });
+          return; // Exit early, will sync when authenticated
+        }
+        
+        await supabaseService.syncData(
+          [],
+          [],
+          [itemToSave],
+          [],
+          [],
+          [],
+          'upsert'
+        );
+        // Update sync status to 'synced'
+        const updatedItem = { ...itemToSave, sync_status: 'synced' as const };
+        await this.db.items.put(updatedItem);
+        this.cache.items[this.cache.items.findIndex(i => i.item_id === item.item_id)] = updatedItem;
+      } catch (error) {
+        console.error('Error syncing item immediately:', error);
+        // If immediate sync fails, add to queue for later
+        supabaseSyncService.enqueue({
+          id: item.item_id,
+          entity: 'item',
+          operation: index >= 0 ? 'update' : 'create',
+          data: itemToSave
+        });
+      }
+    }
   }
 
   async deleteItem(itemId: string): Promise<void> {
@@ -264,29 +458,151 @@ class LocalDB {
 
   async saveOrder(order: Order): Promise<void> {
     const index = this.cache.orders.findIndex(o => o.order_id === order.order_id);
-    
+
     // Auto-calculate payment status if not set
     const paid = order.paid_amount || 0;
     const due = order.net_total - paid;
     const status: any = due <= 0.5 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid'); // 0.5 tolerance
 
-    const orderToSave = { 
-        ...order, 
+    // Ensure the approval status is set properly
+    const approvalStatus = order.approval_status || 'draft';
+
+    // For the new sequential invoice numbering system, we need to ensure proper invoice number
+    // If the order doesn't have an invoice number yet, we might need to generate one
+    // But typically, the invoice number would be set by the UI before saving
+    // For existing orders, we should preserve the original order ID to update the correct record
+    // The invoice number can change independently of the order ID
+    const isExistingOrder = this.cache.orders.some(o => o.order_id === order.order_id);
+
+    const orderToSave = {
+        ...order,
+        // Always preserve the original order ID for existing orders to ensure we update the correct record
+        // For new orders, use the provided order_id (which might be generated by the UI)
+        order_id: order.order_id,
+        approval_status: approvalStatus, // Ensure approval status is included
+        // Update the invoice number as provided by the UI
+        invoice_number: order.invoice_number || (isExistingOrder ? order.invoice_number : this.generateNextInvoiceNumber()),
+        original_invoice_number: order.original_invoice_number || (isExistingOrder ? order.original_invoice_number || order.invoice_number : order.invoice_number),
         paid_amount: paid,
         balance_due: due,
         payment_status: status,
         delivery_status: order.delivery_status || 'pending',
-        sync_status: 'pending' as const, 
-        updated_at: new Date().toISOString() 
+        sync_status: 'pending' as const,
+        updated_at: new Date().toISOString()
     };
 
     if (index >= 0) this.cache.orders[index] = orderToSave;
     else this.cache.orders.push(orderToSave);
 
     await this.db.orders.put(orderToSave);
-    
+
+    // If offline, add to sync queue
+    if (!this.isOnline) {
+      syncQueueService.enqueue({
+        id: order.order_id,
+        entity: 'order',
+        operation: index >= 0 ? 'update' : 'create',
+        data: orderToSave
+      });
+      
+      // Also add to the new Supabase sync queue
+      supabaseSyncService.enqueue({
+        id: order.order_id,
+        entity: 'order',
+        operation: index >= 0 ? 'update' : 'create',
+        data: orderToSave
+      });
+    } else {
+      // If online, attempt to sync immediately
+      try {
+        // Check if user is authenticated before syncing
+        const { data: { session } } = await supabaseService.getCurrentUser();
+        if (!session) {
+          // If not authenticated, add to queue for later sync
+          supabaseSyncService.enqueue({
+            id: order.order_id,
+            entity: 'order',
+            operation: index >= 0 ? 'update' : 'create',
+            data: orderToSave
+          });
+          return; // Exit early, will sync when authenticated
+        }
+        
+        await supabaseService.syncData(
+          [],
+          [orderToSave],
+          [],
+          [],
+          [],
+          [],
+          'upsert'
+        );
+        // Update sync status to 'synced'
+        const updatedOrder = { ...orderToSave, sync_status: 'synced' as const };
+        await this.db.orders.put(updatedOrder);
+        this.cache.orders[this.cache.orders.findIndex(o => o.order_id === order.order_id)] = updatedOrder;
+      } catch (error) {
+        console.error('Error syncing order immediately:', error);
+        // If immediate sync fails, add to queue for later
+        supabaseSyncService.enqueue({
+          id: order.order_id,
+          entity: 'order',
+          operation: index >= 0 ? 'update' : 'create',
+          data: orderToSave
+        });
+      }
+    }
+
     // Update Customer Balance
     await this.recalcCustomerBalance(order.customer_id);
+  }
+
+  /**
+   * Generate the next sequential invoice number based on settings
+   */
+  private generateNextInvoiceNumber(): string {
+    const settings = this.cache.settings;
+    const prefix = settings.invoice_prefix || 'INV';
+    const startingNumber = settings.starting_invoice_number || 1;
+
+    // Find the highest invoice number currently in the system
+    const highestNumber = this.findHighestInvoiceNumber();
+
+    // Determine the next number to use
+    const nextNumber = highestNumber > 0 ? highestNumber + 1 : startingNumber;
+
+    // Format the number with zero padding (minimum 4 digits)
+    const paddedNumber = nextNumber.toString().padStart(4, '0');
+
+    // Combine prefix and padded number
+    return `${prefix}${paddedNumber}`;
+  }
+
+  /**
+   * Find the highest invoice number in the database
+   */
+  private findHighestInvoiceNumber(): number {
+    const orders = this.cache.orders;
+    const invoiceNumbers = orders
+      .filter(order => order.invoice_number) // Only consider orders with invoice numbers
+      .map(order => this.extractInvoiceNumber(order.invoice_number!));
+
+    if (invoiceNumbers.length === 0) {
+      return 0;
+    }
+
+    return Math.max(...invoiceNumbers);
+  }
+
+  /**
+   * Extract the numeric part from an invoice number
+   */
+  private extractInvoiceNumber(invoiceNumber: string): number {
+    const match = invoiceNumber.match(/\d+$/);
+    if (match) {
+      return parseInt(match[0], 10);
+    }
+    return 0;
   }
 
   async addPayment(payment: Payment): Promise<void> {
@@ -376,12 +692,20 @@ class LocalDB {
       }
   }
 
+  // --- Stock Adjustments ---
+  getStockAdjustments(): StockAdjustment[] {
+    return this.cache.adjustments;
+  }
+
   async addStockAdjustment(adjustment: StockAdjustment): Promise<void> {
       // 1. Save Adjustment Record
       const index = this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id);
-      if (index >= 0) this.cache.adjustments[index] = adjustment;
-      else this.cache.adjustments.push(adjustment);
-      await this.db.stockAdjustments.put(adjustment);
+      const adjustmentToSave = { ...adjustment, sync_status: 'pending' as const, updated_at: new Date().toISOString() };
+
+      if (index >= 0) this.cache.adjustments[index] = adjustmentToSave;
+      else this.cache.adjustments.push(adjustmentToSave);
+
+      await this.db.stockAdjustments.put(adjustmentToSave);
 
       // 2. Update Actual Stock
       let qtyDelta = 0;
@@ -394,10 +718,67 @@ class LocalDB {
           // If the UI passes the *new* total, we need to calculate delta.
           // For now, let's assume 'correction' passes the signed delta directly, or we avoid 'correction' type for now.
           // Let's treat 'correction' as a direct delta for now (positive or negative)
-          qtyDelta = adjustment.quantity; 
+          qtyDelta = adjustment.quantity;
       }
 
       await this.updateStock(adjustment.item_id, qtyDelta);
+
+      // If offline, add to sync queue
+      if (!this.isOnline) {
+        syncQueueService.enqueue({
+          id: adjustment.adjustment_id,
+          entity: 'adjustment',
+          operation: index >= 0 ? 'update' : 'create',
+          data: adjustmentToSave
+        });
+        
+        // Also add to the new Supabase sync queue
+        supabaseSyncService.enqueue({
+          id: adjustment.adjustment_id,
+          entity: 'adjustment',
+          operation: index >= 0 ? 'update' : 'create',
+          data: adjustmentToSave
+        });
+      } else {
+        // If online, attempt to sync immediately
+        try {
+          // Check if user is authenticated before syncing
+          const { data: { session } } = await supabaseService.getCurrentUser();
+          if (!session) {
+            // If not authenticated, add to queue for later sync
+            supabaseSyncService.enqueue({
+              id: adjustment.adjustment_id,
+              entity: 'adjustment',
+              operation: index >= 0 ? 'update' : 'create',
+              data: adjustmentToSave
+            });
+            return; // Exit early, will sync when authenticated
+          }
+          
+          await supabaseService.syncData(
+            [],
+            [],
+            [],
+            [],
+            [],
+            [adjustmentToSave],
+            'upsert'
+          );
+          // Update sync status to 'synced'
+          const updatedAdjustment = { ...adjustmentToSave, sync_status: 'synced' as const };
+          await this.db.stockAdjustments.put(updatedAdjustment);
+          this.cache.adjustments[this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id)] = updatedAdjustment;
+        } catch (error) {
+          console.error('Error syncing adjustment immediately:', error);
+          // If immediate sync fails, add to queue for later
+          supabaseSyncService.enqueue({
+            id: adjustment.adjustment_id,
+            entity: 'adjustment',
+            operation: index >= 0 ? 'update' : 'create',
+            data: adjustmentToSave
+          });
+        }
+      }
   }
 
   // --- Settings ---
@@ -408,6 +789,63 @@ class LocalDB {
   async saveSettings(settings: CompanySettings): Promise<void> {
     this.cache.settings = settings;
     await this.db.settings.put({ ...settings, id: 'main' } as any);
+
+    // If offline, add to sync queue
+    if (!this.isOnline) {
+      syncQueueService.enqueue({
+        id: 'settings',
+        entity: 'settings',
+        operation: 'update',
+        data: { ...settings, id: 'main' }
+      });
+      
+      // Also add to the new Supabase sync queue
+      supabaseSyncService.enqueue({
+        id: 'settings',
+        entity: 'settings',
+        operation: 'update',
+        data: { ...settings, id: 'main' }
+      });
+    } else {
+      // If online, attempt to sync immediately
+      try {
+        // Check if user is authenticated before syncing
+        const { data: { session } } = await supabaseService.getCurrentUser();
+        if (!session) {
+          // If not authenticated, add to queue for later sync
+          supabaseSyncService.enqueue({
+            id: 'settings',
+            entity: 'settings',
+            operation: 'update',
+            data: { ...settings, id: 'main' }
+          });
+          return; // Exit early, will sync when authenticated
+        }
+        
+        await supabaseService.syncData(
+          [],
+          [],
+          [],
+          [{ ...settings, id: 'main' }],
+          [],
+          [],
+          'upsert'
+        );
+        // Update sync status to 'synced'
+        const updatedSettings = { ...settings, id: 'main', sync_status: 'synced' as const } as any;
+        await this.db.settings.put(updatedSettings);
+        this.cache.settings = { ...settings, sync_status: 'synced' as const };
+      } catch (error) {
+        console.error('Error syncing settings immediately:', error);
+        // If immediate sync fails, add to queue for later
+        supabaseSyncService.enqueue({
+          id: 'settings',
+          entity: 'settings',
+          operation: 'update',
+          data: { ...settings, id: 'main' }
+        });
+      }
+    }
   }
 
   // --- Sync Stats (Read from Cache - Fast) ---
@@ -503,11 +941,15 @@ class LocalDB {
 
   // --- Real Sync Action ---
   async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert'): Promise<void> {
-    const settings = this.getSettings();
-    if (!settings.google_sheet_id) {
-        throw new Error("Google Sheet ID not configured. Please enter it in the Sync Dashboard.");
+    // Process any queued operations first
+    if (!syncQueueService.isEmpty()) {
+      if (onLog) onLog(`Processing ${syncQueueService.length()} queued operations from offline period...`);
+      
+      // Process the queue
+      await this.processSyncQueue(onLog);
     }
 
+    // Create local backup (CSV)
     if (onLog) onLog("Creating local backup (CSV)...");
     const currentItems = this.getItems();
     const csvData = jsonToCsv(currentItems);
@@ -516,20 +958,26 @@ class LocalDB {
     // Use Cache for current state
     const customers = this.getCustomers();
     const pendingCustomers = mode === 'overwrite' ? customers : customers.filter(c => c.sync_status === 'pending');
-    
+
     const orders = this.getOrders();
-    const pendingOrders = orders.filter(o => o.sync_status === 'pending');
+    const pendingOrders = mode === 'overwrite' ? orders : orders.filter(o => o.sync_status === 'pending');
 
     const items = this.getItems();
     const pendingItems = mode === 'overwrite' ? items : items.filter(i => i.sync_status === 'pending');
 
+    const settings = [this.getSettings()];
+    const users = this.cache.users;
+    const adjustments = mode === 'overwrite' ? this.cache.adjustments : this.cache.adjustments.filter(a => a.sync_status === 'pending');
+
     console.log("DEBUG: Pending Customers for Sync:", pendingCustomers);
 
-    const result = await sheetsService.syncData(
-        settings.google_sheet_id,
+    const result = await supabaseService.syncData(
         pendingCustomers,
         pendingOrders,
         pendingItems,
+        settings,
+        users,
+        adjustments,
         mode
     );
 
@@ -547,7 +995,7 @@ class LocalDB {
              pendingCustomers.forEach(c => {
                  c.sync_status = 'synced';
                  this.db.customers.put(c);
-                 // Cache update handled by reference or reload? 
+                 // Cache update handled by reference or reload?
                  // Safe way: update cache object directly
                  const cacheIdx = this.cache.customers.findIndex(cx => cx.customer_id === c.customer_id);
                  if(cacheIdx >= 0) this.cache.customers[cacheIdx].sync_status = 'synced';
@@ -562,6 +1010,30 @@ class LocalDB {
                 this.db.orders.put(o);
                 const cacheIdx = this.cache.orders.findIndex(ox => ox.order_id === o.order_id);
                 if(cacheIdx >= 0) this.cache.orders[cacheIdx].sync_status = 'synced';
+            });
+        });
+    }
+
+    // UPDATE ITEMS STATUSES
+    if (pendingItems.length > 0) {
+        await this.db.transaction('rw', this.db.items, async () => {
+            pendingItems.forEach(i => {
+                i.sync_status = 'synced';
+                this.db.items.put(i);
+                const cacheIdx = this.cache.items.findIndex(ix => ix.item_id === i.item_id);
+                if(cacheIdx >= 0) this.cache.items[cacheIdx].sync_status = 'synced';
+            });
+        });
+    }
+
+    // UPDATE ADJUSTMENTS STATUSES
+    if (adjustments.length > 0) {
+        await this.db.transaction('rw', this.db.stockAdjustments, async () => {
+            adjustments.forEach(a => {
+                a.sync_status = 'synced';
+                this.db.stockAdjustments.put(a);
+                const cacheIdx = this.cache.adjustments.findIndex(ax => ax.adjustment_id === a.adjustment_id);
+                if(cacheIdx >= 0) this.cache.adjustments[cacheIdx].sync_status = 'synced';
             });
         });
     }
@@ -636,14 +1108,61 @@ class LocalDB {
         this.cache.customers = result.pulledCustomers;
     }
 
-    // FULLY REPLACE ORDERS FROM PULL
+    // REPLACE ONLY SYNCED ORDERS FROM PULL, PRESERVE LOCAL DRAFT ORDERS
     if (result.pulledOrders && result.pulledOrders.length > 0) {
-        if (onLog) onLog(`Restoring order history: ${result.pulledOrders.length} records found.`);
+        if (onLog) onLog(`Restoring order history: ${result.pulledOrders.length} records found from cloud.`);
+        
+        // Get all local orders that should be preserved (not synced OR not approved/pending_approval)
+        const localPreservedOrders = this.cache.orders.filter(order => 
+            order.sync_status !== 'synced' || 
+            order.approval_status === 'draft'
+        );
+        
         await this.db.transaction('rw', this.db.orders, async () => {
+            // Clear all orders from the database
             await this.db.orders.clear();
+            
+            // Add back the cloud orders
             await this.db.orders.bulkPut(result.pulledOrders!);
+            
+            // Add back the local orders that should be preserved
+            for (const preservedOrder of localPreservedOrders) {
+                await this.db.orders.put(preservedOrder);
+            }
         });
-        this.cache.orders = result.pulledOrders;
+        
+        // Update cache to include both cloud orders and local preserved orders
+        this.cache.orders = [...result.pulledOrders, ...localPreservedOrders];
+    }
+
+    // UPDATE SETTINGS FROM PULL
+    if (result.pulledSettings) {
+        if (onLog) onLog(`Updating local settings from cloud.`);
+        await this.db.transaction('rw', this.db.settings, async () => {
+            await this.db.settings.clear();
+            await this.db.settings.put({ ...result.pulledSettings, id: 'main' } as any);
+        });
+        this.cache.settings = result.pulledSettings;
+    }
+
+    // UPDATE USERS FROM PULL
+    if (result.pulledUsers && result.pulledUsers.length > 0) {
+        if (onLog) onLog(`Updating local users from cloud.`);
+        await this.db.transaction('rw', this.db.users, async () => {
+            await this.db.users.clear();
+            await this.db.users.bulkPut(result.pulledUsers!);
+        });
+        this.cache.users = result.pulledUsers;
+    }
+
+    // UPDATE STOCK ADJUSTMENTS FROM PULL
+    if (result.pulledAdjustments && result.pulledAdjustments.length > 0) {
+        if (onLog) onLog(`Updating local stock adjustments from cloud.`);
+        await this.db.transaction('rw', this.db.stockAdjustments, async () => {
+            await this.db.stockAdjustments.clear();
+            await this.db.stockAdjustments.bulkPut(result.pulledAdjustments!);
+        });
+        this.cache.adjustments = result.pulledAdjustments;
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
@@ -653,22 +1172,14 @@ class LocalDB {
   async checkForConflicts(): Promise<{
       hasConflicts: boolean;
       conflicts: any[]; // Typed as ConflictItem[] in UI
-      cloudData?: { items: Item[], customers: Customer[], orders: Order[] };
+      cloudData?: { items: Item[], customers: Customer[], orders: Order[], settings: CompanySettings[], users: User[], adjustments: StockAdjustment[] };
   }> {
-      const settings = this.getSettings();
-      if (!settings.google_sheet_id) throw new Error("Google Sheet ID not configured");
-
       // 1. Pull Cloud Data (without pushing)
-      // We need a way to tell syncData to ONLY pull.
-      // But syncData takes arrays to push. We can pass empty arrays?
-      // No, that might imply deleting if backend isn't smart.
-      // Actually backend /sync just processes what it gets. If we send empty, it updates nothing and returns all.
-      
-      const result = await sheetsService.syncData(
-          settings.google_sheet_id,
-          [], [], [], // Send nothing
-          'upsert'
-      );
+      const result = await supabaseService.checkForConflicts({
+          customers: this.getCustomers(),
+          items: this.getItems(),
+          orders: this.getOrders()
+      });
 
       if (!result.success || !result.pulledItems || !result.pulledCustomers) {
           throw new Error("Failed to fetch cloud data for conflict check");
@@ -683,17 +1194,26 @@ class LocalDB {
           const localItem = localItems.find(i => i.item_id === cloudItem.item_id);
           if (localItem && localItem.sync_status === 'pending') {
               // Compare content (ignoring metadata)
-              const hasDiff = 
+              const hasDiff =
                   localItem.item_display_name !== cloudItem.item_display_name ||
                   localItem.unit_value !== cloudItem.unit_value ||
                   localItem.current_stock_qty !== cloudItem.current_stock_qty;
-              
+
               if (hasDiff) {
+                  // Determine which version is newer based on updated_at timestamp (last-write-wins)
+                  const localTime = new Date(localItem.updated_at).getTime();
+                  const cloudTime = new Date(cloudItem.updated_at).getTime();
+                  
+                  const winner = localTime > cloudTime ? 'local' : 'cloud';
+                  
                   conflicts.push({
                       type: 'item',
                       id: localItem.item_id,
                       local: localItem,
-                      cloud: cloudItem
+                      cloud: cloudItem,
+                      resolution: winner, // For logging purposes
+                      localTimestamp: localItem.updated_at,
+                      cloudTimestamp: cloudItem.updated_at
                   });
               }
           }
@@ -703,16 +1223,65 @@ class LocalDB {
       result.pulledCustomers.forEach(cloudCustomer => {
           const localCustomer = localCustomers.find(c => c.customer_id === cloudCustomer.customer_id);
           if (localCustomer && localCustomer.sync_status === 'pending') {
-              const hasDiff = 
+              const hasDiff =
                   localCustomer.shop_name !== cloudCustomer.shop_name ||
                   localCustomer.outstanding_balance !== cloudCustomer.outstanding_balance;
-              
+
               if (hasDiff) {
+                  // Determine which version is newer based on updated_at timestamp (last-write-wins)
+                  const localTime = new Date(localCustomer.updated_at).getTime();
+                  const cloudTime = new Date(cloudCustomer.updated_at).getTime();
+                  
+                  const winner = localTime > cloudTime ? 'local' : 'cloud';
+                  
                   conflicts.push({
                       type: 'customer',
                       id: localCustomer.customer_id,
                       local: localCustomer,
-                      cloud: cloudCustomer
+                      cloud: cloudCustomer,
+                      resolution: winner, // For logging purposes
+                      localTimestamp: localCustomer.updated_at,
+                      cloudTimestamp: cloudCustomer.updated_at
+                  });
+              }
+          }
+      });
+
+      // Check Orders for conflicts based on order_id
+      const localOrders = this.getOrders();
+      result.pulledOrders?.forEach(cloudOrder => {
+          // Look for local orders that have been modified since last sync
+          // Only check for conflicts with orders that have been synced
+          const localOrder = localOrders.find(o =>
+              o.order_id === cloudOrder.order_id &&
+              o.sync_status === 'pending' &&
+              (o.approval_status === 'approved' || o.approval_status === 'pending_approval')
+          );
+
+          if (localOrder) {
+              // Check if there are meaningful differences between local and cloud versions
+              const hasDiff =
+                  localOrder.invoice_number !== cloudOrder.invoice_number ||
+                  localOrder.net_total !== cloudOrder.net_total ||
+                  localOrder.order_date !== cloudOrder.order_date ||
+                  localOrder.order_status !== cloudOrder.order_status;
+
+              if (hasDiff) {
+                  // Determine which version is newer based on updated_at timestamp (last-write-wins)
+                  const localTime = new Date(localOrder.updated_at).getTime();
+                  const cloudTime = new Date(cloudOrder.updated_at).getTime();
+                  
+                  const winner = localTime > cloudTime ? 'local' : 'cloud';
+                  
+                  conflicts.push({
+                      type: 'order',
+                      id: localOrder.order_id,
+                      local: localOrder,
+                      cloud: cloudOrder,
+                      identifier: localOrder.invoice_number || localOrder.order_id,
+                      resolution: winner, // For logging purposes
+                      localTimestamp: localOrder.updated_at,
+                      cloudTimestamp: cloudOrder.updated_at
                   });
               }
           }
@@ -724,18 +1293,21 @@ class LocalDB {
           cloudData: {
               items: result.pulledItems,
               customers: result.pulledCustomers,
-              orders: result.pulledOrders || []
+              orders: result.pulledOrders || [],
+              settings: result.pulledSettings ? [result.pulledSettings] : [],
+              users: result.pulledUsers || [],
+              adjustments: result.pulledAdjustments || []
           }
       };
   }
 
   async resolveConflictsAndSync(
       resolutions: { [id: string]: 'local' | 'cloud' },
-      cloudData: { items: Item[], customers: Customer[], orders: Order[] }
+      cloudData: { items: Item[], customers: Customer[], orders: Order[], settings: CompanySettings[], users: User[], adjustments: StockAdjustment[] }
   ): Promise<void> {
       // 1. Apply Resolutions
-      await this.db.transaction('rw', [this.db.items, this.db.customers], async () => {
-          
+      await this.db.transaction('rw', [this.db.items, this.db.customers, this.db.orders, this.db.settings, this.db.users, this.db.stockAdjustments], async () => {
+
           // Apply Item Resolutions
           for (const item of cloudData.items) {
               const resolution = resolutions[item.item_id];
@@ -768,6 +1340,61 @@ class LocalDB {
                   }
               }
           }
+
+          // Apply Order Resolutions
+          for (const order of cloudData.orders) {
+              const resolution = resolutions[order.order_id];
+              if (resolution === 'cloud') {
+                  // Overwrite local with cloud
+                  // Preserve the original invoice number for sync tracking if this was previously synced
+                  const updatedOrder = {
+                      ...order,
+                      original_invoice_number: order.original_invoice_number || order.invoice_number,
+                      sync_status: 'synced' as const
+                  };
+                  await this.db.orders.put(updatedOrder);
+              } else if (resolution === 'local') {
+                  // Keep local (it's already there and pending), do nothing.
+                  // It will be pushed in the next step.
+              } else {
+                  // No conflict, just update (Last Write Wins from Cloud for non-conflicting)
+                  const local = this.cache.orders.find(o =>
+                      o.order_id === order.order_id);
+                  if (!local || local.sync_status !== 'pending') {
+                      // Preserve the original invoice number for sync tracking
+                      const updatedOrder = {
+                          ...order,
+                          original_invoice_number: order.original_invoice_number || order.invoice_number,
+                          sync_status: 'synced' as const
+                      };
+                      await this.db.orders.put(updatedOrder);
+                  }
+              }
+          }
+
+          // Apply Settings Resolutions
+          for (const setting of cloudData.settings) {
+              const resolution = resolutions['settings'];
+              if (resolution === 'cloud') {
+                  await this.db.settings.put({ ...setting, id: 'main' } as any);
+              }
+          }
+
+          // Apply User Resolutions
+          for (const user of cloudData.users) {
+              const resolution = resolutions[user.id];
+              if (resolution === 'cloud') {
+                  await this.db.users.put(user);
+              }
+          }
+
+          // Apply Stock Adjustment Resolutions
+          for (const adjustment of cloudData.adjustments) {
+              const resolution = resolutions[adjustment.adjustment_id];
+              if (resolution === 'cloud') {
+                  await this.db.stockAdjustments.put(adjustment);
+              }
+          }
       });
 
       // 2. Refresh Cache
@@ -775,6 +1402,217 @@ class LocalDB {
 
       // 3. Perform Normal Sync (Push pending)
       await this.performSync();
+  }
+
+  /**
+   * Automatically resolve conflicts based on last-write-wins strategy
+   */
+  async autoResolveConflictsAndSync(): Promise<void> {
+      // Get conflicts
+      const conflictResult = await this.checkForConflicts();
+      
+      if (!conflictResult.hasConflicts) {
+          console.log('No conflicts to resolve');
+          // Still perform sync to push any pending changes
+          await this.performSync();
+          return;
+      }
+
+      console.log(`Auto-resolving ${conflictResult.conflicts.length} conflicts using last-write-wins strategy`);
+      
+      // Create resolution map based on the resolution field in conflicts
+      const resolutions: { [id: string]: 'local' | 'cloud' } = {};
+      
+      for (const conflict of conflictResult.conflicts) {
+          // Use the resolution field that was set in checkForConflicts
+          // If resolution is 'local', we keep the local version (do nothing)
+          // If resolution is 'cloud', we use the cloud version (apply it)
+          resolutions[conflict.id] = conflict.resolution;
+          
+          console.log(`Conflict for ${conflict.type} ${conflict.id}: ${conflict.resolution} version wins`);
+          console.log(`  Local timestamp: ${conflict.localTimestamp}`);
+          console.log(`  Cloud timestamp: ${conflict.cloudTimestamp}`);
+      }
+
+      // Apply the resolutions
+      await this.resolveConflictsAndSync(resolutions, conflictResult.cloudData!);
+  }
+
+  /**
+   * Resolve order conflicts specifically using the order_id
+   */
+  async resolveOrderConflictsAndSync(
+    resolutions: { [identifier: string]: 'local' | 'cloud' | 'merge' },
+    resolvedOrders: Order[]
+  ): Promise<void> {
+    // Apply resolved orders based on user selections
+    await this.db.transaction('rw', this.db.orders, async () => {
+      for (const order of resolvedOrders) {
+        // Preserve the original invoice number for sync tracking
+        const updatedOrder = {
+          ...order,
+          original_invoice_number: order.original_invoice_number || order.invoice_number,
+          sync_status: 'synced' as const
+        };
+        
+        // Update the order in the database
+        await this.db.orders.put(updatedOrder);
+        
+        // Update the cache
+        const cacheIndex = this.cache.orders.findIndex(o => o.order_id === order.order_id);
+        if (cacheIndex !== -1) {
+          this.cache.orders[cacheIndex] = updatedOrder;
+        } else {
+          this.cache.orders.push(updatedOrder);
+        }
+      }
+    });
+
+    // Refresh cache to ensure consistency
+    await this.refreshCache();
+
+    // Perform sync to push any pending changes
+    await this.performSync();
+  }
+
+  /**
+   * Migrate existing orders to use order_id as invoice_number
+   */
+  async migrateInvoiceNumbersToOrderIds(): Promise<void> {
+    const allOrders = this.getOrders();
+
+    // Update each order to have invoice_number equal to order_id
+    for (const order of allOrders) {
+      const updatedOrder = {
+        ...order,
+        invoice_number: order.order_id,
+        original_invoice_number: order.original_invoice_number || order.invoice_number
+      };
+
+      await this.db.orders.put(updatedOrder);
+    }
+
+    // Refresh cache to reflect changes
+    await this.refreshCache();
+  }
+
+  private async processSyncQueue(onLog?: (msg: string) => void): Promise<void> {
+    // Get all queued operations
+    const queuedOps = syncQueueService.getAll();
+    const supabaseQueuedOps = supabaseSyncService.getAllQueuedOperations();
+
+    if (queuedOps.length === 0 && supabaseQueuedOps.length === 0) {
+      return; // Nothing to process
+    }
+
+    if (onLog) onLog(`Processing ${queuedOps.length + supabaseQueuedOps.length} queued operations from offline period...`);
+
+    // Process the legacy sync queue first
+    if (queuedOps.length > 0) {
+      // Collect all pending data to sync
+      const customers = this.getCustomers();
+      const items = this.getItems();
+      const orders = this.getOrders();
+      const settings = [this.getSettings()];
+      const users = this.cache.users;
+      const adjustments = this.getStockAdjustments();
+
+      // Perform sync to push all pending changes
+      const result = await supabaseService.syncData(
+        customers,
+        orders,
+        items,
+        settings,
+        users,
+        adjustments,
+        'upsert'
+      );
+
+      if (result.success) {
+        if (onLog) onLog(`Successfully synced ${queuedOps.length} operations from offline queue.`);
+
+        // Update sync status for all entities after successful sync
+        await this.updateAllSyncStatus();
+
+        // Clear the legacy queue after successful sync
+        syncQueueService.clear();
+      } else {
+        if (onLog) onLog(`Failed to sync queued operations: ${result.message}`);
+        throw new Error(`Failed to sync queued operations: ${result.message}`);
+      }
+    }
+
+    // Process the new Supabase sync queue
+    if (supabaseQueuedOps.length > 0) {
+      if (onLog) onLog(`Processing ${supabaseQueuedOps.length} operations from Supabase sync queue...`);
+
+      try {
+        const result = await supabaseSyncService.processQueuedOperations();
+        
+        if (result.success) {
+          if (onLog) onLog(`Successfully processed ${supabaseQueuedOps.length} operations from Supabase sync queue.`);
+          
+          // Update sync status for all entities after successful sync
+          await this.updateAllSyncStatus();
+        } else {
+          if (onLog) onLog(`Failed to process Supabase queued operations: ${result.message}`);
+          throw new Error(`Failed to process Supabase queued operations: ${result.message}`);
+        }
+      } catch (error) {
+        if (onLog) onLog(`Error processing Supabase queued operations: ${(error as Error).message}`);
+        throw error;
+      }
+    }
+  }
+  
+  private async updateAllSyncStatus(): Promise<void> {
+    // Update sync status to 'synced' for all pending items
+    const customers = this.getCustomers();
+    const items = this.getItems();
+    const orders = this.getOrders();
+    const adjustments = this.getStockAdjustments();
+    
+    // Update customers
+    for (const customer of customers) {
+      if (customer.sync_status === 'pending') {
+        await this.saveCustomer({ ...customer, sync_status: 'synced' });
+      }
+    }
+    
+    // Update items
+    for (const item of items) {
+      if (item.sync_status === 'pending') {
+        await this.saveItem({ ...item, sync_status: 'synced' });
+      }
+    }
+    
+    // Update orders
+    for (const order of orders) {
+      if (order.sync_status === 'pending') {
+        await this.saveOrder({ ...order, sync_status: 'synced' });
+      }
+    }
+    
+    // Update adjustments
+    for (const adjustment of adjustments) {
+      if (adjustment.sync_status === 'pending') {
+        // Update adjustment sync status
+        const updatedAdjustment = { ...adjustment, sync_status: 'synced' as const };
+        await this.db.stockAdjustments.put(updatedAdjustment);
+        
+        // Update cache
+        const index = this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id);
+        if (index >= 0) {
+          this.cache.adjustments[index] = updatedAdjustment;
+        }
+      }
+    }
+  }
+  
+  private async processEntityQueue(ops: any[], entityType: string): Promise<void> {
+    // This method is now deprecated as we handle the queue in processSyncQueue
+    // This is kept for compatibility but doesn't perform any action
+    return;
   }
 }
 

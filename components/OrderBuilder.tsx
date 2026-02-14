@@ -31,6 +31,48 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const [secondaryDiscountRate, setSecondaryDiscountRate] = useState<number>((draftState?.secondary_discount_rate !== undefined ? draftState.secondary_discount_rate : (editingOrder ? (editingOrder.secondary_discount_rate || 0) : (existingCustomer?.secondary_discount_rate || 0))) * 100);
     const [taxRate, setTaxRate] = useState<number>((draftState?.tax_rate !== undefined ? draftState.tax_rate : (editingOrder ? (editingOrder.tax_rate || 0) : (settings.tax_rate || 0))) * 100);
     
+    // Utility function to extract the numeric part from an invoice number
+    const extractInvoiceNumber = (invoiceNumber: string): number => {
+        const match = invoiceNumber.match(/\d+$/);
+        if (match) {
+            return parseInt(match[0], 10);
+        }
+        return 0;
+    };
+    
+    // Approval Status State
+    const [approvalStatus, setApprovalStatus] = useState<'draft' | 'pending_approval' | 'approved'>(editingOrder?.approval_status || 'draft');
+    
+    // Invoice Number State
+    const [invoiceNumber, setInvoiceNumber] = useState<string>(() => {
+        if (editingOrder) {
+            return editingOrder.invoice_number || '';
+        } else {
+            // For new orders, generate the next sequential invoice number
+            const settings = db.getSettings();
+            const prefix = settings.invoice_prefix || 'INV';
+            const startingNumber = settings.starting_invoice_number || 1;
+
+            // Find the highest invoice number currently in the system
+            const orders = db.getOrders();
+            const invoiceNumbers = orders
+                .filter(order => order.invoice_number) // Only consider orders with invoice numbers
+                .map(order => extractInvoiceNumber(order.invoice_number!));
+
+            // Determine the next number to use
+            const highestNumber = invoiceNumbers.length > 0 ? Math.max(...invoiceNumbers) : 0;
+            const nextNumber = highestNumber > 0 ? highestNumber + 1 : startingNumber;
+
+            // Format the number with zero padding (minimum 4 digits)
+            const paddedNumber = nextNumber.toString().padStart(4, '0');
+
+            // Combine prefix and padded number
+            return `${prefix}${paddedNumber}`;
+        }
+    });
+    const [useSuggestedInvoiceNumber, setUseSuggestedInvoiceNumber] = useState<boolean>(!editingOrder?.invoice_number);
+    const [invoiceNumberError, setInvoiceNumberError] = useState<string>('');
+    
     // UI State
     const [catalogSearch, setCatalogSearch] = useState('');
     const [cartSearch, setCartSearch] = useState('');
@@ -105,14 +147,81 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                 order_date: orderDate,
                 discount_rate: discountRate / 100,
                 secondary_discount_rate: secondaryDiscountRate / 100,
-                tax_rate: taxRate / 100
+                tax_rate: taxRate / 100,
+                invoice_number: invoiceNumber
             });
         }
-    }, [lines, orderDate, discountRate, secondaryDiscountRate, taxRate]);
+    }, [lines, orderDate, discountRate, secondaryDiscountRate, taxRate, invoiceNumber]);
+
+    // Effect to handle suggested invoice number (using sequential numbering)
+    useEffect(() => {
+        if (useSuggestedInvoiceNumber) {
+            // Generate the next sequential invoice number based on settings
+            const settings = db.getSettings();
+            const prefix = settings.invoice_prefix || 'INV';
+            const startingNumber = settings.starting_invoice_number || 1;
+
+            // Find the highest invoice number currently in the system
+            const orders = db.getOrders();
+            const invoiceNumbers = orders
+                .filter(order => order.invoice_number) // Only consider orders with invoice numbers
+                .map(order => extractInvoiceNumber(order.invoice_number!));
+
+            // Determine the next number to use
+            const highestNumber = invoiceNumbers.length > 0 ? Math.max(...invoiceNumbers) : 0;
+            const nextNumber = highestNumber > 0 ? highestNumber + 1 : startingNumber;
+
+            // Format the number with zero padding (minimum 4 digits)
+            const paddedNumber = nextNumber.toString().padStart(4, '0');
+
+            // Combine prefix and padded number
+            const suggestedNumber = `${prefix}${paddedNumber}`;
+
+            setInvoiceNumber(suggestedNumber);
+            setInvoiceNumberError('');
+        }
+    }, [useSuggestedInvoiceNumber]);
+
+    // Effect to validate invoice number when it changes
+    useEffect(() => {
+        if (!useSuggestedInvoiceNumber && invoiceNumber) {
+            // Skip validation if editing a synced order that is approved
+            if (editingOrder && editingOrder.approval_status === 'approved') {
+                setInvoiceNumberError('');
+                return;
+            }
+
+            // Validate that the invoice number follows the correct format (prefix + number)
+            const settings = db.getSettings();
+            const prefix = settings.invoice_prefix || 'INV';
+            const regex = new RegExp(`^${prefix}\\d+$`);
+
+            if (!regex.test(invoiceNumber)) {
+                setInvoiceNumberError(`Invalid format. Must start with "${prefix}" followed by numbers.`);
+                return;
+            }
+
+            // Validate that the invoice number is unique in the system
+            const orders = db.getOrders();
+            const existingOrder = orders.find(
+                order => order.invoice_number === invoiceNumber && order.order_id !== editingOrder?.order_id
+            );
+
+            if (existingOrder) {
+                setInvoiceNumberError('Invoice number already exists. Please choose a different one.');
+                return;
+            }
+
+            setInvoiceNumberError('');
+        }
+    }, [invoiceNumber, useSuggestedInvoiceNumber, editingOrder?.order_id, editingOrder?.approval_status]);
 
     const grossTotal = lines.reduce((sum, line) => sum + line.line_total, 0);
     const primaryDiscountValue = grossTotal * (discountRate / 100);
     const amountAfterPrimary = grossTotal - primaryDiscountValue;
+    // Check if editing is disabled based on approval status
+    const isEditingDisabled = editingOrder && editingOrder.approval_status === 'approved';
+
     const secondaryDiscountValue = amountAfterPrimary * (secondaryDiscountRate / 100);
     const amountAfterDiscounts = amountAfterPrimary - secondaryDiscountValue;
     const taxValue = amountAfterDiscounts * (taxRate / 100);
@@ -219,20 +328,39 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
 
     const handleFinalizeOrder = async () => {
         if (!customer) return;
-        
-        const orderId = editingOrder ? editingOrder.order_id : generateUUID().substring(0, 6).toUpperCase();
+
+        // Check if editing is disabled based on approval status
+        if (isEditingDisabled) {
+            showToast("Editing is locked for approved invoices", "error");
+            return;
+        }
+
+        // Validate invoice number before proceeding
+        if (!invoiceNumber) {
+            showToast("Please enter an invoice number", "error");
+            return;
+        }
+
+        if (invoiceNumberError) {
+            showToast(invoiceNumberError, "error");
+            return;
+        }
+
+        // For existing orders, preserve the original order ID
+        // For new orders, we can use the invoice number as the order ID
+        const orderId = editingOrder ? editingOrder.order_id : invoiceNumber;
         const finalLines = lines.map(l => ({...l, order_id: orderId}));
-        
+
         // Prepare Payment Data
         const payAmount = parseFloat(paymentAmount) || 0;
-        
+
         if (payAmount > netTotal) {
              showToast("Payment cannot exceed total amount", "error");
              return;
         }
 
         const payments: Payment[] = editingOrder ? editingOrder.payments : [];
-        
+
         if (payAmount > 0) {
             payments.push({
                 payment_id: generateUUID(),
@@ -247,7 +375,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
 
         const newOrder: Order = {
             ...editingOrder,
-            order_id: orderId,
+            order_id: editingOrder?.order_id || orderId, // Preserve original order ID for existing orders
             customer_id: customer.customer_id,
             rep_id: user?.id.toString(),
             order_date: orderDate,
@@ -260,7 +388,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             tax_value: taxValue,
             net_total: netTotal,
             credit_period: customer.credit_period || 90,
-            
+
             // Payment Fields (Will be recalculated by db.saveOrder but good to pass)
             paid_amount: payments.reduce((sum, p) => sum + p.amount, 0),
             balance_due: netTotal - payments.reduce((sum, p) => sum + p.amount, 0),
@@ -270,6 +398,10 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             order_status: 'confirmed',
             delivery_status: editingOrder?.delivery_status || 'pending',
             lines: finalLines,
+            invoice_number: invoiceNumber, // Use the user-specified invoice number
+            approval_status: approvalStatus, // Set the approval status
+            // Preserve the original invoice number for sync tracking if this was previously synced
+            original_invoice_number: editingOrder?.original_invoice_number || editingOrder?.invoice_number,
             created_at: editingOrder?.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString(),
             sync_status: 'pending'
@@ -380,6 +512,68 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                             className={`bg-slate-50 border-none p-0 text-xs focus:ring-0 ${themeClasses.text} font-medium`}
                         />
                     </div>
+                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
+                        <span>Invoice #:</span>
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="text"
+                                value={invoiceNumber}
+                                onChange={e => {
+                                    setInvoiceNumber(e.target.value);
+                                    setUseSuggestedInvoiceNumber(false);
+                                }}
+                                className={`bg-slate-50 border border-slate-200 p-1 text-xs rounded ${invoiceNumberError ? 'border-rose-500' : 'border-slate-200'} focus:ring-2 ${themeClasses.ring} font-medium w-24 text-center`}
+                                placeholder="Invoice #"
+                            />
+                            <button
+                                onClick={() => setUseSuggestedInvoiceNumber(!useSuggestedInvoiceNumber)}
+                                className={`p-1 rounded ${useSuggestedInvoiceNumber ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                                title={useSuggestedInvoiceNumber ? "Using suggested number" : "Use suggested number"}
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                        {invoiceNumberError && (
+                            <div className="text-[10px] text-rose-600 font-medium">{invoiceNumberError}</div>
+                        )}
+                    </div>
+                    
+                    {/* Approval Status Selector */}
+                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-2 justify-center">
+                        <span>Approval:</span>
+                        <select
+                            value={approvalStatus}
+                            onChange={e => setApprovalStatus(e.target.value as 'draft' | 'pending_approval' | 'approved')}
+                            className={`bg-slate-50 border border-slate-200 p-1 text-xs rounded ${approvalStatus === 'approved' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-50 border-slate-200'} font-medium`}
+                            disabled={approvalStatus === 'approved'} /* Prevent changing status once approved */
+                        >
+                            <option value="draft">Draft</option>
+                            <option value="pending_approval">Pending Approval</option>
+                            <option value="approved">Approved</option>
+                        </select>
+                    </div>
+                    
+                    {editingOrder && editingOrder.sync_status === 'synced' && (
+                        <div className="flex items-center gap-1">
+                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-tighter">SYNCED</span>
+                            <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    )}
+                    {invoiceNumberError && (
+                        <div className="text-[10px] text-rose-600 font-medium mt-1">{invoiceNumberError}</div>
+                    )}
+                    {editingOrder && editingOrder.sync_status === 'synced' && (
+                        <div className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            This invoice has been synced to Google Sheets
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -747,18 +941,20 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-1.5">
                                                     <div className="flex items-center bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
-                                                        <button 
-                                                            onClick={() => updateLineQty(line.line_id, -1)}
-                                                            className="px-2 py-0.5 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+                                                        <button
+                                                            onClick={() => !isEditingDisabled && updateLineQty(line.line_id, -1)}
+                                                            className={`px-2 py-0.5 ${isEditingDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-200 active:bg-slate-300'} transition-colors`}
+                                                            disabled={isEditingDisabled}
                                                         >
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                                                         </button>
                                                         <span className="px-2 py-0.5 bg-white text-[10px] font-black text-slate-800 border-x border-slate-200 min-w-[24px] text-center">
                                                             {line.quantity}
                                                         </span>
-                                                        <button 
-                                                            onClick={() => updateLineQty(line.line_id, 1)}
-                                                            className="px-2 py-0.5 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+                                                        <button
+                                                            onClick={() => !isEditingDisabled && updateLineQty(line.line_id, 1)}
+                                                            className={`px-2 py-0.5 ${isEditingDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-200 active:bg-slate-300'} transition-colors`}
+                                                            disabled={isEditingDisabled}
                                                         >
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                                                         </button>
@@ -768,7 +964,11 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                             </div>
                                             <div className="flex items-center gap-3 shrink-0">
                                                 <span className="font-bold text-slate-800 text-xs">{formatCurrency(line.line_total)}</span>
-                                                <button onClick={() => removeLine(line.line_id)} className="w-6 h-6 rounded-full bg-slate-50 text-slate-300 hover:bg-rose-100 hover:text-rose-500 flex items-center justify-center transition-colors">
+                                                <button 
+                                                    onClick={() => !isEditingDisabled && removeLine(line.line_id)} 
+                                                    className={`w-6 h-6 rounded-full ${isEditingDisabled ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-slate-50 text-slate-300 hover:bg-rose-100 hover:text-rose-500'} flex items-center justify-center transition-colors`}
+                                                    disabled={isEditingDisabled}
+                                                >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                             </div>
@@ -788,12 +988,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 <div className="flex justify-between items-center text-sm text-slate-600">
                                     <span>Discount 1 (%)</span>
                                     <div className="flex items-center gap-2">
-                                        <input 
-                                            type="number" 
-                                            step="1" 
+                                        <input
+                                            type="number"
+                                            step="1"
                                             min="0"
                                             max="100"
-                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold ${isEditingDisabled ? 'bg-slate-100 cursor-not-allowed' : ''}`}
                                             value={discountRate}
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => {
@@ -802,6 +1002,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 if (val > 100) val = 100;
                                                 setDiscountRate(val);
                                             }}
+                                            disabled={isEditingDisabled}
                                         />
                                         <span className="text-rose-600">-{formatCurrency(primaryDiscountValue)}</span>
                                     </div>
@@ -811,12 +1012,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                     <div className="flex justify-between items-center text-sm text-slate-600">
                                         <span>Discount 2 (%)</span>
                                         <div className="flex items-center gap-2">
-                                            <input 
-                                                type="number" 
-                                                step="1" 
+                                            <input
+                                                type="number"
+                                                step="1"
                                                 min="0"
                                                 max="100"
-                                                className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                                className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold ${isEditingDisabled ? 'bg-slate-100 cursor-not-allowed' : ''}`}
                                                 value={secondaryDiscountRate}
                                                 onFocus={(e) => e.target.select()}
                                                 onChange={(e) => {
@@ -825,6 +1026,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                     if (val > 100) val = 100;
                                                     setSecondaryDiscountRate(val);
                                                 }}
+                                                disabled={isEditingDisabled}
                                             />
                                             <span className="text-rose-600">-{formatCurrency(secondaryDiscountValue)}</span>
                                         </div>
@@ -834,12 +1036,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 <div className="flex justify-between items-center text-sm text-slate-600">
                                     <span>Tax (%)</span>
                                     <div className="flex items-center gap-2">
-                                        <input 
-                                            type="number" 
-                                            step="0.1" 
+                                        <input
+                                            type="number"
+                                            step="0.1"
                                             min="0"
                                             max="100"
-                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold`}
+                                            className={`w-16 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold ${isEditingDisabled ? 'bg-slate-100 cursor-not-allowed' : ''}`}
                                             value={taxRate}
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => {
@@ -848,6 +1050,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                                 if (val > 100) val = 100;
                                                 setTaxRate(val);
                                             }}
+                                            disabled={isEditingDisabled}
                                         />
                                         <span className="text-slate-800">+{formatCurrency(taxValue)}</span>
                                     </div>
@@ -858,12 +1061,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                     <span>{formatCurrency(netTotal)}</span>
                                 </div>
                             </div>
-                            <button 
-                                disabled={lines.length === 0}
-                                onClick={() => setShowPaymentModal(true)}
+                            <button
+                                disabled={lines.length === 0 || isEditingDisabled}
+                                onClick={() => !isEditingDisabled && setShowPaymentModal(true)}
                                 className={`w-full ${themeClasses.bg} text-white py-3 rounded-xl font-bold ${themeClasses.bgHover} disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-[0.98] transition-all text-sm`}
                             >
-                                Checkout ({lines.length} Items)
+                                {isEditingDisabled ? 'Editing Locked (Approved)' : `Checkout (${lines.length} Items)`}
                             </button>
                         </div>
                      </div>
@@ -925,16 +1128,23 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                         <div className="space-y-4 mb-8">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Payment Amount</label>
-                                <input 
-                                    type="number" 
-                                    className={`w-full p-3 bg-white border-2 border-slate-200 rounded-xl text-lg font-bold focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
+                                <input
+                                    type="number"
+                                    className={`w-full p-3 ${isEditingDisabled ? 'bg-slate-100' : 'bg-white'} border-2 border-slate-200 rounded-xl text-lg font-bold focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
                                     value={paymentAmount}
                                     onFocus={(e) => e.target.select()}
-                                    onChange={e => setPaymentAmount(e.target.value)}
-                                    placeholder="Enter amount"
+                                    onChange={e => !isEditingDisabled && setPaymentAmount(e.target.value)}
+                                    placeholder={isEditingDisabled ? "Editing locked" : "Enter amount"}
+                                    disabled={isEditingDisabled}
                                 />
                                 <div className="flex justify-between mt-1 px-1">
-                                    <button onClick={() => setPaymentAmount(netTotal.toFixed(2))} className={`text-xs font-bold ${themeClasses.text}`}>Full Payment</button>
+                                    <button 
+                                        onClick={() => !isEditingDisabled && setPaymentAmount(netTotal.toFixed(2))} 
+                                        className={`text-xs font-bold ${themeClasses.text} ${isEditingDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        disabled={isEditingDisabled}
+                                    >
+                                        Full Payment
+                                    </button>
                                     <span className={`text-xs font-bold ${netTotal - (parseFloat(paymentAmount) || 0) > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                                         Balance Due: {formatCurrency(Math.max(0, netTotal - (parseFloat(paymentAmount) || 0)))}
                                     </span>
@@ -944,10 +1154,11 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Method</label>
-                                    <select 
-                                        className={`w-full p-3 bg-white border-2 border-slate-200 rounded-xl font-medium focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
+                                    <select
+                                        className={`w-full p-3 ${isEditingDisabled ? 'bg-slate-100' : 'bg-white'} border-2 border-slate-200 rounded-xl font-medium focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
                                         value={paymentType}
-                                        onChange={e => setPaymentType(e.target.value as PaymentType)}
+                                        onChange={e => !isEditingDisabled && setPaymentType(e.target.value as PaymentType)}
+                                        disabled={isEditingDisabled}
                                     >
                                         <option value="cash">Cash</option>
                                         <option value="cheque">Cheque</option>
@@ -958,23 +1169,25 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                 {paymentType !== 'cash' && paymentType !== 'credit' && (
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Reference No.</label>
-                                        <input 
-                                            type="text" 
-                                            className={`w-full p-3 bg-white border-2 border-slate-200 rounded-xl font-medium focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
+                                        <input
+                                            type="text"
+                                            className={`w-full p-3 ${isEditingDisabled ? 'bg-slate-100' : 'bg-white'} border-2 border-slate-200 rounded-xl font-medium focus:${themeClasses.border.replace('200', '500')} focus:outline-none`}
                                             value={paymentRef}
-                                            onChange={e => setPaymentRef(e.target.value)}
-                                            placeholder="Last 4 digits"
+                                            onChange={e => !isEditingDisabled && setPaymentRef(e.target.value)}
+                                            placeholder={isEditingDisabled ? "Editing locked" : "Last 4 digits"}
+                                            disabled={isEditingDisabled}
                                         />
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <button 
-                            onClick={handleFinalizeOrder}
-                            className={`w-full ${themeClasses.bg} text-white py-4 rounded-xl font-black text-lg shadow-lg ${themeClasses.shadow} active:scale-95 transition-transform`}
+                        <button
+                            onClick={isEditingDisabled ? undefined : handleFinalizeOrder}
+                            disabled={isEditingDisabled}
+                            className={`w-full ${themeClasses.bg} text-white py-4 rounded-xl font-black text-lg shadow-lg ${themeClasses.shadow} active:scale-95 transition-transform ${isEditingDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            Confirm Sale
+                            {isEditingDisabled ? 'Editing Locked' : 'Confirm Sale'}
                         </button>
                     </div>
                 </div>

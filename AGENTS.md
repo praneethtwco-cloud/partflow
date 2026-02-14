@@ -63,12 +63,12 @@ npx cap run android      # Run on Android device/emulator
 ### Backend Structure  
 - **Main API**: `api/index.py` - Flask application with CORS and rate limiting
 - **Auth Service**: `api/auth_service.py` - User authentication and password management
-- **Database**: `api/database.py` - Google Sheets integration and data operations
-- **Utils**: `api/utils.py` - Google Sheets API service and configuration
+- **Database**: `services/db.ts` - Dexie.js local database with Supabase sync
+- **Utils**: `services/supabase.ts` - Supabase API service and configuration
 
 ### Data Layer
 - **Local Storage**: IndexedDB via Dexie.js for offline-first functionality
-- **Cloud Sync**: Google Sheets API for bidirectional data synchronization
+- **Cloud Sync**: Supabase for bidirectional data synchronization with offline support
 - **Tables**: `customers`, `items`, `orders`, `payments`, `stock_adjustments`
 
 ---

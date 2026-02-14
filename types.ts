@@ -64,7 +64,7 @@ export interface Order extends BaseEntity {
   tax_value?: number;
   net_total: number;
   credit_period?: number; // Snapshot of credit terms at time of order
-  
+
   // Payment Tracking
   paid_amount: number;
   balance_due: number;
@@ -76,6 +76,15 @@ export interface Order extends BaseEntity {
 
   order_status: OrderStatus;
   lines: OrderLine[];
+
+  // Invoice Numbering
+  invoice_number?: string;
+
+  // Approval Status
+  approval_status: 'draft' | 'pending_approval' | 'approved'; // New approval status field
+
+  // Sync Tracking
+  original_invoice_number?: string; // To track original invoice number for sync purposes
 }
 
 export interface Item extends BaseEntity {
@@ -109,6 +118,7 @@ export interface CompanySettings {
   phone: string;
   rep_name: string;
   invoice_prefix: string;
+  starting_invoice_number: number;
   footer_note: string;
   currency_symbol: string;
   tax_rate?: number; // Default tax rate (0.0 to 1.0)
@@ -116,7 +126,6 @@ export interface CompanySettings {
   stock_tracking_enabled: boolean;
   category_enabled: boolean; // New Setting
   show_sku_in_item_cards?: boolean; // New Setting - default false
-  google_sheet_id?: string;
   logo_base64?: string;
   show_advanced_sync_options?: boolean; // New Setting for advanced sync options visibility
 }

@@ -9,6 +9,7 @@ import { useToast } from '../context/ToastContext';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
 import { InventorySkeleton } from './ui/skeletons/ListSkeletons';
+import { CsvImportComponent } from './CsvImportComponent';
 
 import { Modal } from './ui/Modal';
 
@@ -385,12 +386,12 @@ export const InventoryList: React.FC = () => {
                     onChange={handleImportCSV} 
                 />
                 
-                <button 
+                <button
                     onClick={() => fileInputRef.current?.click()}
                     className={`hidden md:flex bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 shadow-sm transition-all active:scale-95 items-center gap-2 font-bold text-sm shrink-0`}
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Import
+                    Import CSV
                 </button>
 
                 <button 
@@ -406,19 +407,19 @@ export const InventoryList: React.FC = () => {
          {/* Mobile Filters (Collapsible) */}
          {showFilters && (
             <div className="md:hidden grid grid-cols-2 gap-2 animate-in slide-in-from-top-1">
-                <input 
-                    placeholder="Model" 
+                <input
+                    placeholder="Model"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none"
                     value={modelFilter}
                     onChange={e => setModelFilter(e.target.value)}
                 />
-                <input 
-                    placeholder="Origin" 
+                <input
+                    placeholder="Origin"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none"
                     value={countryFilter}
                     onChange={e => setCountryFilter(e.target.value)}
                 />
-                <select 
+                <select
                     className="w-full col-span-2 px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-600 focus:outline-none"
                     value={sortOrder}
                     onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
@@ -427,12 +428,12 @@ export const InventoryList: React.FC = () => {
                     <option value="High-Low">Stock: High to Low</option>
                     <option value="Low-High">Stock: Low to High</option>
                 </select>
-                <button 
+                <button
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full col-span-2 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white text-slate-600 flex items-center justify-center gap-2"
                 >
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                     Import CSV
+                     Import Items CSV
                 </button>
             </div>
          )}
@@ -802,6 +803,11 @@ export const InventoryList: React.FC = () => {
             confirmText={alertConfig.confirmText || "OK"}
           />
       )}
+      
+      {/* CSV Import Component for other entities */}
+      <div className="mt-6">
+        <CsvImportComponent onImportComplete={() => setItems(db.getItems())} />
+      </div>
     </div>
   );
 };

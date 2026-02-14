@@ -50,7 +50,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
     }
 
     const linePages = paginateLines(order.lines || []);
-    const safeInvNo = (order.order_id || '').toUpperCase();
+    const safeInvNo = (order.invoice_number || order.order_id || '').toUpperCase();
 
     const handleDownload = async () => {
         try {
@@ -142,7 +142,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                 ) : (
                                     <div className="flex justify-between border-b border-black pb-2 mb-5">
                                         <span className="font-bold uppercase">{settings.company_name} - Page {pageIndex + 1}</span>
-                                        <span className="font-bold">Inv: {settings.invoice_prefix}{safeInvNo}</span>
+                                        <span className="font-bold">Inv: {safeInvNo}</span>
                                     </div>
                                 )}
 
@@ -163,7 +163,17 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                             </div>
                                             <div className="flex mb-1 justify-between">
                                                 <span className="font-bold text-slate-500 uppercase text-[10px]">Invoice No:</span>
-                                                <span className="font-black text-indigo-600">{settings.invoice_prefix}{safeInvNo}</span>
+                                                <span className="font-black text-indigo-600">{safeInvNo}</span>
+                                            </div>
+                                            <div className="flex mb-1 justify-between">
+                                                <span className="font-bold text-slate-500 uppercase text-[10px]">Approval:</span>
+                                                <span className={`font-bold ${
+                                                    order.approval_status === 'approved' ? 'text-emerald-600' : 
+                                                    order.approval_status === 'pending_approval' ? 'text-amber-600' : 
+                                                    'text-slate-600'
+                                                }`}>
+                                                    {order.approval_status?.replace('_', ' ') || 'Draft'}
+                                                </span>
                                             </div>
                                             <div className="flex mb-1 justify-between">
                                                 <span className="font-bold text-slate-500 uppercase text-[10px]">Rep:</span>
