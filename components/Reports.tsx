@@ -365,8 +365,8 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                                         }}
                                     >
                                         <td className="px-4 py-4 text-slate-500 font-mono text-xs">{o.order_date}</td>
-                                        <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline">
-                                            {o.invoice_number || o.order_id.substring(0, 6).toUpperCase()}
+                                        <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline break-all">
+                                            {o.invoice_number || o.order_id}
                                         </td>
                                         <td className="px-4 py-4 uppercase text-[9px] font-black">{o.delivery_status || 'pending'}</td>
                                         <td className="px-4 py-4 text-center">
@@ -396,7 +396,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                         <div key={o.order_id} onClick={() => { setSelectedOrder(o); setView('invoice'); }} className="bg-slate-50 p-4 rounded-xl border border-slate-100 active:scale-[0.98] transition-transform">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{o.invoice_number || o.order_id.substring(0, 6).toUpperCase()}</span>
+                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded break-all">{o.invoice_number || o.order_id}</span>
                                     <p className="text-xs font-bold text-slate-500 mt-1">{o.order_date}</p>
                                 </div>
                                 <span className={`text-sm font-black ${o.payment_status === 'paid' ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -529,8 +529,8 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                                                     }}
                                                 >
                                                     <td className="px-4 py-4 text-slate-500 font-mono text-xs">{order.order_date}</td>
-                                                    <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline">
-                                                        {order.invoice_number || order.order_id.substring(0, 6).toUpperCase()}
+                                                    <td className="px-4 py-4 font-bold text-indigo-600 group-hover:underline break-all">
+                                                        {order.invoice_number || order.order_id}
                                                     </td>
                                                     <td className="px-4 py-4 font-medium text-slate-700">{cleanText(customer?.shop_name || 'Unknown')}</td>
                                                     <td className="px-4 py-4 text-center">
@@ -572,8 +572,8 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                                         >
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
-                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                                                        {order.invoice_number || order.order_id.substring(0, 6).toUpperCase()}
+                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded break-all">
+                                                        {order.invoice_number || order.order_id}
                                                     </span>
                                                     <p className="text-xs font-bold text-slate-500 mt-1">{order.order_date}</p>
                                                     <p className="text-xs text-slate-600 mt-1">{cleanText(customer?.shop_name || 'Unknown')}</p>

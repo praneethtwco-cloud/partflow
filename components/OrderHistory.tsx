@@ -240,8 +240,8 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                         <div>
                                             <h3 className="font-bold text-slate-900 text-sm">{getCustomerName(order.customer_id)}</h3>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                                    #{order.order_id.substring(0, 6).toUpperCase()}
+                                                <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all">
+                                                    #{(order.invoice_number || order.order_id).toUpperCase()}
                                                 </span>
                                                 {order.delivery_status && (
                                                     <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border ${getDeliveryColor(order.delivery_status)}`}>
@@ -325,7 +325,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                         <div className="flex justify-between items-center mb-6">
                             <div>
                                 <h3 className="text-lg font-black text-slate-800 mb-1">Update Delivery</h3>
-                                <p className="text-xs font-mono text-slate-500">#{selectedOrder.order_id.substring(0, 6).toUpperCase()}</p>
+                                <p className="text-xs font-mono text-slate-500 break-all">#{(selectedOrder.invoice_number || selectedOrder.order_id).toUpperCase()}</p>
                             </div>
                             <button onClick={() => { setShowDeliveryModal(false); setSelectedOrder(null); }} className="bg-slate-100 p-2 rounded-full text-slate-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
