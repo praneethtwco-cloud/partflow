@@ -354,6 +354,8 @@ class SupabaseSyncService {
     if (data.adjustments.length > 0) {
       this.addLog(`Uploading ${data.adjustments.length} stock adjustments to Supabase...`);
       const transformedAdjustments = data.adjustments.map(transformDates);
+      console.log(`Attempting to upload ${data.adjustments.length} adjustments to Supabase:`, transformedAdjustments.slice(0, 3)); // Log first 3 for debugging
+      
       const { error } = await this.supabase
         .from('stock_adjustments')
         .upsert(transformedAdjustments, {
@@ -364,9 +366,11 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Adjustment upload error details:', error);
+        console.error('Adjustment data that failed:', transformedAdjustments.slice(0, 3)); // Log first 3 for debugging
         supabaseSyncTracker.logPushToSupabase('adjustments', data.adjustments.length, false, error.message);
         throw new Error(`Failed to upload adjustments: ${error.message}`);
       } else {
+        console.log(`Successfully uploaded ${data.adjustments.length} adjustments to Supabase`);
         supabaseSyncTracker.logPushToSupabase('adjustments', data.adjustments.length, true, `${mode} mode`);
       }
     }

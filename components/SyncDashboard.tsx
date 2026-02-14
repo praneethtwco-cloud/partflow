@@ -10,6 +10,7 @@ import { DatabaseClearButtons } from './DatabaseClearButtons';
 import { CsvImportComponent } from './CsvImportComponent';
 import { supabaseSyncService } from '../services/supabase-sync-service';
 import { ImportLogViewer } from './ImportLogViewer';
+import { diagnoseSyncIssues } from '../utils/sync-diagnostics';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -366,12 +367,23 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                         </svg>
                         Import Logs
                     </h3>
-                    <button
-                        onClick={() => setShowImportLogViewer(true)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium ${themeClasses.bg} text-white hover:${themeClasses.hover}`}
-                    >
-                        View Logs
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={async () => {
+                                await diagnoseSyncIssues();
+                                showToast("Sync diagnostics completed. Check console for details.", "info");
+                            }}
+                            className="px-3 py-2 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        >
+                            Diagnose
+                        </button>
+                        <button
+                            onClick={() => setShowImportLogViewer(true)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium ${themeClasses.bg} text-white hover:${themeClasses.hover}`}
+                        >
+                            View Logs
+                        </button>
+                    </div>
                 </div>
                 <p className="text-xs text-slate-500">
                     Review detailed logs of all CSV import activities and sync results

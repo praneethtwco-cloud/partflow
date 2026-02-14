@@ -13,10 +13,11 @@
 - html5-qrcode 2.3.8 for barcode scanning
 - Lucide React 0.563.0 for icons
 - Recharts 3.7.0 for data visualization
+- Supabase 2.95.3 for cloud sync
 
 ---
 
-## 📋 Build, Lint & Test Commands
+## Build, Lint & Test Commands
 
 ### Frontend (React + Vite)
 ```bash
@@ -30,15 +31,17 @@ npm run sync              # Build and sync to Android (Capacitor)
 
 # Package Management
 npm install               # Install dependencies
-npm ci                   # Clean install for CI/CD
-```
+npm ci                    # Clean install for CI/CD
 
-**Note**: No linting or testing framework currently configured. Recommend adding:
-```bash
-# Recommended additions
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install --save-dev prettier eslint-config-prettier
-npm install --save-dev @testing-library/react @testing-library/jest-dom vitest jsdom
+# Testing (none configured - see below)
+# Once configured with Vitest:
+# npm test                 # Run all tests
+# npm test -- run SingleFile.test.ts   # Run single file
+# npm test -- --watch    # Watch mode
+# npm test -- --coverage # Coverage report
+
+# Linting (none configured - see below)
+# npm run lint            # Run ESLint (once configured)
 ```
 
 ### Android Development
@@ -48,9 +51,27 @@ npx cap open android     # Open Android Studio
 npx cap run android      # Run on Android device/emulator
 ```
 
+### Backend (Flask API)
+```bash
+cd api
+pip install -r requirements.txt
+python index.py          # Start Flask API server
+```
+
+**Note**: No linting or testing framework currently configured. To add:
+```bash
+# Testing framework (recommended: Vitest)
+npm install --save-dev vitest jsdom @testing-library/react @testing-library/jest-dom
+npm install --save-dev @vitejs/plugin-react
+
+# Linting (recommended)
+npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+npm install --save-dev prettier eslint-config-prettier
+```
+
 ---
 
-## 🏗️ Project Architecture
+## Project Architecture
 
 ### Frontend Structure
 - **Entry Point**: `App.tsx` - Main application with tab navigation and state management
@@ -63,8 +84,6 @@ npx cap run android      # Run on Android device/emulator
 ### Backend Structure  
 - **Main API**: `api/index.py` - Flask application with CORS and rate limiting
 - **Auth Service**: `api/auth_service.py` - User authentication and password management
-- **Database**: `services/db.ts` - Dexie.js local database with Supabase sync
-- **Utils**: `services/supabase.ts` - Supabase API service and configuration
 
 ### Data Layer
 - **Local Storage**: IndexedDB via Dexie.js for offline-first functionality
@@ -73,73 +92,122 @@ npx cap run android      # Run on Android device/emulator
 
 ---
 
-## 🎨 Code Style Guidelines
+## Code Style Guidelines
 
 ### TypeScript & React
-- **Framework**: React 19.2.4 with functional components and hooks
+- **Framework**: React 19.x with functional components and hooks
 - **TypeScript**: Strict mode enabled with comprehensive type definitions in `types.ts`
 - **Component Pattern**: Functional components with explicit prop interfaces
 - **State Management**: React hooks for local state, context for global state
 - **Routing**: Tab-based navigation with history stack management
-- **Path Aliases**: `@/*` configured in both tsconfig.json and vite.config.ts for clean imports
+- **Path Aliases**: `@/*` configured in tsconfig.json and vite.config.ts
 
-### Import Organization
+### Import Organization (Order: External → Internal)
 ```typescript
-// External libraries first
-import React, { useState, useEffect } from 'react';
-import Dexie, { Table } from 'dexie';
+// 1. React and React DOM
+import React, { useState, useEffect, useCallback } from 'react';
 
-// Internal imports (use absolute paths with @ alias)
-import { Customer, Order } from '../types';
-import { db } from '../services/db';
-import { useAuth } from '../context/AuthContext';
+// 2. Third-party libraries
+import Dexie, { Table } from 'dexie';
+import { useNavigate } from 'react-router-dom';
+
+// 3. Internal absolute imports (use @ alias)
+import { Customer, Order } from '@/types';
+import { db } from '@/services/db';
+import { useAuth } from '@/context/AuthContext';
+
+// 4. Relative imports for same-module files
+import { formatCurrency } from './currency';
 ```
 
 ### Component Structure
 ```typescript
 interface ComponentProps {
-  // Props with clear TypeScript types
   data: Item[];
   onAction: (id: string) => void;
+  isLoading?: boolean;
 }
 
-export const Component: React.FC<ComponentProps> = ({ data, onAction }) => {
-  // Hooks first
+export const Component: React.FC<ComponentProps> = ({ data, onAction, isLoading }) => {
+  // Hooks first (custom hooks, then state, then refs)
   const { themeClasses } = useTheme();
   const [state, setState] = useState<Type>(initialValue);
   
-  // Effects
+  // Effects (alphabetically by dependency)
   useEffect(() => {
-    // Side effects
+    // Side effects with proper cleanup
+    return () => {
+      // Cleanup logic
+    };
   }, [dependencies]);
   
-  // Event handlers
-  const handleClick = () => {
-    // Handler logic
-  };
+  // Event handlers (handleXxx naming)
+  const handleClick = useCallback((id: string) => {
+    onAction(id);
+  }, [onAction]);
+  
+  // Early returns for loading/error states
+  if (isLoading) {
+    return <Spinner />;
+  }
   
   // Render
   return (
     <div className={themeClasses.container}>
-      {/* JSX content */}
+      {data.map(item => (
+        <div key={item.id}>{item.name}</div>
+      ))}
     </div>
   );
 };
 ```
 
 ### Naming Conventions
-- **Components**: PascalCase with descriptive names (`OrderBuilder`, `CustomerList`)
-- **Variables**: camelCase with semantic meaning (`outstanding_balance`, `sync_status`)
+- **Components**: PascalCase (`OrderBuilder`, `CustomerList`, `ItemCard`)
+- **Hooks**: camelCase starting with `use` (`useAuth`, `useTheme`)
+- **Variables**: camelCase with semantic meaning (`outstandingBalance`, `syncStatus`)
 - **Types/Interfaces**: PascalCase (`Customer`, `Order`, `PaymentType`)
-- **Constants**: UPPER_SNAKE_CASE for configuration (`STORAGE_KEYS`, `API_ENDPOINTS`)
-- **Files**: kebab-case for components, camelCase for utilities (`order-builder.tsx`, `currency.ts`)
+- **Constants**: UPPER_SNAKE_CASE for config (`STORAGE_KEYS`, `API_ENDPOINTS`)
+- **Files**: kebab-case for components, camelCase for utilities
+- **Props Interfaces**: ComponentNameProps suffix (`OrderBuilderProps`)
 
-### Database & API Patterns
-- **Dexie.js**: Use service layer pattern in `services/db.ts`
-- **Type Safety**: All database operations must use TypeScript interfaces
-- **Error Handling**: Try-catch blocks with user-friendly error messages via Toast context
-- **Async Operations**: Always use async/await, never chain `.then()`
-- **Batch Operations**: Use transactions for multiple related updates
+### Error Handling
+- **Try-Catch**: Always wrap async operations in try-catch
+- **User Feedback**: Use ToastContext for user-friendly error messages
+- **Error Boundaries**: Wrap critical sections with error boundaries
+- **Logging**: Log errors appropriately (console.error for dev, sentry for prod)
+```typescript
+try {
+  await db.orders.add(order);
+} catch (error) {
+  console.error('Failed to save order:', error);
+  showToast('Failed to save order. Please try again.', 'error');
+}
+```
+
+### Async Patterns
+- **Always use async/await**: Never chain `.then()` or `.catch()`
+- **Proper typing**: Always type async functions with return types
+- **Loading states**: Show loading indicators during async operations
+```typescript
+const handleSave = async (): Promise<void> => {
+  setIsLoading(true);
+  try {
+    await saveOrder(data);
+    showToast('Order saved successfully', 'success');
+  } catch (error) {
+    showToast('Failed to save order', 'error');
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Database & API Patterns (Dexie.js)
+- **Service Layer**: All DB operations in `services/db.ts`
+- **Type Safety**: All tables and operations use TypeScript interfaces
+- **Transactions**: Use transactions for multiple related updates
+- **Offline First**: Design for offline-first with sync to Supabase
 
 ### Styling & UI
 - **CSS Framework**: Tailwind CSS (utility-first approach)
@@ -148,3 +216,28 @@ export const Component: React.FC<ComponentProps> = ({ data, onAction }) => {
 - **Modals**: Use `Modal` component from `components/ui/Modal.tsx`
 - **Loading States**: Skeleton components in `components/ui/skeletons/`
 
+### Code Quality Rules
+- **No `any`**: Avoid `any` type; use `unknown` or proper generics
+- **Explicit Returns**: Always declare return types for functions
+- **Early Returns**: Use early returns to reduce nesting
+- **Destructuring**: Prefer destructuring for props and state
+- **Constants**: Extract magic numbers to named constants
+
+---
+
+## Agent-Specific Guidelines
+
+### When Making Changes
+1. Run `npm run build` before committing to verify no build errors
+2. Use TypeScript strict mode - avoid `any` types
+3. Test on mobile viewport (375px width) as primary target
+
+### When Adding New Features
+1. Follow existing component patterns in `components/`
+2. Add types to `types.ts` before implementing
+3. Use Dexie.js for local storage, not localStorage directly
+
+### When Fixing Bugs
+1. Identify root cause, not just symptoms
+2. Add error handling where missing
+3. Test edge cases (empty data, network failure, etc.)

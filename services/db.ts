@@ -908,7 +908,7 @@ class LocalDB {
             return; // Exit early, will sync when authenticated
           }
 
-          await supabaseService.syncData(
+          const result = await supabaseService.syncData(
             [],
             [],
             [],
@@ -917,10 +917,30 @@ class LocalDB {
             [adjustmentToSave],
             'upsert'
           );
-          // Update sync status to 'synced'
-          const updatedAdjustment = { ...adjustmentToSave, sync_status: 'synced' as const };
-          await this.db.stockAdjustments.put(updatedAdjustment);
-          this.cache.adjustments[this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id)] = updatedAdjustment;
+          
+          if (result.success) {
+            // Update sync status to 'synced'
+            const updatedAdjustment = { 
+              ...adjustmentToSave, 
+              sync_status: 'synced' as const,
+              last_updated: new Date().toISOString() // Update last_updated for CSV compatibility
+            };
+            await this.db.stockAdjustments.put(updatedAdjustment);
+            const cacheIndex = this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id);
+            if (cacheIndex >= 0) {
+              this.cache.adjustments[cacheIndex] = updatedAdjustment;
+            }
+            console.log(`Successfully synced adjustment ${adjustment.adjustment_id} to Supabase`);
+          } else {
+            console.error('Failed to sync adjustment to Supabase:', result.message);
+            // If sync fails, add to queue for later
+            supabaseSyncService.enqueue({
+              id: adjustment.adjustment_id,
+              entity: 'adjustment',
+              operation: index >= 0 ? 'update' : 'create',
+              data: adjustmentToSave
+            });
+          }
         } catch (error) {
           console.error('Error syncing adjustment immediately:', error);
           // If immediate sync fails, add to queue for later
@@ -1771,7 +1791,8 @@ class LocalDB {
       const orders = this.getOrders();
       const settings = [this.getSettings()];
       const users = this.cache.users;
-      const adjustments = this.getStockAdjustments();
+      // Only get pending adjustments to sync
+      const adjustments = this.getStockAdjustments().filter(adj => adj.sync_status === 'pending');
 
       // Perform sync to push all pending changes
       const result = await supabaseService.syncData(
