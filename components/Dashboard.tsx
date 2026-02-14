@@ -6,6 +6,7 @@ import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
+import { ImportSyncSummary } from './ImportSyncSummary';
 
 interface DashboardProps {
     onAction: (tab: string) => void;
@@ -126,6 +127,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                     <p className="text-3xl font-black text-slate-800 group-hover:scale-110 origin-left transition-transform">{stats.totalOrders}</p>
                     <p className={`text-[10px] ${themeClasses.text} font-bold mt-1 ${themeClasses.bgSoft} inline-block px-1.5 rounded`}>All Time</p>
                 </div>
+            </div>
+
+            {/* Import/Sync Summary */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4">
+                <ImportSyncSummary />
             </div>
 
             {/* Quick Actions Section */}

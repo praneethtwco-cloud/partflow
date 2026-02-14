@@ -8,6 +8,7 @@ import {
   User
 } from '../types';
 import { SUPABASE_CONFIG } from '../config';
+import { supabaseSyncTracker } from './supabase-sync-tracker';
 
 interface QueuedOperation {
   id: string;
@@ -150,7 +151,28 @@ class SupabaseSyncService {
       // Pull latest data from Supabase
       const pulledData = await this.pullLatestData();
 
+      // Log sync operations
+      supabaseSyncTracker.logPushToSupabase('customers', uploadData.customers.length, true, `${mode} mode`);
+      supabaseSyncTracker.logPushToSupabase('items', uploadData.items.length, true, `${mode} mode`);
+      supabaseSyncTracker.logPushToSupabase('orders', uploadData.orders.length, true, `${mode} mode`);
+      supabaseSyncTracker.logPushToSupabase('settings', uploadData.settings.length, true, `${mode} mode`);
+      supabaseSyncTracker.logPushToSupabase('users', uploadData.users.length, true, `${mode} mode`);
+      supabaseSyncTracker.logPushToSupabase('adjustments', uploadData.adjustments.length, true, `${mode} mode`);
+
+      supabaseSyncTracker.logPullFromSupabase('customers', pulledData.customers?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('items', pulledData.items?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('orders', pulledData.orders?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('settings', pulledData.settings?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('users', pulledData.users?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('adjustments', pulledData.adjustments?.length || 0, true);
+
       this.addLog("Supabase sync successful.");
+      this.addLog(`Pushed ${uploadData.customers.length} customers to cloud.`);
+      this.addLog(`Pushed ${uploadData.items.length} items to cloud.`);
+      this.addLog(`Pushed ${uploadData.orders.length} orders to cloud.`);
+      this.addLog(`Pushed ${uploadData.settings.length} settings to cloud.`);
+      this.addLog(`Pushed ${uploadData.users.length} users to cloud.`);
+      this.addLog(`Pushed ${uploadData.adjustments.length} adjustments to cloud.`);
       this.addLog(`Pulled ${pulledData.items?.length || 0} items from cloud.`);
       this.addLog(`Pulled ${pulledData.customers?.length || 0} customers from cloud.`);
       this.addLog(`Pulled ${pulledData.orders?.length || 0} orders from cloud.`);
@@ -169,6 +191,14 @@ class SupabaseSyncService {
         logs: this.currentLogs
       };
     } catch (err: any) {
+      // Log sync failure
+      supabaseSyncTracker.logSyncWithSupabase('customers', uploadData?.customers?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('items', uploadData?.items?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('orders', uploadData?.orders?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('settings', uploadData?.settings?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('users', uploadData?.users?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('adjustments', uploadData?.adjustments?.length || 0, false, err.message);
+
       this.addLog(`Supabase Error: ${err.message}`);
       return {
         success: false,
@@ -219,7 +249,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Customer upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('customers', data.customers.length, false, error.message);
         throw new Error(`Failed to upload customers: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('customers', data.customers.length, true, `${mode} mode`);
       }
     }
 
@@ -237,7 +270,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Item upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('items', data.items.length, false, error.message);
         throw new Error(`Failed to upload items: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('items', data.items.length, true, `${mode} mode`);
       }
     }
 
@@ -255,7 +291,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Order upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('orders', data.orders.length, false, error.message);
         throw new Error(`Failed to upload orders: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('orders', data.orders.length, true, `${mode} mode`);
       }
     }
 
@@ -273,7 +312,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Settings upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('settings', data.settings.length, false, error.message);
         throw new Error(`Failed to upload settings: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('settings', data.settings.length, true, `${mode} mode`);
       }
     }
 
@@ -301,7 +343,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('User upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('users', data.users.length, false, error.message);
         throw new Error(`Failed to upload users: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('users', data.users.length, true, `${mode} mode`);
       }
     }
 
@@ -319,7 +364,10 @@ class SupabaseSyncService {
 
       if (error) {
         console.error('Adjustment upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('adjustments', data.adjustments.length, false, error.message);
         throw new Error(`Failed to upload adjustments: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('adjustments', data.adjustments.length, true, `${mode} mode`);
       }
     }
   }
@@ -339,6 +387,9 @@ class SupabaseSyncService {
     if (itemsError) {
       console.error(`Error: Failed to pull items: ${itemsError.message}`);
       console.error('Error details:', itemsError);
+      supabaseSyncTracker.logPullFromSupabase('items', 0, false, itemsError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('items', items?.length || 0, true);
     }
 
     // Pull customers
@@ -349,6 +400,9 @@ class SupabaseSyncService {
     if (customersError) {
       console.error(`Error: Failed to pull customers: ${customersError.message}`);
       console.error('Error details:', customersError);
+      supabaseSyncTracker.logPullFromSupabase('customers', 0, false, customersError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('customers', customers?.length || 0, true);
     }
 
     // Pull orders
@@ -359,6 +413,9 @@ class SupabaseSyncService {
     if (ordersError) {
       console.error(`Error: Failed to pull orders: ${ordersError.message}`);
       console.error('Error details:', ordersError);
+      supabaseSyncTracker.logPullFromSupabase('orders', 0, false, ordersError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('orders', orders?.length || 0, true);
     }
 
     // Pull settings
@@ -370,6 +427,9 @@ class SupabaseSyncService {
     if (settingsError) {
       console.error(`Error: Failed to pull settings: ${settingsError.message}`);
       console.error('Error details:', settingsError);
+      supabaseSyncTracker.logPullFromSupabase('settings', 0, false, settingsError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('settings', settings?.length || 0, true);
     }
 
     // Pull users
@@ -380,6 +440,9 @@ class SupabaseSyncService {
     if (usersError) {
       console.error(`Error: Failed to pull users: ${usersError.message}`);
       console.error('Error details:', usersError);
+      supabaseSyncTracker.logPullFromSupabase('users', 0, false, usersError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('users', users?.length || 0, true);
     }
 
     // Pull stock adjustments
@@ -390,6 +453,9 @@ class SupabaseSyncService {
     if (adjustmentsError) {
       console.error(`Error: Failed to pull adjustments: ${adjustmentsError.message}`);
       console.error('Error details:', adjustmentsError);
+      supabaseSyncTracker.logPullFromSupabase('adjustments', 0, false, adjustmentsError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('adjustments', adjustments?.length || 0, true);
     }
 
     return {

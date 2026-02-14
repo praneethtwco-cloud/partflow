@@ -1,0 +1,9 @@
+Order ID,Customer ID,Rep ID,Date,Gross Total,Disc 1 Rate,Disc 1 Value,Disc 2 Rate,Disc 2 Value,Net Total,Paid,Balance Due,Payment Status,Delivery Status,Credit Period,Status,Last Updated
+CF361F,4TGR010,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-13,685,0.35,239.75,0,0,445.25,0,445.25,unpaid,pending,90,confirmed,2026-02-13T13:51:49.311Z
+1.73E+84,AGGW013,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-13,210,0.3,63,0,0,147,0,147,unpaid,pending,90,confirmed,2026-02-13T15:25:06.580Z
+1A5341,AHKM061,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-13,685,0.3,205.5,0,0,479.5,0,479.5,unpaid,pending,90,confirmed,2026-02-13T15:20:34.532Z
+7A493C,AGGW013,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-13,210,0.3,63,0,0,147,0,147,unpaid,pending,90,confirmed,2026-02-13T16:31:33.327Z
+AA8EBD,AMGM014,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-13,685,0.3,205.5,0,0,479.5,0,479.5,unpaid,pending,90,confirmed,2026-02-13T16:35:49.032Z
+VM-5348,AGGW013,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-14,895,0.3,268.5,0,0,626.5,0,626.5,unpaid,pending,90,confirmed,2026-02-14T01:46:00.251Z
+VM-5349,AMGM014,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-14,895,0.3,268.5,0,0,626.5,0,626.5,unpaid,pending,90,confirmed,2026-02-14T02:36:51.577Z
+19A581,TSHM008,314098d8-c157-4caa-bf2c-9dd8ef988bc7,2026-02-14,69000,0.3,20700,0,0,48300,0,48300,unpaid,pending,90,confirmed,2026-02-14T04:05:22.065Z

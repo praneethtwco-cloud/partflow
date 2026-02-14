@@ -42,12 +42,17 @@ export interface Customer extends BaseEntity {
   address: string;
   phone: string;
   city_ref: string;
+  city?: string; // For CSV compatibility
   discount_rate: number; // Primary discount 0.0 to 1.0
+  discount_1?: number; // For CSV compatibility - Primary discount
+  discount_2?: number; // For CSV compatibility - Secondary discount
   secondary_discount_rate?: number; // Secondary discount 0.0 to 1.0
   outstanding_balance: number; // Track credit
+  balance?: number; // For CSV compatibility
   credit_period: number; // New: Credit period in days (e.g. 30, 60, 90)
   credit_limit?: number; // Maximum credit allowed
   status: EntityStatus;
+  last_updated?: string; // For CSV compatibility
 }
 
 export interface Order extends BaseEntity {
@@ -55,6 +60,10 @@ export interface Order extends BaseEntity {
   customer_id: string;
   rep_id?: string;
   order_date: string;
+  disc_1_rate?: number; // For CSV compatibility - Discount 1 Rate
+  disc_1_value?: number; // For CSV compatibility - Discount 1 Value
+  disc_2_rate?: number; // For CSV compatibility - Discount 2 Rate
+  disc_2_value?: number; // For CSV compatibility - Discount 2 Value
   discount_rate: number;
   gross_total: number;
   discount_value: number;
@@ -67,6 +76,7 @@ export interface Order extends BaseEntity {
 
   // Payment Tracking
   paid_amount: number;
+  paid?: number; // For CSV compatibility
   balance_due: number;
   payment_status: PaymentStatus;
   payments: Payment[];
@@ -75,6 +85,7 @@ export interface Order extends BaseEntity {
   delivery_notes?: string;
 
   order_status: OrderStatus;
+  status?: string; // For CSV compatibility
   lines: OrderLine[];
 
   // Invoice Numbering
@@ -85,21 +96,29 @@ export interface Order extends BaseEntity {
 
   // Sync Tracking
   original_invoice_number?: string; // To track original invoice number for sync purposes
+  
+  // Additional fields for CSV compatibility
+  last_updated?: string; // For CSV compatibility
 }
 
 export interface Item extends BaseEntity {
   item_id: string;
   item_display_name: string; // "Brake Pad (Toyota Corolla)"
   item_name: string; // Internal/Generic name
+  internal_name?: string; // For CSV compatibility
   item_number: string; // SKU
   vehicle_model: string;
   source_brand: string; // e.g. "China", "Japan", "Denso"
+  brand_origin?: string; // For CSV compatibility
   category: string; // e.g. "Engine", "Brakes", "Suspension"
   unit_value: number;
   current_stock_qty: number;
   low_stock_threshold: number;
   is_out_of_stock: boolean; // New Manual Flag
+  stock_qty?: number; // For CSV compatibility
+  low_stock_threshold_csv?: number; // For CSV compatibility
   status: EntityStatus; // 'active' or 'discontinued'
+  last_updated?: string; // For CSV compatibility
 }
 
 export interface OrderLine {
@@ -109,6 +128,7 @@ export interface OrderLine {
   item_name: string; // Snapshot
   quantity: number;
   unit_value: number; // Snapshot
+  unit_price?: number; // For CSV compatibility
   line_total: number;
 }
 

@@ -1,15 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { parseCsv } from '../utils/csv';
-import { 
-  downloadCsvTemplate, 
-  validateCsvAgainstTemplate, 
-  CSV_TEMPLATES 
+import {
+  downloadCsvTemplate,
+  validateCsvAgainstTemplate,
+  CSV_TEMPLATES
 } from '../utils/csv-templates';
 import { db } from '../services/db';
 import { Customer, Item, Order, CompanySettings } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import { csvImportService } from '../services/csv-import-service';
 
 interface CsvImportComponentProps {
   onImportComplete?: () => void;
@@ -56,122 +56,21 @@ export const CsvImportComponent: React.FC<CsvImportComponentProps> = ({ onImport
         return;
       }
 
-      // Parse the CSV
-      const data = await parseCsv(file);
-      
-      // Process the data based on entity type
-      let successCount = 0;
-      switch (selectedEntityType) {
-        case 'customers':
-          for (const row of data) {
-            if (!row.shop_name) continue; // Skip invalid rows
-            
-            const newCustomer: Customer = {
-              customer_id: row.customer_id || generateUUID(),
-              shop_name: row.shop_name || '',
-              address: row.address || '',
-              phone: row.phone || '',
-              email: row.email || '',
-              outstanding_balance: parseFloat(row.outstanding_balance) || 0,
-              secondary_discount_rate: parseFloat(row.secondary_discount_rate) || 0,
-              created_at: row.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              sync_status: row.sync_status || 'pending'
-            };
+      // Use the new CSV import service to handle the import
+      const result = await csvImportService.importByEntityType(
+        selectedEntityType as 'customers' | 'items' | 'orders' | 'orderLines', 
+        file
+      );
 
-            await db.saveCustomer(newCustomer);
-            successCount++;
-          }
-          break;
-
-        case 'items':
-          for (const row of data) {
-            if (!row.item_display_name) continue; // Skip invalid rows
-            
-            const newItem: Item = {
-              item_id: row.item_id || generateUUID(),
-              item_display_name: row.item_display_name || '',
-              item_name: row.item_name || row.item_display_name || '',
-              item_number: row.item_number || row.SKU || '',
-              vehicle_model: row.vehicle_model || '',
-              source_brand: row.source_brand || '',
-              category: row.category || 'Uncategorized',
-              unit_value: parseFloat(row.unit_value) || 0,
-              current_stock_qty: parseInt(row.current_stock_qty) || 0,
-              low_stock_threshold: parseInt(row.low_stock_threshold) || 10,
-              is_out_of_stock: row.is_out_of_stock === 'true' || row.is_out_of_stock === true,
-              status: row.status || 'active',
-              created_at: row.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              sync_status: row.sync_status || 'pending'
-            };
-
-            await db.saveItem(newItem);
-            successCount++;
-          }
-          break;
-
-        case 'orders':
-          for (const row of data) {
-            if (!row.customer_id || !row.order_date) continue; // Skip invalid rows
-            
-            const newOrder: Order = {
-              order_id: row.order_id || generateUUID(),
-              customer_id: row.customer_id,
-              order_date: row.order_date || new Date().toISOString().split('T')[0],
-              order_status: row.order_status || 'draft',
-              delivery_status: row.delivery_status || 'pending',
-              payment_status: row.payment_status || 'unpaid',
-              net_total: parseFloat(row.net_total) || 0,
-              paid_amount: parseFloat(row.paid_amount) || 0,
-              balance_due: parseFloat(row.balance_due) || 0,
-              approval_status: row.approval_status || 'draft',
-              invoice_number: row.invoice_number || undefined,
-              original_invoice_number: row.original_invoice_number || undefined,
-              lines: row.lines ? JSON.parse(row.lines) : [],
-              payments: row.payments ? JSON.parse(row.payments) : [],
-              delivery_notes: row.delivery_notes || '',
-              created_at: row.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              sync_status: row.sync_status || 'pending'
-            };
-
-            await db.saveOrder(newOrder);
-            successCount++;
-          }
-          break;
-
-        case 'settings':
-          if (data.length > 0) {
-            const settingsData = data[0]; // Only process the first row for settings (singleton)
-            
-            const newSettings: CompanySettings = {
-              id: settingsData.id || 'main',
-              company_name: settingsData.company_name || 'Default Company',
-              address: settingsData.address || '',
-              phone: settingsData.phone || '',
-              email: settingsData.email || '',
-              logo_url: settingsData.logo_url || '',
-              auto_sku_enabled: settingsData.auto_sku_enabled === 'true',
-              stock_tracking_enabled: settingsData.stock_tracking_enabled === 'true',
-              category_enabled: settingsData.category_enabled === 'true',
-              show_sku_in_item_cards: settingsData.show_sku_in_item_cards === 'true',
-              invoice_prefix: settingsData.invoice_prefix || 'INV',
-              starting_invoice_number: parseInt(settingsData.starting_invoice_number) || 1,
-              show_advanced_sync_options: settingsData.show_advanced_sync_options === 'true',
-              created_at: settingsData.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              sync_status: settingsData.sync_status || 'pending'
-            };
-
-            await db.saveSettings(newSettings);
-            successCount = 1; // Only one settings object
-          }
-          break;
+      if (result.success) {
+        showToast(result.message, 'success');
+      } else {
+        showToast(`Import failed: ${result.message}`, 'error');
+        if (result.errors && result.errors.length > 0) {
+          console.error("CSV Import Errors:", result.errors);
+        }
       }
 
-      showToast(`Successfully imported ${successCount} ${selectedEntityType}`, 'success');
-      
       if (onImportComplete) {
         onImportComplete();
       }

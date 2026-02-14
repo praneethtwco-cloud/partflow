@@ -45,10 +45,10 @@ class PartFlowDB extends Dexie {
 
     constructor() {
         super('PartFlowDB');
-        this.version(10).stores({
-            customers: 'customer_id, shop_name, sync_status',
-            items: 'item_id, item_number, item_display_name, sync_status, status',
-            orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status, invoice_number, original_invoice_number, approval_status',
+        this.version(11).stores({
+            customers: 'customer_id, shop_name, sync_status, city, discount_1, discount_2, balance, last_updated',
+            items: 'item_id, item_number, item_display_name, sync_status, status, internal_name, last_updated',
+            orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status, invoice_number, original_invoice_number, approval_status, disc_1_rate, disc_1_value, disc_2_rate, disc_2_value, paid, status, last_updated',
             stockAdjustments: 'adjustment_id, item_id, sync_status',
             settings: 'id',
             users: 'id, username'
@@ -218,11 +218,126 @@ class LocalDB {
           this.db.stockAdjustments.toArray(),
           this.db.users.toArray()
       ]);
-      
-      // Migrate existing orders to include approval_status and invoice_number using the new sequential numbering system
+
+      // Migrate existing customers to include new CSV-compatible fields
+      const migratedCustomers = c.map(customer => {
+          let updatedCustomer = { ...customer };
+
+          // Add missing fields for CSV compatibility
+          if (!updatedCustomer.city) {
+              updatedCustomer = {
+                  ...updatedCustomer,
+                  city: updatedCustomer.city_ref || ''
+              };
+          }
+
+          if (updatedCustomer.discount_rate !== undefined && updatedCustomer.discount_1 === undefined) {
+              updatedCustomer = {
+                  ...updatedCustomer,
+                  discount_1: updatedCustomer.discount_rate
+              };
+          }
+
+          if (updatedCustomer.secondary_discount_rate !== undefined && updatedCustomer.discount_2 === undefined) {
+              updatedCustomer = {
+                  ...updatedCustomer,
+                  discount_2: updatedCustomer.secondary_discount_rate
+              };
+          }
+
+          if (updatedCustomer.outstanding_balance !== undefined && updatedCustomer.balance === undefined) {
+              updatedCustomer = {
+                  ...updatedCustomer,
+                  balance: updatedCustomer.outstanding_balance
+              };
+          }
+
+          if (!updatedCustomer.last_updated) {
+              updatedCustomer = {
+                  ...updatedCustomer,
+                  last_updated: updatedCustomer.updated_at
+              };
+          }
+
+          return updatedCustomer;
+      });
+
+      // Migrate existing items to include new CSV-compatible fields
+      const migratedItems = i.map(item => {
+          let updatedItem = { ...item };
+
+          // Add missing fields for CSV compatibility
+          if (!updatedItem.internal_name) {
+              updatedItem = {
+                  ...updatedItem,
+                  internal_name: updatedItem.item_name || ''
+              };
+          }
+
+          if (!updatedItem.last_updated) {
+              updatedItem = {
+                  ...updatedItem,
+                  last_updated: updatedItem.updated_at
+              };
+          }
+
+          return updatedItem;
+      });
+
+      // Migrate existing orders to include new CSV-compatible fields and approval_status
       const settings = (s as CompanySettings) || SEED_SETTINGS;
       const migratedOrders = o.map(order => {
           let updatedOrder = { ...order };
+
+          // Add missing fields for CSV compatibility
+          if (updatedOrder.discount_rate !== undefined && updatedOrder.disc_1_rate === undefined) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  disc_1_rate: updatedOrder.discount_rate
+              };
+          }
+
+          if (updatedOrder.discount_value !== undefined && updatedOrder.disc_1_value === undefined) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  disc_1_value: updatedOrder.discount_value
+              };
+          }
+
+          if (updatedOrder.secondary_discount_rate !== undefined && updatedOrder.disc_2_rate === undefined) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  disc_2_rate: updatedOrder.secondary_discount_rate
+              };
+          }
+
+          if (updatedOrder.secondary_discount_value !== undefined && updatedOrder.disc_2_value === undefined) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  disc_2_value: updatedOrder.secondary_discount_value
+              };
+          }
+
+          if (updatedOrder.paid_amount !== undefined && updatedOrder.paid === undefined) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  paid: updatedOrder.paid_amount
+              };
+          }
+
+          if (!updatedOrder.status) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  status: updatedOrder.order_status || 'draft'
+              };
+          }
+
+          if (!updatedOrder.last_updated) {
+              updatedOrder = {
+                  ...updatedOrder,
+                  last_updated: updatedOrder.updated_at
+              };
+          }
 
           // Set approval_status if not already set
           if (!order.approval_status) {
@@ -259,8 +374,8 @@ class LocalDB {
           return updatedOrder;
       });
 
-      this.cache.customers = c;
-      this.cache.items = i;
+      this.cache.customers = migratedCustomers;
+      this.cache.items = migratedItems;
       this.cache.orders = migratedOrders;
       this.cache.settings = (s as CompanySettings) || SEED_SETTINGS;
       this.cache.adjustments = a;
@@ -275,7 +390,18 @@ class LocalDB {
   async saveCustomer(customer: Customer): Promise<void> {
     // Optimistic Update
     const index = this.cache.customers.findIndex(c => c.customer_id === customer.customer_id);
-    const customerToSave = { ...customer, sync_status: 'pending' as const, updated_at: new Date().toISOString() };
+    
+    // Ensure all CSV-compatible fields are properly set
+    const customerToSave = { 
+      ...customer, 
+      sync_status: 'pending' as const, 
+      updated_at: new Date().toISOString(),
+      last_updated: new Date().toISOString(), // Add last_updated for CSV compatibility
+      city: customer.city || customer.city_ref, // Ensure city field is populated
+      discount_1: customer.discount_1 !== undefined ? customer.discount_1 : customer.discount_rate,
+      discount_2: customer.discount_2 !== undefined ? customer.discount_2 : customer.secondary_discount_rate,
+      balance: customer.balance !== undefined ? customer.balance : customer.outstanding_balance
+    };
 
     if (index >= 0) this.cache.customers[index] = customerToSave;
     else this.cache.customers.push(customerToSave);
@@ -291,7 +417,7 @@ class LocalDB {
         operation: index >= 0 ? 'update' : 'create',
         data: customerToSave
       });
-      
+
       // Also add to the new Supabase sync queue
       supabaseSyncService.enqueue({
         id: customer.customer_id,
@@ -314,7 +440,7 @@ class LocalDB {
           });
           return; // Exit early, will sync when authenticated
         }
-        
+
         await supabaseService.syncData(
           [customerToSave],
           [],
@@ -361,7 +487,15 @@ class LocalDB {
 
   async saveItem(item: Item): Promise<void> {
     const index = this.cache.items.findIndex(i => i.item_id === item.item_id);
-    const itemToSave = { ...item, sync_status: 'pending' as const, updated_at: new Date().toISOString() };
+    
+    // Ensure all CSV-compatible fields are properly set
+    const itemToSave = { 
+      ...item, 
+      sync_status: 'pending' as const, 
+      updated_at: new Date().toISOString(),
+      last_updated: new Date().toISOString(), // Add last_updated for CSV compatibility
+      internal_name: item.internal_name || item.item_name // Ensure internal_name is populated
+    };
 
     if (index >= 0) this.cache.items[index] = itemToSave;
     else this.cache.items.push(itemToSave);
@@ -376,7 +510,7 @@ class LocalDB {
         operation: index >= 0 ? 'update' : 'create',
         data: itemToSave
       });
-      
+
       // Also add to the new Supabase sync queue
       supabaseSyncService.enqueue({
         id: item.item_id,
@@ -399,7 +533,7 @@ class LocalDB {
           });
           return; // Exit early, will sync when authenticated
         }
-        
+
         await supabaseService.syncData(
           [],
           [],
@@ -433,6 +567,7 @@ class LocalDB {
       item.status = 'inactive';
       item.sync_status = 'pending';
       item.updated_at = new Date().toISOString();
+      item.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
       // Update cache
       this.cache.items[index] = item;
       // Persist
@@ -447,6 +582,7 @@ class LocalDB {
       this.cache.items[index].current_stock_qty += qtyDelta;
       this.cache.items[index].sync_status = 'pending';
       this.cache.items[index].updated_at = new Date().toISOString();
+      this.cache.items[index].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
       await this.db.items.put(this.cache.items[index]);
     }
   }
@@ -488,7 +624,15 @@ class LocalDB {
         payment_status: status,
         delivery_status: order.delivery_status || 'pending',
         sync_status: 'pending' as const,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        // Add CSV-compatible fields
+        disc_1_rate: order.disc_1_rate !== undefined ? order.disc_1_rate : order.discount_rate,
+        disc_1_value: order.disc_1_value !== undefined ? order.disc_1_value : order.discount_value,
+        disc_2_rate: order.disc_2_rate !== undefined ? order.disc_2_rate : order.secondary_discount_rate,
+        disc_2_value: order.disc_2_value !== undefined ? order.disc_2_value : order.secondary_discount_value,
+        paid: order.paid !== undefined ? order.paid : paid,
+        status: order.status || order.order_status || 'draft',
+        last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
     };
 
     if (index >= 0) this.cache.orders[index] = orderToSave;
@@ -504,7 +648,7 @@ class LocalDB {
         operation: index >= 0 ? 'update' : 'create',
         data: orderToSave
       });
-      
+
       // Also add to the new Supabase sync queue
       supabaseSyncService.enqueue({
         id: order.order_id,
@@ -527,7 +671,7 @@ class LocalDB {
           });
           return; // Exit early, will sync when authenticated
         }
-        
+
         await supabaseService.syncData(
           [],
           [orderToSave],
@@ -614,7 +758,8 @@ class LocalDB {
       // Add payment
       order.payments = [...(order.payments || []), payment];
       order.paid_amount = order.payments.reduce((sum, p) => sum + p.amount, 0);
-      
+      order.paid = order.paid_amount; // Update paid for CSV compatibility
+
       await this.saveOrder(order);
   }
 
@@ -627,6 +772,7 @@ class LocalDB {
       order.delivery_status = status;
       if (notes !== undefined) order.delivery_notes = notes;
       order.updated_at = new Date().toISOString();
+      order.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
       order.sync_status = 'pending';
 
       // Logical Fix: Restore stock if delivery failed or cancelled
@@ -635,7 +781,7 @@ class LocalDB {
           order.lines.forEach(async line => {
               await this.updateStock(line.item_id, line.quantity);
           });
-      } 
+      }
       // If moving BACK to an active state, re-deduce stock
       else if ((status !== 'failed' && status !== 'cancelled') && (oldStatus === 'failed' || oldStatus === 'cancelled')) {
           order.lines.forEach(async line => {
@@ -644,7 +790,7 @@ class LocalDB {
       }
 
       await this.db.orders.put(order);
-      
+
       // Update Customer Balance (Failed/Cancelled orders removed from balance)
       await this.recalcCustomerBalance(order.customer_id);
   }
@@ -665,7 +811,9 @@ class LocalDB {
           const customer = this.cache.customers[customerIndex];
           if (customer.outstanding_balance !== totalDue) {
               customer.outstanding_balance = totalDue;
+              customer.balance = totalDue; // Update balance for CSV compatibility
               customer.updated_at = new Date().toISOString();
+              customer.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
               customer.sync_status = 'pending';
               await this.db.customers.put(customer);
           }
@@ -674,10 +822,10 @@ class LocalDB {
 
   async deleteOrder(orderId: string): Promise<void> {
       const index = this.cache.orders.findIndex(o => o.order_id === orderId);
-      
+
       if (index >= 0) {
           const order = this.cache.orders[index];
-          
+
           // Restore Stock if order was confirmed
           if (order.order_status === 'confirmed') {
               order.lines.forEach(async line => {
@@ -700,7 +848,12 @@ class LocalDB {
   async addStockAdjustment(adjustment: StockAdjustment): Promise<void> {
       // 1. Save Adjustment Record
       const index = this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id);
-      const adjustmentToSave = { ...adjustment, sync_status: 'pending' as const, updated_at: new Date().toISOString() };
+      const adjustmentToSave = { 
+        ...adjustment, 
+        sync_status: 'pending' as const, 
+        updated_at: new Date().toISOString(),
+        last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+      };
 
       if (index >= 0) this.cache.adjustments[index] = adjustmentToSave;
       else this.cache.adjustments.push(adjustmentToSave);
@@ -731,7 +884,7 @@ class LocalDB {
           operation: index >= 0 ? 'update' : 'create',
           data: adjustmentToSave
         });
-        
+
         // Also add to the new Supabase sync queue
         supabaseSyncService.enqueue({
           id: adjustment.adjustment_id,
@@ -754,7 +907,7 @@ class LocalDB {
             });
             return; // Exit early, will sync when authenticated
           }
-          
+
           await supabaseService.syncData(
             [],
             [],
@@ -788,7 +941,13 @@ class LocalDB {
 
   async saveSettings(settings: CompanySettings): Promise<void> {
     this.cache.settings = settings;
-    await this.db.settings.put({ ...settings, id: 'main' } as any);
+    const settingsToSave = { 
+      ...settings, 
+      id: 'main',
+      updated_at: new Date().toISOString(),
+      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+    };
+    await this.db.settings.put(settingsToSave as any);
 
     // If offline, add to sync queue
     if (!this.isOnline) {
@@ -796,15 +955,15 @@ class LocalDB {
         id: 'settings',
         entity: 'settings',
         operation: 'update',
-        data: { ...settings, id: 'main' }
+        data: settingsToSave
       });
-      
+
       // Also add to the new Supabase sync queue
       supabaseSyncService.enqueue({
         id: 'settings',
         entity: 'settings',
         operation: 'update',
-        data: { ...settings, id: 'main' }
+        data: settingsToSave
       });
     } else {
       // If online, attempt to sync immediately
@@ -817,24 +976,24 @@ class LocalDB {
             id: 'settings',
             entity: 'settings',
             operation: 'update',
-            data: { ...settings, id: 'main' }
+            data: settingsToSave
           });
           return; // Exit early, will sync when authenticated
         }
-        
+
         await supabaseService.syncData(
           [],
           [],
           [],
-          [{ ...settings, id: 'main' }],
+          [settingsToSave],
           [],
           [],
           'upsert'
         );
         // Update sync status to 'synced'
-        const updatedSettings = { ...settings, id: 'main', sync_status: 'synced' as const } as any;
+        const updatedSettings = { ...settingsToSave, sync_status: 'synced' as const } as any;
         await this.db.settings.put(updatedSettings);
-        this.cache.settings = { ...settings, sync_status: 'synced' as const };
+        this.cache.settings = { ...settingsToSave, sync_status: 'synced' as const };
       } catch (error) {
         console.error('Error syncing settings immediately:', error);
         // If immediate sync fails, add to queue for later
@@ -842,7 +1001,7 @@ class LocalDB {
           id: 'settings',
           entity: 'settings',
           operation: 'update',
-          data: { ...settings, id: 'main' }
+          data: settingsToSave
         });
       }
     }
@@ -994,11 +1153,15 @@ class LocalDB {
         await this.db.transaction('rw', this.db.customers, async () => {
              pendingCustomers.forEach(c => {
                  c.sync_status = 'synced';
+                 c.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
                  this.db.customers.put(c);
                  // Cache update handled by reference or reload?
                  // Safe way: update cache object directly
                  const cacheIdx = this.cache.customers.findIndex(cx => cx.customer_id === c.customer_id);
-                 if(cacheIdx >= 0) this.cache.customers[cacheIdx].sync_status = 'synced';
+                 if(cacheIdx >= 0) {
+                   this.cache.customers[cacheIdx].sync_status = 'synced';
+                   this.cache.customers[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                 }
              });
         });
     }
@@ -1007,9 +1170,13 @@ class LocalDB {
         await this.db.transaction('rw', this.db.orders, async () => {
             pendingOrders.forEach(o => {
                 o.sync_status = 'synced';
+                o.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
                 this.db.orders.put(o);
                 const cacheIdx = this.cache.orders.findIndex(ox => ox.order_id === o.order_id);
-                if(cacheIdx >= 0) this.cache.orders[cacheIdx].sync_status = 'synced';
+                if(cacheIdx >= 0) {
+                  this.cache.orders[cacheIdx].sync_status = 'synced';
+                  this.cache.orders[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                }
             });
         });
     }
@@ -1019,9 +1186,13 @@ class LocalDB {
         await this.db.transaction('rw', this.db.items, async () => {
             pendingItems.forEach(i => {
                 i.sync_status = 'synced';
+                i.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
                 this.db.items.put(i);
                 const cacheIdx = this.cache.items.findIndex(ix => ix.item_id === i.item_id);
-                if(cacheIdx >= 0) this.cache.items[cacheIdx].sync_status = 'synced';
+                if(cacheIdx >= 0) {
+                  this.cache.items[cacheIdx].sync_status = 'synced';
+                  this.cache.items[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                }
             });
         });
     }
@@ -1031,9 +1202,13 @@ class LocalDB {
         await this.db.transaction('rw', this.db.stockAdjustments, async () => {
             adjustments.forEach(a => {
                 a.sync_status = 'synced';
+                a.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
                 this.db.stockAdjustments.put(a);
                 const cacheIdx = this.cache.adjustments.findIndex(ax => ax.adjustment_id === a.adjustment_id);
-                if(cacheIdx >= 0) this.cache.adjustments[cacheIdx].sync_status = 'synced';
+                if(cacheIdx >= 0) {
+                  this.cache.adjustments[cacheIdx].sync_status = 'synced';
+                  this.cache.adjustments[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                }
             });
         });
     }
@@ -1075,24 +1250,31 @@ class LocalDB {
         await this.db.transaction('rw', this.db.items, async () => {
              // Conflict Resolution Logic:
              // If we have pending local changes that were NOT pushed (e.g. because of error or partial sync),
-             // we need to decide. 
+             // we need to decide.
              // BUT, performSync puts everything in 'pending' status into the push payload.
              // If push succeeded, status is 'synced'.
-             // So if we are here, push succeeded. The only conflicts are if cloud has NEWER data 
+             // So if we are here, push succeeded. The only conflicts are if cloud has NEWER data
              // that overwrites our just-pushed data? No, last write wins.
              // REAL CONFLICT: We pulled data BEFORE pushing?
              // The current logic is Push (lines 532) THEN Pull (lines 574).
              // If Push succeeds, local items are 'synced'. Then we blindly overwrite with Cloud.
              // This is safe IF Cloud includes our just-pushed changes.
-             
+
              // However, for robust Conflict Resolution feature request:
              // We need a mode to PULL FIRST, detect conflicts, then RESOLVE, then PUSH.
              // This method performSync is the "Blind Sync".
-             
+
+             // Ensure new fields are properly set for pulled items
+             const processedItems = result.pulledItems!.map(item => ({
+               ...item,
+               last_updated: item.last_updated || item.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
+               internal_name: item.internal_name || item.item_name || '' // Ensure internal_name for CSV compatibility
+             }));
+
              await this.db.items.clear();
-             await this.db.items.bulkPut(result.pulledItems!);
+             await this.db.items.bulkPut(processedItems);
         });
-        this.cache.items = result.pulledItems;
+        this.cache.items = result.pulledItems!;
     }
 
     // FULLY REPLACE CUSTOMERS FROM PULL
@@ -1100,47 +1282,75 @@ class LocalDB {
         if (onLog) onLog(`Updating local shop directory with ${result.pulledCustomers.length} records.`);
         await this.db.transaction('rw', this.db.customers, async () => {
             // Logic: Upsert pulled data (Cloud is source of truth for synced data)
-            // But we keep local pending changes if they exist? 
+            // But we keep local pending changes if they exist?
             // Better: If user is pulling, they want to sync. For simplicity, match Item replacement.
+            
+            // Ensure new fields are properly set for pulled customers
+            const processedCustomers = result.pulledCustomers!.map(customer => ({
+              ...customer,
+              last_updated: customer.last_updated || customer.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
+              city: customer.city || customer.city_ref || '', // Ensure city for CSV compatibility
+              discount_1: customer.discount_1 !== undefined ? customer.discount_1 : customer.discount_rate,
+              discount_2: customer.discount_2 !== undefined ? customer.discount_2 : customer.secondary_discount_rate,
+              balance: customer.balance !== undefined ? customer.balance : customer.outstanding_balance
+            }));
+            
             await this.db.customers.clear();
-            await this.db.customers.bulkPut(result.pulledCustomers!);
+            await this.db.customers.bulkPut(processedCustomers);
         });
-        this.cache.customers = result.pulledCustomers;
+        this.cache.customers = result.pulledCustomers!;
     }
 
     // REPLACE ONLY SYNCED ORDERS FROM PULL, PRESERVE LOCAL DRAFT ORDERS
     if (result.pulledOrders && result.pulledOrders.length > 0) {
         if (onLog) onLog(`Restoring order history: ${result.pulledOrders.length} records found from cloud.`);
-        
+
         // Get all local orders that should be preserved (not synced OR not approved/pending_approval)
-        const localPreservedOrders = this.cache.orders.filter(order => 
-            order.sync_status !== 'synced' || 
+        const localPreservedOrders = this.cache.orders.filter(order =>
+            order.sync_status !== 'synced' ||
             order.approval_status === 'draft'
         );
-        
+
         await this.db.transaction('rw', this.db.orders, async () => {
             // Clear all orders from the database
             await this.db.orders.clear();
-            
+
+            // Process cloud orders to ensure new fields are properly set
+            const processedCloudOrders = result.pulledOrders!.map(order => ({
+              ...order,
+              last_updated: order.last_updated || order.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
+              disc_1_rate: order.disc_1_rate !== undefined ? order.disc_1_rate : order.discount_rate,
+              disc_1_value: order.disc_1_value !== undefined ? order.disc_1_value : order.discount_value,
+              disc_2_rate: order.disc_2_rate !== undefined ? order.disc_2_rate : order.secondary_discount_rate,
+              disc_2_value: order.disc_2_value !== undefined ? order.disc_2_value : order.secondary_discount_value,
+              paid: order.paid !== undefined ? order.paid : order.paid_amount,
+              status: order.status || order.order_status || 'draft'
+            }));
+
             // Add back the cloud orders
-            await this.db.orders.bulkPut(result.pulledOrders!);
-            
+            await this.db.orders.bulkPut(processedCloudOrders);
+
             // Add back the local orders that should be preserved
             for (const preservedOrder of localPreservedOrders) {
                 await this.db.orders.put(preservedOrder);
             }
         });
-        
+
         // Update cache to include both cloud orders and local preserved orders
-        this.cache.orders = [...result.pulledOrders, ...localPreservedOrders];
+        this.cache.orders = [...result.pulledOrders!, ...localPreservedOrders];
     }
 
     // UPDATE SETTINGS FROM PULL
     if (result.pulledSettings) {
         if (onLog) onLog(`Updating local settings from cloud.`);
         await this.db.transaction('rw', this.db.settings, async () => {
+            const processedSettings = {
+              ...result.pulledSettings,
+              id: 'main',
+              last_updated: result.pulledSettings.last_updated || result.pulledSettings.updated_at || new Date().toISOString() // Ensure last_updated for CSV compatibility
+            };
             await this.db.settings.clear();
-            await this.db.settings.put({ ...result.pulledSettings, id: 'main' } as any);
+            await this.db.settings.put(processedSettings as any);
         });
         this.cache.settings = result.pulledSettings;
     }
@@ -1159,10 +1369,16 @@ class LocalDB {
     if (result.pulledAdjustments && result.pulledAdjustments.length > 0) {
         if (onLog) onLog(`Updating local stock adjustments from cloud.`);
         await this.db.transaction('rw', this.db.stockAdjustments, async () => {
+            // Process adjustments to ensure new fields are properly set
+            const processedAdjustments = result.pulledAdjustments!.map(adj => ({
+              ...adj,
+              last_updated: adj.last_updated || adj.updated_at || new Date().toISOString() // Ensure last_updated for CSV compatibility
+            }));
+            
             await this.db.stockAdjustments.clear();
-            await this.db.stockAdjustments.bulkPut(result.pulledAdjustments!);
+            await this.db.stockAdjustments.bulkPut(processedAdjustments);
         });
-        this.cache.adjustments = result.pulledAdjustments;
+        this.cache.adjustments = result.pulledAdjustments!;
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
@@ -1197,15 +1413,16 @@ class LocalDB {
               const hasDiff =
                   localItem.item_display_name !== cloudItem.item_display_name ||
                   localItem.unit_value !== cloudItem.unit_value ||
-                  localItem.current_stock_qty !== cloudItem.current_stock_qty;
+                  localItem.current_stock_qty !== cloudItem.current_stock_qty ||
+                  localItem.internal_name !== cloudItem.internal_name; // Check new CSV-compatible field
 
               if (hasDiff) {
                   // Determine which version is newer based on updated_at timestamp (last-write-wins)
                   const localTime = new Date(localItem.updated_at).getTime();
                   const cloudTime = new Date(cloudItem.updated_at).getTime();
-                  
+
                   const winner = localTime > cloudTime ? 'local' : 'cloud';
-                  
+
                   conflicts.push({
                       type: 'item',
                       id: localItem.item_id,
@@ -1225,15 +1442,19 @@ class LocalDB {
           if (localCustomer && localCustomer.sync_status === 'pending') {
               const hasDiff =
                   localCustomer.shop_name !== cloudCustomer.shop_name ||
-                  localCustomer.outstanding_balance !== cloudCustomer.outstanding_balance;
+                  localCustomer.outstanding_balance !== cloudCustomer.outstanding_balance ||
+                  localCustomer.city !== cloudCustomer.city || // Check new CSV-compatible field
+                  localCustomer.discount_1 !== cloudCustomer.discount_1 || // Check new CSV-compatible field
+                  localCustomer.discount_2 !== cloudCustomer.discount_2 || // Check new CSV-compatible field
+                  localCustomer.balance !== cloudCustomer.balance; // Check new CSV-compatible field
 
               if (hasDiff) {
                   // Determine which version is newer based on updated_at timestamp (last-write-wins)
                   const localTime = new Date(localCustomer.updated_at).getTime();
                   const cloudTime = new Date(cloudCustomer.updated_at).getTime();
-                  
+
                   const winner = localTime > cloudTime ? 'local' : 'cloud';
-                  
+
                   conflicts.push({
                       type: 'customer',
                       id: localCustomer.customer_id,
@@ -1264,15 +1485,21 @@ class LocalDB {
                   localOrder.invoice_number !== cloudOrder.invoice_number ||
                   localOrder.net_total !== cloudOrder.net_total ||
                   localOrder.order_date !== cloudOrder.order_date ||
-                  localOrder.order_status !== cloudOrder.order_status;
+                  localOrder.order_status !== cloudOrder.order_status ||
+                  localOrder.disc_1_rate !== cloudOrder.disc_1_rate || // Check new CSV-compatible field
+                  localOrder.disc_1_value !== cloudOrder.disc_1_value || // Check new CSV-compatible field
+                  localOrder.disc_2_rate !== cloudOrder.disc_2_rate || // Check new CSV-compatible field
+                  localOrder.disc_2_value !== cloudOrder.disc_2_value || // Check new CSV-compatible field
+                  localOrder.paid !== cloudOrder.paid || // Check new CSV-compatible field
+                  localOrder.status !== cloudOrder.status; // Check new CSV-compatible field
 
               if (hasDiff) {
                   // Determine which version is newer based on updated_at timestamp (last-write-wins)
                   const localTime = new Date(localOrder.updated_at).getTime();
                   const cloudTime = new Date(cloudOrder.updated_at).getTime();
-                  
+
                   const winner = localTime > cloudTime ? 'local' : 'cloud';
-                  
+
                   conflicts.push({
                       type: 'order',
                       id: localOrder.order_id,
@@ -1313,7 +1540,11 @@ class LocalDB {
               const resolution = resolutions[item.item_id];
               if (resolution === 'cloud') {
                   // Overwrite local with cloud
-                  await this.db.items.put(item);
+                  const updatedItem = {
+                      ...item,
+                      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                  };
+                  await this.db.items.put(updatedItem);
               } else if (resolution === 'local') {
                   // Keep local (it's already there and pending), do nothing.
                   // It will be pushed in the next step.
@@ -1321,7 +1552,11 @@ class LocalDB {
                   // No conflict, just update (Last Write Wins from Cloud for non-conflicting)
                   const local = this.cache.items.find(i => i.item_id === item.item_id);
                   if (!local || local.sync_status !== 'pending') {
-                      await this.db.items.put(item);
+                      const updatedItem = {
+                          ...item,
+                          last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                      };
+                      await this.db.items.put(updatedItem);
                   }
               }
           }
@@ -1330,13 +1565,21 @@ class LocalDB {
           for (const cust of cloudData.customers) {
               const resolution = resolutions[cust.customer_id];
               if (resolution === 'cloud') {
-                  await this.db.customers.put(cust);
+                  const updatedCustomer = {
+                      ...cust,
+                      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                  };
+                  await this.db.customers.put(updatedCustomer);
               } else if (resolution === 'local') {
                   // Keep local
               } else {
                   const local = this.cache.customers.find(c => c.customer_id === cust.customer_id);
                   if (!local || local.sync_status !== 'pending') {
-                      await this.db.customers.put(cust);
+                      const updatedCustomer = {
+                          ...cust,
+                          last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                      };
+                      await this.db.customers.put(updatedCustomer);
                   }
               }
           }
@@ -1350,7 +1593,8 @@ class LocalDB {
                   const updatedOrder = {
                       ...order,
                       original_invoice_number: order.original_invoice_number || order.invoice_number,
-                      sync_status: 'synced' as const
+                      sync_status: 'synced' as const,
+                      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
                   };
                   await this.db.orders.put(updatedOrder);
               } else if (resolution === 'local') {
@@ -1365,7 +1609,8 @@ class LocalDB {
                       const updatedOrder = {
                           ...order,
                           original_invoice_number: order.original_invoice_number || order.invoice_number,
-                          sync_status: 'synced' as const
+                          sync_status: 'synced' as const,
+                          last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
                       };
                       await this.db.orders.put(updatedOrder);
                   }
@@ -1376,7 +1621,12 @@ class LocalDB {
           for (const setting of cloudData.settings) {
               const resolution = resolutions['settings'];
               if (resolution === 'cloud') {
-                  await this.db.settings.put({ ...setting, id: 'main' } as any);
+                  const updatedSetting = {
+                      ...setting,
+                      id: 'main',
+                      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                  };
+                  await this.db.settings.put(updatedSetting as any);
               }
           }
 
@@ -1392,7 +1642,11 @@ class LocalDB {
           for (const adjustment of cloudData.adjustments) {
               const resolution = resolutions[adjustment.adjustment_id];
               if (resolution === 'cloud') {
-                  await this.db.stockAdjustments.put(adjustment);
+                  const updatedAdjustment = {
+                      ...adjustment,
+                      last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
+                  };
+                  await this.db.stockAdjustments.put(updatedAdjustment);
               }
           }
       });
@@ -1452,12 +1706,13 @@ class LocalDB {
         const updatedOrder = {
           ...order,
           original_invoice_number: order.original_invoice_number || order.invoice_number,
-          sync_status: 'synced' as const
+          sync_status: 'synced' as const,
+          last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
         };
-        
+
         // Update the order in the database
         await this.db.orders.put(updatedOrder);
-        
+
         // Update the cache
         const cacheIndex = this.cache.orders.findIndex(o => o.order_id === order.order_id);
         if (cacheIndex !== -1) {
@@ -1485,8 +1740,9 @@ class LocalDB {
     for (const order of allOrders) {
       const updatedOrder = {
         ...order,
-        invoice_number: order.order_id,
-        original_invoice_number: order.original_invoice_number || order.invoice_number
+        invoice_number: order.invoice_number || order.order_id, // Only update if not already set
+        original_invoice_number: order.original_invoice_number || order.invoice_number || order.order_id,
+        last_updated: new Date().toISOString() // Add last_updated for CSV compatibility
       };
 
       await this.db.orders.put(updatedOrder);
@@ -1571,35 +1827,51 @@ class LocalDB {
     const items = this.getItems();
     const orders = this.getOrders();
     const adjustments = this.getStockAdjustments();
-    
+
     // Update customers
     for (const customer of customers) {
       if (customer.sync_status === 'pending') {
-        await this.saveCustomer({ ...customer, sync_status: 'synced' });
+        await this.saveCustomer({ 
+          ...customer, 
+          sync_status: 'synced' as const,
+          last_updated: new Date().toISOString() // Update last_updated for CSV compatibility
+        });
       }
     }
-    
+
     // Update items
     for (const item of items) {
       if (item.sync_status === 'pending') {
-        await this.saveItem({ ...item, sync_status: 'synced' });
+        await this.saveItem({ 
+          ...item, 
+          sync_status: 'synced' as const,
+          last_updated: new Date().toISOString() // Update last_updated for CSV compatibility
+        });
       }
     }
-    
+
     // Update orders
     for (const order of orders) {
       if (order.sync_status === 'pending') {
-        await this.saveOrder({ ...order, sync_status: 'synced' });
+        await this.saveOrder({ 
+          ...order, 
+          sync_status: 'synced' as const,
+          last_updated: new Date().toISOString() // Update last_updated for CSV compatibility
+        });
       }
     }
-    
+
     // Update adjustments
     for (const adjustment of adjustments) {
       if (adjustment.sync_status === 'pending') {
         // Update adjustment sync status
-        const updatedAdjustment = { ...adjustment, sync_status: 'synced' as const };
+        const updatedAdjustment = { 
+          ...adjustment, 
+          sync_status: 'synced' as const,
+          last_updated: new Date().toISOString() // Update last_updated for CSV compatibility
+        };
         await this.db.stockAdjustments.put(updatedAdjustment);
-        
+
         // Update cache
         const index = this.cache.adjustments.findIndex(a => a.adjustment_id === adjustment.adjustment_id);
         if (index >= 0) {

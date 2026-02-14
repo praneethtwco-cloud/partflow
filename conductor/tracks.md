@@ -67,4 +67,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Fully cloud based app with Supabase, remove manual sync, add CSV import**
 *Link: [./tracks/cloud_app_restructure_20260214/](./tracks/cloud_app_restructure_20260214/)*
 
+---
+
+- [x] **Track: CSV Import Enhancement - Support all four data types with proper column mapping**
+*Link: [./tracks/csv_import_enhancement_20260214/](./tracks/csv_import_enhancement_20260214/)*
+
 

@@ -9,6 +9,7 @@ import { ConflictResolver, ConflictItem } from './ui/ConflictResolver';
 import { DatabaseClearButtons } from './DatabaseClearButtons';
 import { CsvImportComponent } from './CsvImportComponent';
 import { supabaseSyncService } from '../services/supabase-sync-service';
+import { ImportLogViewer } from './ImportLogViewer';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -30,6 +31,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const [showConflictResolver, setShowConflictResolver] = useState(false);
     const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
     const [cloudBuffer, setCloudBuffer] = useState<any>(null);
+    const [showImportLogViewer, setShowImportLogViewer] = useState(false);
 
     // Auto-sync status
     const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
@@ -355,6 +357,27 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             {/* CSV Import Component */}
             <CsvImportComponent onImportComplete={() => setStats(db.getSyncStats())} />
 
+            {/* Import Log Viewer Button */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div className="flex justify-between items-center">
+                    <h3 className={`font-bold ${themeClasses.textDark} mb-2 flex items-center gap-2`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Import Logs
+                    </h3>
+                    <button
+                        onClick={() => setShowImportLogViewer(true)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${themeClasses.bg} text-white hover:${themeClasses.hover}`}
+                    >
+                        View Logs
+                    </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                    Review detailed logs of all CSV import activities and sync results
+                </p>
+            </div>
+
             {/* Config Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                  {isConfiguring ? (
@@ -428,6 +451,11 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
             {/* Database Clear Buttons */}
             <DatabaseClearButtons />
+
+            {/* Import Log Viewer Modal */}
+            {showImportLogViewer && (
+                <ImportLogViewer onClose={() => setShowImportLogViewer(false)} />
+            )}
         </div>
     );
 };
