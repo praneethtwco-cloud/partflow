@@ -1171,65 +1171,64 @@ class LocalDB {
     // UPDATE STATUSES (Update Cache + DB)
     if (pendingCustomers.length > 0) {
         await this.db.transaction('rw', this.db.customers, async () => {
-             pendingCustomers.forEach(c => {
+             for (const c of pendingCustomers) {
                  c.sync_status = 'synced';
-                 c.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
-                 this.db.customers.put(c);
-                 // Cache update handled by reference or reload?
-                 // Safe way: update cache object directly
+                 c.last_updated = new Date().toISOString();
+                 await this.db.customers.put(c);
+                 // Update cache
                  const cacheIdx = this.cache.customers.findIndex(cx => cx.customer_id === c.customer_id);
                  if(cacheIdx >= 0) {
                    this.cache.customers[cacheIdx].sync_status = 'synced';
-                   this.cache.customers[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                   this.cache.customers[cacheIdx].last_updated = c.last_updated;
                  }
-             });
+             }
         });
     }
 
     if (pendingOrders.length > 0) {
         await this.db.transaction('rw', this.db.orders, async () => {
-            pendingOrders.forEach(o => {
+            for (const o of pendingOrders) {
                 o.sync_status = 'synced';
-                o.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
-                this.db.orders.put(o);
+                o.last_updated = new Date().toISOString();
+                await this.db.orders.put(o);
                 const cacheIdx = this.cache.orders.findIndex(ox => ox.order_id === o.order_id);
                 if(cacheIdx >= 0) {
                   this.cache.orders[cacheIdx].sync_status = 'synced';
-                  this.cache.orders[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                  this.cache.orders[cacheIdx].last_updated = o.last_updated;
                 }
-            });
+            }
         });
     }
 
     // UPDATE ITEMS STATUSES
     if (pendingItems.length > 0) {
         await this.db.transaction('rw', this.db.items, async () => {
-            pendingItems.forEach(i => {
+            for (const i of pendingItems) {
                 i.sync_status = 'synced';
-                i.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
-                this.db.items.put(i);
+                i.last_updated = new Date().toISOString();
+                await this.db.items.put(i);
                 const cacheIdx = this.cache.items.findIndex(ix => ix.item_id === i.item_id);
                 if(cacheIdx >= 0) {
                   this.cache.items[cacheIdx].sync_status = 'synced';
-                  this.cache.items[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                  this.cache.items[cacheIdx].last_updated = i.last_updated;
                 }
-            });
+            }
         });
     }
 
     // UPDATE ADJUSTMENTS STATUSES
     if (adjustments.length > 0) {
         await this.db.transaction('rw', this.db.stockAdjustments, async () => {
-            adjustments.forEach(a => {
+            for (const a of adjustments) {
                 a.sync_status = 'synced';
-                a.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
-                this.db.stockAdjustments.put(a);
+                a.last_updated = new Date().toISOString();
+                await this.db.stockAdjustments.put(a);
                 const cacheIdx = this.cache.adjustments.findIndex(ax => ax.adjustment_id === a.adjustment_id);
                 if(cacheIdx >= 0) {
                   this.cache.adjustments[cacheIdx].sync_status = 'synced';
-                  this.cache.adjustments[cacheIdx].last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
+                  this.cache.adjustments[cacheIdx].last_updated = a.last_updated;
                 }
-            });
+            }
         });
     }
 
@@ -1267,58 +1266,52 @@ class LocalDB {
             result.pulledItems = processedItems;
         }
 
+        // Merge pulled items with local pending items
+        // Don't clear the database - only update synced items and add new ones
+        const processedItems = result.pulledItems!.map(item => ({
+          ...item,
+          sync_status: 'synced' as const,
+          last_updated: item.last_updated || item.updated_at || new Date().toISOString(),
+          internal_name: item.internal_name || item.item_name || ''
+        }));
+
         await this.db.transaction('rw', this.db.items, async () => {
-             // Conflict Resolution Logic:
-             // If we have pending local changes that were NOT pushed (e.g. because of error or partial sync),
-             // we need to decide.
-             // BUT, performSync puts everything in 'pending' status into the push payload.
-             // If push succeeded, status is 'synced'.
-             // So if we are here, push succeeded. The only conflicts are if cloud has NEWER data
-             // that overwrites our just-pushed data? No, last write wins.
-             // REAL CONFLICT: We pulled data BEFORE pushing?
-             // The current logic is Push (lines 532) THEN Pull (lines 574).
-             // If Push succeeds, local items are 'synced'. Then we blindly overwrite with Cloud.
-             // This is safe IF Cloud includes our just-pushed changes.
-
-             // However, for robust Conflict Resolution feature request:
-             // We need a mode to PULL FIRST, detect conflicts, then RESOLVE, then PUSH.
-             // This method performSync is the "Blind Sync".
-
-             // Ensure new fields are properly set for pulled items
-             const processedItems = result.pulledItems!.map(item => ({
-               ...item,
-               last_updated: item.last_updated || item.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
-               internal_name: item.internal_name || item.item_name || '' // Ensure internal_name for CSV compatibility
-             }));
-
-             await this.db.items.clear();
-             await this.db.items.bulkPut(processedItems);
+             // Upsert each pulled item (update if exists, add if new)
+             for (const item of processedItems) {
+               await this.db.items.put(item);
+             }
         });
-        this.cache.items = result.pulledItems!;
+        
+        // Update cache: merge pulled items with local pending items
+        const localPendingItems = this.cache.items.filter(i => i.sync_status === 'pending');
+        this.cache.items = [...processedItems, ...localPendingItems];
     }
 
     // FULLY REPLACE CUSTOMERS FROM PULL
     if (result.pulledCustomers && result.pulledCustomers.length > 0) {
         if (onLog) onLog(`Updating local shop directory with ${result.pulledCustomers.length} records.`);
+        
+        // Ensure new fields are properly set for pulled customers
+        const processedCustomers = result.pulledCustomers!.map(customer => ({
+          ...customer,
+          sync_status: 'synced' as const,
+          last_updated: customer.last_updated || customer.updated_at || new Date().toISOString(),
+          city: customer.city || customer.city_ref || '',
+          discount_1: customer.discount_1 !== undefined ? customer.discount_1 : customer.discount_rate,
+          discount_2: customer.discount_2 !== undefined ? customer.discount_2 : customer.secondary_discount_rate,
+          balance: customer.balance !== undefined ? customer.balance : customer.outstanding_balance
+        }));
+        
         await this.db.transaction('rw', this.db.customers, async () => {
-            // Logic: Upsert pulled data (Cloud is source of truth for synced data)
-            // But we keep local pending changes if they exist?
-            // Better: If user is pulling, they want to sync. For simplicity, match Item replacement.
-            
-            // Ensure new fields are properly set for pulled customers
-            const processedCustomers = result.pulledCustomers!.map(customer => ({
-              ...customer,
-              last_updated: customer.last_updated || customer.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
-              city: customer.city || customer.city_ref || '', // Ensure city for CSV compatibility
-              discount_1: customer.discount_1 !== undefined ? customer.discount_1 : customer.discount_rate,
-              discount_2: customer.discount_2 !== undefined ? customer.discount_2 : customer.secondary_discount_rate,
-              balance: customer.balance !== undefined ? customer.balance : customer.outstanding_balance
-            }));
-            
-            await this.db.customers.clear();
-            await this.db.customers.bulkPut(processedCustomers);
+            // Upsert each pulled customer (don't clear - preserve pending customers)
+            for (const customer of processedCustomers) {
+              await this.db.customers.put(customer);
+            }
         });
-        this.cache.customers = result.pulledCustomers!;
+        
+        // Update cache: merge pulled customers with local pending customers
+        const localPendingCustomers = this.cache.customers.filter(c => c.sync_status === 'pending');
+        this.cache.customers = [...processedCustomers, ...localPendingCustomers];
     }
 
     // REPLACE ONLY SYNCED ORDERS FROM PULL, PRESERVE LOCAL DRAFT ORDERS
@@ -1331,21 +1324,22 @@ class LocalDB {
             order.approval_status === 'draft'
         );
 
+        // Process cloud orders to ensure new fields are properly set
+        const processedCloudOrders = result.pulledOrders!.map(order => ({
+          ...order,
+          sync_status: 'synced' as const,
+          last_updated: order.last_updated || order.updated_at || new Date().toISOString(),
+          disc_1_rate: order.disc_1_rate !== undefined ? order.disc_1_rate : order.discount_rate,
+          disc_1_value: order.disc_1_value !== undefined ? order.disc_1_value : order.discount_value,
+          disc_2_rate: order.disc_2_rate !== undefined ? order.disc_2_rate : order.secondary_discount_rate,
+          disc_2_value: order.disc_2_value !== undefined ? order.disc_2_value : order.secondary_discount_value,
+          paid: order.paid !== undefined ? order.paid : order.paid_amount,
+          status: order.status || order.order_status || 'draft'
+        }));
+
         await this.db.transaction('rw', this.db.orders, async () => {
             // Clear all orders from the database
             await this.db.orders.clear();
-
-            // Process cloud orders to ensure new fields are properly set
-            const processedCloudOrders = result.pulledOrders!.map(order => ({
-              ...order,
-              last_updated: order.last_updated || order.updated_at || new Date().toISOString(), // Ensure last_updated for CSV compatibility
-              disc_1_rate: order.disc_1_rate !== undefined ? order.disc_1_rate : order.discount_rate,
-              disc_1_value: order.disc_1_value !== undefined ? order.disc_1_value : order.discount_value,
-              disc_2_rate: order.disc_2_rate !== undefined ? order.disc_2_rate : order.secondary_discount_rate,
-              disc_2_value: order.disc_2_value !== undefined ? order.disc_2_value : order.secondary_discount_value,
-              paid: order.paid !== undefined ? order.paid : order.paid_amount,
-              status: order.status || order.order_status || 'draft'
-            }));
 
             // Add back the cloud orders
             await this.db.orders.bulkPut(processedCloudOrders);
@@ -1357,7 +1351,7 @@ class LocalDB {
         });
 
         // Update cache to include both cloud orders and local preserved orders
-        this.cache.orders = [...result.pulledOrders!, ...localPreservedOrders];
+        this.cache.orders = [...processedCloudOrders, ...localPreservedOrders];
     }
 
     // UPDATE SETTINGS FROM PULL
@@ -1388,17 +1382,23 @@ class LocalDB {
     // UPDATE STOCK ADJUSTMENTS FROM PULL
     if (result.pulledAdjustments && result.pulledAdjustments.length > 0) {
         if (onLog) onLog(`Updating local stock adjustments from cloud.`);
+        // Process adjustments before transaction
+        const processedAdjustments = result.pulledAdjustments!.map(adj => ({
+          ...adj,
+          sync_status: 'synced' as const,
+          last_updated: adj.last_updated || adj.updated_at || new Date().toISOString()
+        }));
+        
         await this.db.transaction('rw', this.db.stockAdjustments, async () => {
-            // Process adjustments to ensure new fields are properly set
-            const processedAdjustments = result.pulledAdjustments!.map(adj => ({
-              ...adj,
-              last_updated: adj.last_updated || adj.updated_at || new Date().toISOString() // Ensure last_updated for CSV compatibility
-            }));
-            
-            await this.db.stockAdjustments.clear();
-            await this.db.stockAdjustments.bulkPut(processedAdjustments);
+            // Upsert each pulled adjustment (don't clear - preserve pending adjustments)
+            for (const adj of processedAdjustments) {
+              await this.db.stockAdjustments.put(adj);
+            }
         });
-        this.cache.adjustments = result.pulledAdjustments!;
+        
+        // Update cache: merge pulled adjustments with local pending adjustments
+        const localPendingAdjustments = this.cache.adjustments.filter(a => a.sync_status === 'pending');
+        this.cache.adjustments = [...processedAdjustments, ...localPendingAdjustments];
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
