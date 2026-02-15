@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SyncStats } from '../types';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { useTheme } from '../context/ThemeContext';
 
 interface LayoutProps {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Order, Customer, DeliveryStatus } from '../types';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { pdfService } from '../services/pdf';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
 import { formatCurrency } from '../utils/currency';

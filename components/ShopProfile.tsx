@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Order, Payment, PaymentType } from '../types';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';

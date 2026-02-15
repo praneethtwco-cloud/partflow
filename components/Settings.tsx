@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CompanySettings } from '../types';
-import { db } from '../services/db';
-import { getDatabaseInfo, getDatabasePlatform } from '../services/database';
+import { db, getDatabaseInfo, getDatabasePlatform, exportDatabase } from '../services/database';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 
@@ -37,14 +36,13 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                 return;
             }
             
-            const { sqliteDatabase } = await import('../services/sqlite-db');
-            const result = await sqliteDatabase.exportDatabase();
+            const result = await exportDatabase();
             if (!result.success) {
                 setMessage(result.message);
                 setTimeout(() => setMessage(''), 3000);
             }
-        } catch (error) {
-            setMessage('Failed to export database');
+        } catch (error: any) {
+            setMessage(`Failed to export database: ${error.message}`);
             setTimeout(() => setMessage(''), 3000);
         } finally {
             setIsExporting(false);

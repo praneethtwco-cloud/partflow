@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { useToast } from '../context/ToastContext';
 import { Preferences } from '@capacitor/preferences';
 import { formatCurrency } from '../utils/currency';

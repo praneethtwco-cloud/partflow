@@ -4,7 +4,7 @@ import {
   validateCsvAgainstTemplate,
   CSV_TEMPLATES
 } from '../utils/csv-templates';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { Customer, Item, Order, CompanySettings } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { useToast } from '../context/ToastContext';

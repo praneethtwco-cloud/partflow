@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer } from '../types';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
 import { useToast } from '../context/ToastContext';

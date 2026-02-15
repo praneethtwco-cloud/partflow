@@ -12,7 +12,7 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Reports } from './components/Reports';
 import { Customer, Order } from './types';
-import { db } from './services/db';
+import { db, initializeDatabase } from './services/database';
 import { autoSyncService } from './services/auto-sync';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -87,17 +87,19 @@ function AppContent() {
     // Initialize DB and Load Cache on Boot
     const startUp = async () => {
         try {
+            console.log("Starting database initialization...");
             // Add timeout to prevent indefinite hanging
-            const initPromise = db.initialize();
+            const initPromise = initializeDatabase();
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Database initialization timeout (10s)')), 10000)
+                setTimeout(() => reject(new Error('Database initialization timeout (15s)')), 15000)
             );
             
             await Promise.race([initPromise, timeoutPromise]);
+            console.log("Database initialized successfully");
             setDbInitialized(true);
         } catch (e: any) {
             console.error("Database Initialization Failed:", e);
-            setInitError(e.message || "Database initialization timeout. Please refresh the page.");
+            setInitError(e.message || "Database initialization failed. Please refresh the page.");
         }
     };
     startUp();

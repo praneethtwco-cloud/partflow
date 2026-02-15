@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { SyncStats } from '../types';
 import { API_CONFIG } from '../config';
 import { useToast } from '../context/ToastContext';

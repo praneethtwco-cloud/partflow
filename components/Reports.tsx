@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { Customer, Item, Order } from '../types';
 import { pdfService } from '../services/pdf';
 import { formatCurrency } from '../utils/currency';

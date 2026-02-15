@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { supabaseService } from '../services/supabase';
 import { useToast } from '../context/ToastContext';
 

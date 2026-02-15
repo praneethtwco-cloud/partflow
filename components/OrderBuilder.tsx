@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Item, Order, OrderLine, Payment, PaymentType } from '../types';
-import { db } from '../services/db';
+import { db } from '../services/database';
 import { generateUUID } from '../utils/uuid';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';

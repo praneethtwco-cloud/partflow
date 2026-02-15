@@ -7,6 +7,7 @@ import { supabaseService } from './supabase';
 import { supabaseSyncService } from './supabase-sync-service';
 import { syncQueueService } from './sync-queue';
 import { connectionService } from './connection';
+import { db as indexedDb } from './db';
 import SEED_DATA from '../src/config/seed-data.json';
 import APP_SETTINGS from '../src/config/app-settings.json';
 
@@ -303,22 +304,45 @@ class SQLiteDatabase {
         if (count === 0) {
             const now = new Date().toISOString();
             
-            await this.db!.execute({
-                statements: [[
-                    `INSERT INTO settings (id, company_name, address, phone, rep_name, invoice_prefix, starting_invoice_number, footer_note, currency_symbol, tax_rate, auto_sku_enabled, stock_tracking_enabled, category_enabled, show_sku_in_item_cards, show_advanced_sync_options) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    'main', SEED_SETTINGS.company_name, SEED_SETTINGS.address, SEED_SETTINGS.phone, SEED_SETTINGS.rep_name, SEED_SETTINGS.invoice_prefix, SEED_SETTINGS.starting_invoice_number, SEED_SETTINGS.footer_note, SEED_SETTINGS.currency_symbol, SEED_SETTINGS.tax_rate || 0, SEED_SETTINGS.auto_sku_enabled ? 1 : 0, SEED_SETTINGS.stock_tracking_enabled ? 1 : 0, SEED_SETTINGS.category_enabled ? 1 : 0, SEED_SETTINGS.show_sku_in_item_cards ? 1 : 0, SEED_SETTINGS.show_advanced_sync_options ? 1 : 0
-                ]]
-            });
+            const indexedDbCustomers = indexedDb.getCustomers();
+            const indexedDbItems = indexedDb.getItems();
+            const indexedDbSettings = indexedDb.getSettings();
+            
+            if (indexedDbSettings && indexedDbSettings.company_name) {
+                await this.db!.execute({
+                    statements: [[
+                        `INSERT INTO settings (id, company_name, address, phone, rep_name, invoice_prefix, starting_invoice_number, footer_note, currency_symbol, tax_rate, auto_sku_enabled, stock_tracking_enabled, category_enabled, show_sku_in_item_cards, show_advanced_sync_options) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        'main', indexedDbSettings.company_name, indexedDbSettings.address || '', indexedDbSettings.phone || '', indexedDbSettings.rep_name || '', indexedDbSettings.invoice_prefix || 'INV', indexedDbSettings.starting_invoice_number || 1, indexedDbSettings.footer_note || '', indexedDbSettings.currency_symbol || 'Rs.', indexedDbSettings.tax_rate || 0, indexedDbSettings.auto_sku_enabled ? 1 : 0, indexedDbSettings.stock_tracking_enabled ? 1 : 0, indexedDbSettings.category_enabled ? 1 : 0, indexedDbSettings.show_sku_in_item_cards ? 1 : 0, indexedDbSettings.show_advanced_sync_options ? 1 : 0
+                    ]]
+                });
+                
+                for (const customer of indexedDbCustomers) {
+                    await this.insertCustomer({ ...customer, created_at: now, updated_at: now, sync_status: 'synced' });
+                }
+                
+                for (const item of indexedDbItems) {
+                    await this.insertItem({ ...item, created_at: now, updated_at: now, sync_status: 'synced' });
+                }
+                
+                console.log("Data loaded from IndexedDB into SQLite");
+            } else {
+                await this.db!.execute({
+                    statements: [[
+                        `INSERT INTO settings (id, company_name, address, phone, rep_name, invoice_prefix, starting_invoice_number, footer_note, currency_symbol, tax_rate, auto_sku_enabled, stock_tracking_enabled, category_enabled, show_sku_in_item_cards, show_advanced_sync_options) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        'main', SEED_SETTINGS.company_name, SEED_SETTINGS.address, SEED_SETTINGS.phone, SEED_SETTINGS.rep_name, SEED_SETTINGS.invoice_prefix, SEED_SETTINGS.starting_invoice_number, SEED_SETTINGS.footer_note, SEED_SETTINGS.currency_symbol, SEED_SETTINGS.tax_rate || 0, SEED_SETTINGS.auto_sku_enabled ? 1 : 0, SEED_SETTINGS.stock_tracking_enabled ? 1 : 0, SEED_SETTINGS.category_enabled ? 1 : 0, SEED_SETTINGS.show_sku_in_item_cards ? 1 : 0, SEED_SETTINGS.show_advanced_sync_options ? 1 : 0
+                    ]]
+                });
 
-            for (const customer of SEED_CUSTOMERS) {
-                await this.insertCustomer({ ...customer, created_at: now, updated_at: now, sync_status: 'synced' });
+                for (const customer of SEED_CUSTOMERS) {
+                    await this.insertCustomer({ ...customer, created_at: now, updated_at: now, sync_status: 'synced' });
+                }
+
+                for (const item of SEED_ITEMS) {
+                    await this.insertItem({ ...item, created_at: now, updated_at: now, sync_status: 'synced' });
+                }
+
+                console.log("Seed data loaded into SQLite");
             }
-
-            for (const item of SEED_ITEMS) {
-                await this.insertItem({ ...item, created_at: now, updated_at: now, sync_status: 'synced' });
-            }
-
-            console.log("Seed data loaded into SQLite");
         }
     }
 
