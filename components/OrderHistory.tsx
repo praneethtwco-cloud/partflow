@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Order, Customer, DeliveryStatus } from '../types';
 import { db } from '../services/db';
 import { pdfService } from '../services/pdf';
@@ -12,9 +12,10 @@ import { Modal } from './ui/Modal';
 interface OrderHistoryProps {
     onViewInvoice: (order: Order) => void;
     onEditOrder?: (order: Order) => void;
+    onViewShopProfile?: (customerId: string) => void;
 }
 
-export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEditOrder }) => {
+export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEditOrder, onViewShopProfile }) => {
     const { themeClasses } = useTheme();
     const [orders, setOrders] = useState<Order[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -31,6 +32,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
     const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setOrders([...db.getOrders()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
@@ -40,6 +42,24 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     useEffect(() => {
         setVisibleCount(20);
     }, [filter]);
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && visibleCount < filteredOrders.length) {
+                    setVisibleCount(prev => prev + 20);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        observer.observe(loadMoreRef.current);
+
+        return () => observer.disconnect();
+    }, [orders.length, visibleCount, filter, dateRange, statusFilter, deliveryFilter, customerFilter]);
 
     const getCustomerName = (id: string) => {
         const name = customers.find(c => c.customer_id === id)?.shop_name || 'Unknown';
@@ -238,7 +258,12 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                 <div key={order.order_id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 active:scale-[0.99] transition-transform">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className="font-bold text-slate-900 text-sm">{getCustomerName(order.customer_id)}</h3>
+                                            <h3 
+                                                className={`font-bold text-sm cursor-pointer ${onViewShopProfile ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-900'}`}
+                                                onClick={() => onViewShopProfile && onViewShopProfile(order.customer_id)}
+                                            >
+                                                {getCustomerName(order.customer_id)}
+                                            </h3>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all">
                                                     #{(order.invoice_number || order.order_id).toUpperCase()}
@@ -307,13 +332,10 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                 )}
 
                 {visibleCount < filteredOrders.length && (
-                    <div className="text-center py-4">
-                        <button 
-                            onClick={() => setVisibleCount(prev => prev + 20)}
-                            className={`px-6 py-2 rounded-full font-bold text-sm bg-white border border-slate-200 shadow-sm hover:bg-slate-50 ${themeClasses.text} transition-all active:scale-95`}
-                        >
-                            Load More ({filteredOrders.length - visibleCount} remaining)
-                        </button>
+                    <div ref={loadMoreRef} className="text-center py-4">
+                        <div className={`px-6 py-2 rounded-full font-bold text-sm bg-white border border-slate-200 shadow-sm ${themeClasses.text}`}>
+                            Loading more... ({filteredOrders.length - visibleCount} remaining)
+                        </div>
                     </div>
                 )}
             </div>

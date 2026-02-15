@@ -1,5 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite } from '@capacitor-community/sqlite';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Customer, Item, Order, CompanySettings, SyncStats, User, Payment, StockAdjustment } from '../types';
 import { supabaseService } from './supabase';
 import { supabaseSyncService } from './supabase-sync-service';
@@ -792,6 +794,48 @@ class SQLiteDatabase {
             platform,
             type: 'SQLite'
         };
+    }
+
+    async exportDatabase(): Promise<{ success: boolean; message: string; filePath?: string }> {
+        try {
+            const platform = Capacitor.getPlatform();
+            
+            if (platform !== 'android' && platform !== 'ios') {
+                return { success: false, message: 'Export only available on Android/iOS' };
+            }
+
+            const date = new Date().toISOString().split('T')[0];
+            const exportFileName = `PartFlowDB_${date}.db`;
+
+            const result = await CapacitorSQLite.exportToJson({
+                database: DB_NAME
+            });
+
+            if (!result.export || !result.export.database) {
+                return { success: false, message: 'Failed to export database' };
+            }
+
+            const jsonStr = JSON.stringify(result.export);
+            const base64Data = btoa(jsonStr);
+
+            const savedFile = await Filesystem.writeFile({
+                path: exportFileName,
+                data: base64Data,
+                directory: Directory.Cache
+            });
+
+            await Share.share({
+                title: 'PartFlow Database Export',
+                text: `Database export from ${new Date().toLocaleDateString()}`,
+                url: savedFile.uri,
+                dialogTitle: 'Save or Share Database'
+            });
+
+            return { success: true, message: 'Database exported successfully', filePath: savedFile.uri };
+        } catch (error) {
+            console.error('Export error:', error);
+            return { success: false, message: 'Failed to export: ' + (error as Error).message };
+        }
     }
 }
 

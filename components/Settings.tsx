@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CompanySettings } from '../types';
 import { db } from '../services/db';
-import { getDatabaseInfo } from '../services/database';
+import { getDatabaseInfo, exportDatabase, isNativePlatform } from '../services/database';
 import { useAuth } from '../context/AuthContext';
 
 import { API_CONFIG } from '../config';
@@ -19,10 +19,27 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const [settings, setSettings] = useState<CompanySettings>(db.getSettings());
     const [message, setMessage] = useState('');
     const [dbInfo, setDbInfo] = useState<{ path: string; platform: string; type: string }>({ path: '', platform: '', type: '' });
+    const [isExporting, setIsExporting] = useState(false);
     
     useEffect(() => {
         setDbInfo(getDatabaseInfo());
     }, []);
+
+    const handleExportDb = async () => {
+        setIsExporting(true);
+        try {
+            const result = await exportDatabase();
+            if (!result.success) {
+                setMessage(result.message);
+                setTimeout(() => setMessage(''), 3000);
+            }
+        } catch (error) {
+            setMessage('Failed to export database');
+            setTimeout(() => setMessage(''), 3000);
+        } finally {
+            setIsExporting(false);
+        }
+    };
     
     // Password State
     const [showPassModal, setShowPassModal] = useState(false);
@@ -403,6 +420,27 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                                     <span className="text-[10px] font-mono text-slate-600 text-right max-w-[180px] break-all">{dbInfo.path}</span>
                                 </div>
                             </div>
+                            
+                            {/* Export Button - Only for Android/iOS */}
+                            {(dbInfo.platform === 'android' || dbInfo.platform === 'ios') && (
+                                <button 
+                                    onClick={handleExportDb}
+                                    disabled={isExporting}
+                                    className={`w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 transition-all ${isExporting ? 'opacity-50' : ''}`}
+                                >
+                                    {isExporting ? (
+                                        <>
+                                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                            Exporting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                            Export Database
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     )}
 

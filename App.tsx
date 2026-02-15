@@ -138,6 +138,14 @@ function AppContent() {
       navigateTo('shop_profile');
   };
 
+  const handleViewShopProfileFromHistory = (customerId: string) => {
+      const customer = db.getCustomers().find(c => c.customer_id === customerId);
+      if (customer) {
+          setProfileCustomer(customer);
+          navigateTo('shop_profile');
+      }
+  };
+
   const handleOrderCreated = (order: Order) => {
     setActiveOrder(order);
     setEditingOrder(null);
@@ -273,7 +281,7 @@ function AppContent() {
             onUpdateDraft={(draft) => setDraftOrder(draft)}
         />;
       case 'history':
-        return <OrderHistory onViewInvoice={handleViewInvoice} onEditOrder={handleEditOrder} />;
+        return <OrderHistory onViewInvoice={handleViewInvoice} onEditOrder={handleEditOrder} onViewShopProfile={handleViewShopProfileFromHistory} />;
       case 'reports':
         return <Reports onOpenProfile={handleOpenProfile} />;
       case 'sync':

@@ -71,4 +71,15 @@ export function getDatabaseInfo(): { path: string; platform: string; type: strin
     };
 }
 
+export async function exportDatabase(): Promise<{ success: boolean; message: string; filePath?: string }> {
+    const platform = Capacitor.getPlatform();
+    
+    if (platform === 'android' || platform === 'ios') {
+        const { sqliteDatabase } = await import('./sqlite-db');
+        return sqliteDatabase.exportDatabase();
+    }
+    
+    return { success: false, message: 'Export only available on mobile (Android/iOS)' };
+}
+
 export { db };
