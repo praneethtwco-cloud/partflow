@@ -257,7 +257,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                     break;
             }
             
-            downloadCsv(csvContent, filename);
+            await downloadCsv(csvContent, filename);
             showToast(`${selectedExportType} exported successfully`, 'success');
         } catch (error) {
             showToast(`Export failed: ${(error as Error).message}`, 'error');

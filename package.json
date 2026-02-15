@@ -1,7 +1,8 @@
 {
   "name": "fieldaudit-sales",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "out/main/index.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +10,23 @@
     "preview": "vite preview",
     "sync": "vite build && npx cap sync",
     "supabase:migrate": "echo 'Migration script would run here'",
-    "test:auth": "tsx test-auth-sync.ts"
+    "test:auth": "tsx test-auth-sync.ts",
+    "dev:electron": "electron-vite dev",
+    "build:electron": "electron-vite build",
+    "build:win": "electron-vite build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.fieldaudit.sales",
+    "productName": "FieldAudit Sales",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "win": {
+      "target": "portable"
+    }
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.0.0",
@@ -37,10 +54,14 @@
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
+    "@electron-toolkit/utils": "^4.0.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^40.4.1",
+    "electron-builder": "^26.7.0",
+    "electron-vite": "^5.0.0",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",

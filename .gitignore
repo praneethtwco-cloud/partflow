@@ -45,5 +45,11 @@ __pycache__/
 *$py.class
 *.db
 
+# Electron
+out/
+dist-electron/
+release/
+*.exe
+
 # Secrets
 backend/config/

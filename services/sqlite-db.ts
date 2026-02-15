@@ -821,15 +821,16 @@ class SQLiteDatabase {
             const exportFileName = `PartFlowDB_${date}.db`;
 
             const result = await CapacitorSQLite.exportToJson({
-                database: DB_NAME
+                database: DB_NAME,
+                jsonexportmode: 'full'
             });
 
-            if (!result.export || !result.export.database) {
+            if (!result || !result.export) {
                 return { success: false, message: 'Failed to export database' };
             }
 
-            const jsonStr = JSON.stringify(result.export);
-            const base64Data = btoa(jsonStr);
+            const jsonStr = JSON.stringify(result.export, null, 2);
+            const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
 
             const savedFile = await Filesystem.writeFile({
                 path: exportFileName,
