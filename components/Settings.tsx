@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CompanySettings } from '../types';
 import { db } from '../services/db';
+import { getDatabaseInfo } from '../services/database';
 import { useAuth } from '../context/AuthContext';
 
 import { API_CONFIG } from '../config';
@@ -17,6 +18,11 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const { colorTheme, setColorTheme, themeClasses } = useTheme();
     const [settings, setSettings] = useState<CompanySettings>(db.getSettings());
     const [message, setMessage] = useState('');
+    const [dbInfo, setDbInfo] = useState<{ path: string; platform: string; type: string }>({ path: '', platform: '', type: '' });
+    
+    useEffect(() => {
+        setDbInfo(getDatabaseInfo());
+    }, []);
     
     // Password State
     const [showPassModal, setShowPassModal] = useState(false);
@@ -375,6 +381,30 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                         title="Cloud Sync"
                         subtitle="Supabase integration"
                     />
+
+                    {/* Database Info */}
+                    {dbInfo.platform && (
+                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                            <div className="flex items-center gap-2 mb-2">
+                                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                                <span className="text-xs font-bold text-slate-500 uppercase">Local Database</span>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] text-slate-400 uppercase">Type</span>
+                                    <span className="text-xs font-bold text-slate-700">{dbInfo.type}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] text-slate-400 uppercase">Platform</span>
+                                    <span className="text-xs font-bold text-slate-700 capitalize">{dbInfo.platform}</span>
+                                </div>
+                                <div className="flex justify-between items-start">
+                                    <span className="text-[10px] text-slate-400 uppercase">Path</span>
+                                    <span className="text-[10px] font-mono text-slate-600 text-right max-w-[180px] break-all">{dbInfo.path}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 </div>
 

@@ -39,7 +39,12 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     }, []);
 
     // Filtered data
-    const filteredOrders = orders.filter(o => o.order_date >= dateRange.start && o.order_date <= dateRange.end);
+    const filteredOrders = orders.filter(o => 
+        o.order_date >= dateRange.start && 
+        o.order_date <= dateRange.end &&
+        o.delivery_status !== 'failed' && 
+        o.delivery_status !== 'cancelled'
+    );
 
     // Aggregations
     const totalRevenue = filteredOrders.reduce((sum, o) => {

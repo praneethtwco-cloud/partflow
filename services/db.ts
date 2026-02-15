@@ -1907,6 +1907,14 @@ class LocalDB {
     // This is kept for compatibility but doesn't perform any action
     return;
   }
+
+  getDatabaseInfo(): { path: string; platform: string; type: string } {
+    return {
+      path: 'IndexedDB (Browser)',
+      platform: 'web',
+      type: 'IndexedDB'
+    };
+  }
 }
 
 export const db = new LocalDB();
