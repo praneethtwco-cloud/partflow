@@ -562,6 +562,76 @@ class SupabaseService {
   getSupabaseClient() {
     return this.supabase;
   }
+
+  // Fetch all cloud data for CSV export
+  async fetchCloudData(): Promise<{
+    customers: any[];
+    items: any[];
+    orders: any[];
+    orderLines: any[];
+    adjustments: any[];
+  }> {
+    // Pull items
+    const { data: items, error: itemsError } = await this.supabase
+      .from('items')
+      .select('*');
+
+    if (itemsError) {
+      console.error(`Error: Failed to fetch items: ${itemsError.message}`);
+    }
+
+    // Transform items: map internal_name to item_name
+    const transformedItems = (items || []).map(item => {
+      if (item.internal_name && !item.item_name) {
+        return { ...item, item_name: item.internal_name };
+      }
+      return item;
+    });
+
+    // Pull customers
+    const { data: customers, error: customersError } = await this.supabase
+      .from('customers')
+      .select('*');
+
+    if (customersError) {
+      console.error(`Error: Failed to fetch customers: ${customersError.message}`);
+    }
+
+    // Pull orders
+    const { data: orders, error: ordersError } = await this.supabase
+      .from('orders')
+      .select('*');
+
+    if (ordersError) {
+      console.error(`Error: Failed to fetch orders: ${ordersError.message}`);
+    }
+
+    // Pull order_lines
+    const { data: orderLines, error: orderLinesError } = await this.supabase
+      .from('order_lines')
+      .select('*');
+
+    if (orderLinesError) {
+      console.error(`Error: Failed to fetch order_lines: ${orderLinesError.message}`);
+    }
+
+    // Pull stock adjustments
+    const { data: adjustments, error: adjustmentsError } = await this.supabase
+      .from('stock_adjustments')
+      .select('*');
+
+    if (adjustmentsError) {
+      console.error(`Error: Failed to fetch adjustments: ${adjustmentsError.message}`);
+    }
+
+    return {
+      customers: customers || [],
+      items: transformedItems,
+      orders: orders || [],
+      orderLines: orderLines || [],
+      adjustments: adjustments || []
+    };
+  }
 }
 
 export const supabaseService = new SupabaseService();

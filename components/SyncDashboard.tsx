@@ -11,6 +11,10 @@ import { CsvImportComponent } from './CsvImportComponent';
 import { supabaseSyncService } from '../services/supabase-sync-service';
 import { ImportLogViewer } from './ImportLogViewer';
 import { diagnoseSyncIssues } from '../utils/sync-diagnostics';
+import { supabaseService } from '../services/supabase';
+import { downloadCsvWithHeaders, downloadZipWithFiles, downloadCsv } from '../utils/csv';
+import { CSV_TEMPLATES } from '../utils/csv-templates';
+import Papa from 'papaparse';
 
 interface SyncDashboardProps {
     onSyncComplete: () => void;
@@ -37,6 +41,10 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     // Auto-sync status
     const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
     const [lastAutoSync, setLastAutoSync] = useState<string | null>(null);
+
+    // Cloud Backup state
+    const [selectedExportType, setSelectedExportType] = useState<string>('customers');
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -213,6 +221,85 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         }
     };
 
+    const handleExportCloudData = async () => {
+        setIsExporting(true);
+        try {
+            const cloudData = await supabaseService.fetchCloudData();
+            const timestamp = new Date().toISOString().split('T')[0];
+            
+            let csvContent = '';
+            let filename = '';
+            
+            switch (selectedExportType) {
+                case 'customers':
+                    csvContent = Papa.unparse(cloudData.customers, { 
+                        columns: CSV_TEMPLATES.customers.headers 
+                    });
+                    filename = `customers_${timestamp}.csv`;
+                    break;
+                case 'items':
+                    csvContent = Papa.unparse(cloudData.items, { 
+                        columns: CSV_TEMPLATES.items.headers 
+                    });
+                    filename = `items_${timestamp}.csv`;
+                    break;
+                case 'orders':
+                    csvContent = Papa.unparse(cloudData.orders, { 
+                        columns: CSV_TEMPLATES.orders.headers 
+                    });
+                    filename = `orders_${timestamp}.csv`;
+                    break;
+                case 'orderLines':
+                    csvContent = Papa.unparse(cloudData.orderLines, { 
+                        columns: CSV_TEMPLATES.orderLines.headers 
+                    });
+                    filename = `order_lines_${timestamp}.csv`;
+                    break;
+            }
+            
+            downloadCsv(csvContent, filename);
+            showToast(`${selectedExportType} exported successfully`, 'success');
+        } catch (error) {
+            showToast(`Export failed: ${(error as Error).message}`, 'error');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportAllAsZip = async () => {
+        setIsExporting(true);
+        try {
+            const cloudData = await supabaseService.fetchCloudData();
+            const timestamp = new Date().toISOString().split('T')[0];
+            
+            const files = [
+                {
+                    name: `customers_${timestamp}.csv`,
+                    content: Papa.unparse(cloudData.customers, { columns: CSV_TEMPLATES.customers.headers })
+                },
+                {
+                    name: `items_${timestamp}.csv`,
+                    content: Papa.unparse(cloudData.items, { columns: CSV_TEMPLATES.items.headers })
+                },
+                {
+                    name: `orders_${timestamp}.csv`,
+                    content: Papa.unparse(cloudData.orders, { columns: CSV_TEMPLATES.orders.headers })
+                },
+                {
+                    name: `order_lines_${timestamp}.csv`,
+                    content: Papa.unparse(cloudData.orderLines, { columns: CSV_TEMPLATES.orderLines.headers })
+                }
+            ];
+            
+            await downloadZipWithFiles(files, `partflow_backup_${timestamp}.zip`);
+            showToast('Full backup exported successfully', 'success');
+        } catch (error) {
+            showToast(`Export failed: ${(error as Error).message}`, 'error');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const totalPending = stats.pendingCustomers + stats.pendingItems + stats.pendingOrders;
 
     return (
@@ -361,6 +448,83 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
             {/* CSV Import Component */}
             <CsvImportComponent onImportComplete={async () => setStats(await db.getSyncStats())} />
+
+            {/* Cloud Backup Download */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 className={`font-bold ${themeClasses.textDark} mb-3 flex items-center gap-2`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Cloud Backup
+                </h3>
+                
+                <p className="text-xs text-slate-500 mb-4">
+                    Export data from Supabase as CSV files. Requires internet connection.
+                </p>
+
+                <div className="space-y-3">
+                    {/* Entity Type Selector */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Select Data Type</label>
+                        <select
+                            value={selectedExportType}
+                            onChange={(e) => setSelectedExportType(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="customers">Customers</option>
+                            <option value="items">Items</option>
+                            <option value="orders">Orders</option>
+                            <option value="orderLines">Order Lines</option>
+                        </select>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={handleExportCloudData}
+                            disabled={isExporting}
+                            className={`flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors ${themeClasses.text} ${isExporting ? 'opacity-50' : ''}`}
+                        >
+                            {isExporting ? (
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download Selected
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={handleExportAllAsZip}
+                            disabled={isExporting}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${themeClasses.bg} ${themeClasses.bgHover} ${isExporting ? 'opacity-50' : ''}`}
+                        >
+                            {isExporting ? (
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Creating ZIP...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                    Download All (ZIP)
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* Import Log Viewer Button */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
