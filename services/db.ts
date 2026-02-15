@@ -1067,13 +1067,20 @@ class LocalDB {
         o.delivery_status !== 'cancelled'
     ).length;
 
+    const monthlyOrders = orders.filter(o => 
+        o.order_date >= firstOfMonth &&
+        o.delivery_status !== 'failed' && 
+        o.delivery_status !== 'cancelled'
+    ).length;
+
     const criticalItems = items.filter(i => i.current_stock_qty <= i.low_stock_threshold);
 
     return {
         dailySales,
         monthlySales,
         criticalItems: criticalItems.length,
-        totalOrders
+        totalOrders,
+        monthlyOrders
     };
   }
 

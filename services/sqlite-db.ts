@@ -690,10 +690,21 @@ class SQLiteDatabase {
 
     getDashboardStats() {
         const today = new Date().toISOString().split('T')[0];
+        const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        
         const todayOrders = this.cache.orders.filter(o => o.order_date.startsWith(today));
+        const monthOrders = this.cache.orders.filter(o => 
+            o.order_date >= firstOfMonth && 
+            o.delivery_status !== 'failed' && 
+            o.delivery_status !== 'cancelled'
+        );
+        
         const totalRevenue = this.cache.orders
             .filter(o => o.delivery_status !== 'failed' && o.delivery_status !== 'cancelled')
             .reduce((sum, o) => sum + o.net_total, 0);
+            
+        const monthlySales = monthOrders.reduce((sum, o) => sum + o.net_total, 0);
+        const monthlyOrdersCount = monthOrders.length;
         const totalPaid = this.cache.orders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
         const totalBalance = this.cache.orders.reduce((sum, o) => sum + (o.balance_due || 0), 0);
 
@@ -706,6 +717,8 @@ class SQLiteDatabase {
             totalRevenue,
             totalPaid,
             totalBalance,
+            monthlyOrders: monthlyOrdersCount,
+            monthlySales,
             pendingSync: this.getSyncStats()
         };
     }

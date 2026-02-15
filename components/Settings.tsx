@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CompanySettings } from '../types';
 import { db } from '../services/db';
-import { getDatabaseInfo, exportDatabase, isNativePlatform } from '../services/database';
+import { getDatabaseInfo, getDatabasePlatform } from '../services/database';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 
 import { API_CONFIG } from '../config';
 import { cleanText } from '../utils/cleanText';
@@ -28,7 +29,16 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const handleExportDb = async () => {
         setIsExporting(true);
         try {
-            const result = await exportDatabase();
+            const platform = getDatabasePlatform();
+            if (platform !== 'android' && platform !== 'ios') {
+                setMessage('Export only available on mobile (Android/iOS)');
+                setTimeout(() => setMessage(''), 3000);
+                setIsExporting(false);
+                return;
+            }
+            
+            const { sqliteDatabase } = await import('../services/sqlite-db');
+            const result = await sqliteDatabase.exportDatabase();
             if (!result.success) {
                 setMessage(result.message);
                 setTimeout(() => setMessage(''), 3000);
