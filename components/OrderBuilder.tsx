@@ -487,7 +487,9 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
-                        <h2 className="text-sm md:text-base font-bold text-slate-800 truncate">{cleanText(customer.shop_name)}</h2>
+                        <div className="overflow-hidden max-w-[120px] md:max-w-none">
+                            <h2 className="text-sm md:text-base font-bold text-slate-800 whitespace-nowrap animate-marquee">{cleanText(customer.shop_name)}</h2>
+                        </div>
                         {editingOrder && editingOrder.sync_status === 'synced' && (
                             <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">SYNCED</span>
                         )}

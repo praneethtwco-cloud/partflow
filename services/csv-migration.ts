@@ -118,8 +118,12 @@ export function transformItemFromCsv(csvData: any): any {
     unit_value: parseFloat(csvData['Unit Value'] || csvData.unit_value || csvData.price || csvData['Price'] || '0') || 0,
     current_stock_qty: parseInt(csvData['Stock Qty'] || csvData.current_stock_qty || csvData.stock || csvData['Current Stock'] || csvData['Stock'] || '0') || 0,
     low_stock_threshold: parseInt(csvData['Low Stock Threshold'] || csvData.low_stock_threshold || csvData['Low Stock'] || '0') || 0,
-    is_out_of_stock: (csvData['Out of Stock'] === 'true' || csvData['Out of Stock'] === true || 
-                      csvData.is_out_of_stock === true || csvData['Is Out of Stock'] === 'true') || false,
+    is_out_of_stock: (() => {
+      const outOfStock = csvData['Out of Stock'] ?? csvData.is_out_of_stock ?? csvData['Is Out of Stock'] ?? false;
+      if (typeof outOfStock === 'boolean') return outOfStock;
+      if (typeof outOfStock === 'string') return outOfStock.toLowerCase() === 'true';
+      return Boolean(outOfStock);
+    })(),
     status: csvData.Status || csvData.status || 'active',
     last_updated: csvData.last_updated || csvData['Last Updated'] || new Date().toISOString(),
     

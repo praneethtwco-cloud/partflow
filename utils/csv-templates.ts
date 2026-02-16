@@ -59,7 +59,7 @@ export const CSV_TEMPLATES: Record<string, CsvTemplate> = {
   },
   items: {
     name: 'Items',
-    description: 'Template for importing inventory items',
+    description: 'Template for importing inventory items. Out of Stock accepts: true, false, TRUE, FALSE',
     headers: [
       'ID',
       'Display Name',
@@ -89,7 +89,7 @@ export const CSV_TEMPLATES: Record<string, CsvTemplate> = {
       '1500.00',
       '50',
       '10',
-      'false',
+      'true',
       'active',
       '2024-01-01T00:00:00.000Z',
       '2024-01-01T00:00:00.000Z',
