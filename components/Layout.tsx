@@ -155,8 +155,12 @@ export const Layout: React.FC<LayoutProps> = ({
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
-                <h1 className="text-sm font-bold text-slate-800 truncate max-w-[180px]">
-                  {orderShopName || 'New Order'}
+                <h1 className="text-sm font-bold text-slate-800 min-w-0 flex-1">
+                  <span className="block overflow-hidden whitespace-nowrap">
+                    <span className="inline-block animate-marquee" title={orderShopName || 'New Order'}>
+                      {orderShopName || 'New Order'}
+                    </span>
+                  </span>
                 </h1>
               </>
             ) : (
