@@ -1,71 +1,39 @@
-Error clearing local database: TypeError: Cannot read properties of undefined (reading 'transaction')
-    at clearLocalDatabase (DatabaseClearButtons.tsx:27:22)
-    at executeDispatch (react-dom-client.development.js:19116:9)
-    at runWithFiberInDEV (react-dom-client.development.js:871:30)
-    at processDispatchQueue (react-dom-client.development.js:19166:19)
-    at react-dom-client.development.js:19767:9
-    at batchedUpdates$1 (react-dom-client.development.js:3255:40)
-    at dispatchEventForPluginEventSystem (react-dom-client.development.js:19320:7)
-    at dispatchEvent (react-dom-client.development.js:23585:11)
-    at dispatchDiscreteEvent (react-dom-client.development.js:23553:11)
-clearLocalDatabase @ DatabaseClearButtons.tsx:70
-executeDispatch @ react-dom-client.development.js:19116
-runWithFiberInDEV @ react-dom-client.development.js:871
-processDispatchQueue @ react-dom-client.development.js:19166
-(anonymous) @ react-dom-client.development.js:19767
-batchedUpdates$1 @ react-dom-client.development.js:3255
-dispatchEventForPluginEventSystem @ react-dom-client.development.js:19320
-dispatchEvent @ react-dom-client.development.js:23585
-dispatchDiscreteEvent @ react-dom-client.development.js:23553
-<button>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:335
-DatabaseClearButtons @ DatabaseClearButtons.tsx:272
-react_stack_bottom_frame @ react-dom-client.development.js:25904
-renderWithHooksAgain @ react-dom-client.development.js:7762
-renderWithHooks @ react-dom-client.development.js:7674
-updateFunctionComponent @ react-dom-client.development.js:10166
-beginWork @ react-dom-client.development.js:11778
-runWithFiberInDEV @ react-dom-client.development.js:871
-performUnitOfWork @ react-dom-client.development.js:17641
-workLoopSync @ react-dom-client.development.js:17469
-renderRootSync @ react-dom-client.development.js:17450
-performWorkOnRoot @ react-dom-client.development.js:16504
-performSyncWorkOnRoot @ react-dom-client.development.js:18972
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:18814
-processRootScheduleInMicrotask @ react-dom-client.development.js:18853
-(anonymous) @ react-dom-client.development.js:18991
-<DatabaseClearButtons>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:335
-SyncDashboard @ SyncDashboard.tsx:633
-react_stack_bottom_frame @ react-dom-client.development.js:25904
-renderWithHooksAgain @ react-dom-client.development.js:7762
-renderWithHooks @ react-dom-client.development.js:7674
-updateFunctionComponent @ react-dom-client.development.js:10166
-beginWork @ react-dom-client.development.js:11778
-runWithFiberInDEV @ react-dom-client.development.js:871
-performUnitOfWork @ react-dom-client.development.js:17641
-workLoopSync @ react-dom-client.development.js:17469
-renderRootSync @ react-dom-client.development.js:17450
-performWorkOnRoot @ react-dom-client.development.js:16504
-performSyncWorkOnRoot @ react-dom-client.development.js:18972
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:18814
-processRootScheduleInMicrotask @ react-dom-client.development.js:18853
-(anonymous) @ react-dom-client.development.js:18991
-<SyncDashboard>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:335
-renderContent @ App.tsx:290
-AppContent @ App.tsx:326
-react_stack_bottom_frame @ react-dom-client.development.js:25904
-renderWithHooksAgain @ react-dom-client.development.js:7762
-renderWithHooks @ react-dom-client.development.js:7674
-updateFunctionComponent @ react-dom-client.development.js:10166
-beginWork @ react-dom-client.development.js:11778
-runWithFiberInDEV @ react-dom-client.development.js:871
-performUnitOfWork @ react-dom-client.development.js:17641
-workLoopSync @ react-dom-client.development.js:17469
-renderRootSync @ react-dom-client.development.js:17450
-performWorkOnRoot @ react-dom-client.development.js:16504
-performSyncWorkOnRoot @ react-dom-client.development.js:18972
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:18814
-processRootScheduleInMicrotask @ react-dom-client.development.js:18853
-(anonymous) @ react-dom-client.development.js:18991
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+A problem occurred configuring project ':capacitor-community-http'.
+> Could not create an instance of type com.android.build.api.variant.impl.LibraryVariantBuilderImpl.
+   > Namespace not specified. Specify a namespace in the module's build file: /home/runner/work/partflow-pro/partflow-pro/node_modules/@capacitor-community/http/android/build.gradle. See https://d.android.com/r/tools/upgrade-assistant/set-namespace for information about setting the namespace.
+     
+     If you've specified the package attribute in the source AndroidManifest.xml, you can use the AGP Upgrade Assistant to migrate to the namespace value in the build file. Refer to https://d.android.com/r/tools/upgrade-assistant/agp-upgrade-assistant for general information about using the AGP Upgrade Assistant.
+
+[Incubating] Problems report is available at: file:///home/runner/work/partflow-pro/partflow-pro/android/build/reports/problems/problems-report.html
+* Try:
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+BUILD FAILED in 2m 46s
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
