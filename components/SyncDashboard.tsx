@@ -231,27 +231,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             
             switch (selectedExportType) {
                 case 'customers':
-                    csvContent = Papa.unparse(cloudData.customers, { 
-                        columns: CSV_TEMPLATES.customers.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.customers);
                     filename = `customers_${timestamp}.csv`;
                     break;
                 case 'items':
-                    csvContent = Papa.unparse(cloudData.items, { 
-                        columns: CSV_TEMPLATES.items.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.items);
                     filename = `items_${timestamp}.csv`;
                     break;
                 case 'orders':
-                    csvContent = Papa.unparse(cloudData.orders, { 
-                        columns: CSV_TEMPLATES.orders.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.orders);
                     filename = `orders_${timestamp}.csv`;
                     break;
                 case 'orderLines':
-                    csvContent = Papa.unparse(cloudData.orderLines, { 
-                        columns: CSV_TEMPLATES.orderLines.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.orderLines);
                     filename = `order_lines_${timestamp}.csv`;
                     break;
             }
@@ -274,19 +266,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             const files = [
                 {
                     name: `customers_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.customers, { columns: CSV_TEMPLATES.customers.headers })
+                    content: Papa.unparse(cloudData.customers)
                 },
                 {
                     name: `items_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.items, { columns: CSV_TEMPLATES.items.headers })
+                    content: Papa.unparse(cloudData.items)
                 },
                 {
                     name: `orders_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.orders, { columns: CSV_TEMPLATES.orders.headers })
+                    content: Papa.unparse(cloudData.orders)
                 },
                 {
                     name: `order_lines_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.orderLines, { columns: CSV_TEMPLATES.orderLines.headers })
+                    content: Papa.unparse(cloudData.orderLines)
                 }
             ];
             
