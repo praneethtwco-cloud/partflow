@@ -306,6 +306,23 @@ class DbWrapper {
     getDatabaseInfo() {
         return getDatabaseInfo();
     }
+    
+    async clearAllData() {
+        try {
+            await ensureInitialized();
+            const db = getDb();
+            if (!db) {
+                throw new Error('Database not available');
+            }
+            if (typeof db.clearAllData !== 'function') {
+                throw new Error('clearAllData method not available on database');
+            }
+            return await db.clearAllData();
+        } catch (error) {
+            console.error('clearAllData error:', error);
+            throw error;
+        }
+    }
 }
 
 export const db = new DbWrapper();
