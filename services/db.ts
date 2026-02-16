@@ -954,6 +954,49 @@ class LocalDB {
       }
   }
 
+  // --- Clear All Data ---
+  async clearAllData(): Promise<void> {
+    await this.db.transaction('rw', [
+      this.db.customers,
+      this.db.items,
+      this.db.orders,
+      this.db.settings,
+      this.db.stockAdjustments,
+      this.db.users
+    ], async () => {
+      await this.db.customers.clear();
+      await this.db.items.clear();
+      await this.db.orders.clear();
+      await this.db.settings.clear();
+      await this.db.stockAdjustments.clear();
+      await this.db.users.clear();
+    });
+
+    // Reset cache to defaults
+    this.cache = {
+      customers: [],
+      items: [],
+      orders: [],
+      settings: {
+        company_name: '',
+        address: '',
+        phone: '',
+        rep_name: '',
+        invoice_prefix: 'INV',
+        starting_invoice_number: 1,
+        footer_note: 'Thank you for your business. Goods once sold cannot be returned.',
+        currency_symbol: 'Rs.',
+        auto_sku_enabled: true,
+        stock_tracking_enabled: false,
+        category_enabled: false,
+        show_sku_in_item_cards: false,
+        show_advanced_sync_options: false
+      },
+      adjustments: [],
+      users: []
+    };
+  }
+
   // --- Settings ---
   getSettings(): CompanySettings {
     return this.cache.settings;

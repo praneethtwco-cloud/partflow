@@ -20,49 +20,7 @@ export const DatabaseClearButtons: React.FC = () => {
     }
 
     try {
-      // Cast to any to access private properties
-      const dbAny = db as any;
-      
-      // Clear all tables in the local database
-      await dbAny.db.transaction('rw', [
-        dbAny.db.customers,
-        dbAny.db.items,
-        dbAny.db.orders,
-        dbAny.db.settings,
-        dbAny.db.stockAdjustments,
-        dbAny.db.users
-      ], async () => {
-        await dbAny.db.customers.clear();
-        await dbAny.db.items.clear();
-        await dbAny.db.orders.clear();
-        await dbAny.db.settings.clear();
-        await dbAny.db.stockAdjustments.clear();
-        await dbAny.db.users.clear();
-      });
-
-      // Clear the in-memory cache
-      dbAny.cache.customers = [];
-      dbAny.cache.items = [];
-      dbAny.cache.orders = [];
-      dbAny.cache.adjustments = [];
-      dbAny.cache.users = [];
-      // Reset settings to default
-      dbAny.cache.settings = {
-        company_name: '',
-        address: '',
-        phone: '',
-        rep_name: '',
-        invoice_prefix: 'INV',
-        starting_invoice_number: 1,
-        footer_note: 'Thank you for your business. Goods once sold cannot be returned.',
-        currency_symbol: 'Rs.',
-        auto_sku_enabled: true,
-        stock_tracking_enabled: false,
-        category_enabled: false,
-        show_sku_in_item_cards: false,
-        show_advanced_sync_options: false
-      };
-
+      await db.clearAllData();
       showToast('Local database cleared successfully!', 'success');
       setLocalConfirmText('');
       setShowLocalConfirm(false);
