@@ -99,7 +99,7 @@ export async function exportDatabase(): Promise<{ success: boolean; message: str
 
 function getDb() {
     const platform = Capacitor.getPlatform();
-    if (platform === 'android' || platform === 'ios') {
+    if (platform === 'ios') {
         return sqliteInstance;
     }
     return indexedDbInstance;
