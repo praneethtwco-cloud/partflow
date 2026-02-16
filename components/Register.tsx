@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { API_CONFIG } from '../config';
+import { supabase } from '../services/supabase-client';
 
 export const Register: React.FC<{ onToggleLogin: () => void }> = ({ onToggleLogin }) => {
     const [formData, setFormData] = useState({
-        username: '',
+        email: '',
         password: '',
         full_name: '',
         confirmPassword: ''
@@ -24,25 +24,24 @@ export const Register: React.FC<{ onToggleLogin: () => void }> = ({ onToggleLogi
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_CONFIG.BACKEND_URL}/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: formData.username,
-                    password: formData.password,
-                    full_name: formData.full_name
-                })
+            const { error: supabaseError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.full_name
+                    }
+                }
             });
 
-            const data = await response.json();
-            if (data.success) {
+            if (supabaseError) {
+                setError(supabaseError.message);
+            } else {
                 setSuccess(true);
                 setTimeout(() => onToggleLogin(), 2000);
-            } else {
-                setError(data.message || 'Registration failed');
             }
         } catch (err) {
-            setError('Could not connect to backend server');
+            setError('Registration failed');
         } finally {
             setLoading(false);
         }
@@ -90,14 +89,14 @@ export const Register: React.FC<{ onToggleLogin: () => void }> = ({ onToggleLogi
                         />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Username</label>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Email</label>
                         <input 
-                            type="text" 
+                            type="email" 
                             required
                             className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                            placeholder="rep_vidushan"
-                            value={formData.username}
-                            onChange={e => setFormData({...formData, username: e.target.value})}
+                            placeholder="rep@example.com"
+                            value={formData.email}
+                            onChange={e => setFormData({...formData, email: e.target.value})}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">

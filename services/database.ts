@@ -1,35 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 import { db } from './db';
 
-let databaseInstance: any = null;
-let sqliteInstance: any = null;
 let isInitialized = false;
 
 export async function getDatabase() {
-    if (databaseInstance) {
-        return databaseInstance;
-    }
-
-    const platform = Capacitor.getPlatform();
-
-    if (platform === 'android' || platform === 'ios') {
-        if (!sqliteInstance) {
-            const { sqliteDatabase } = await import('./sqlite-db');
-            sqliteInstance = sqliteDatabase;
-        }
-        databaseInstance = sqliteInstance;
-    } else {
-        databaseInstance = db;
-    }
-
-    return databaseInstance;
+    return db;
 }
 
 export async function initializeDatabase(): Promise<void> {
     if (isInitialized) return;
-
-    const database = await getDatabase();
-    await database.initialize();
+    await db.open();
     isInitialized = true;
 }
 
@@ -44,17 +24,11 @@ export function isNativePlatform(): boolean {
 export function getDatabaseInfo(): { path: string; platform: string; type: string } {
     const platform = Capacitor.getPlatform();
     
-    if (platform === 'android') {
+    if (platform === 'android' || platform === 'ios') {
         return {
             path: '/data/data/com.partflow.pro/databases/PartFlowDB.db',
-            platform: 'android',
-            type: 'SQLite'
-        };
-    } else if (platform === 'ios') {
-        return {
-            path: 'Library/CapacitorDatabase/PartFlowDB.db',
-            platform: 'ios',
-            type: 'SQLite'
+            platform: platform,
+            type: 'IndexedDB'
         };
     } else if (platform === 'web') {
         return {
@@ -65,21 +39,14 @@ export function getDatabaseInfo(): { path: string; platform: string; type: strin
     }
     
     return {
-        path: 'Unknown',
+        path: 'IndexedDB',
         platform: platform,
-        type: 'Unknown'
+        type: 'IndexedDB'
     };
 }
 
 export async function exportDatabase(): Promise<{ success: boolean; message: string; filePath?: string }> {
-    const platform = Capacitor.getPlatform();
-    
-    if (platform === 'android' || platform === 'ios') {
-        const { sqliteDatabase } = await import('./sqlite-db');
-        return sqliteDatabase.exportDatabase();
-    }
-    
-    return { success: false, message: 'Export only available on mobile (Android/iOS)' };
+    return { success: false, message: 'Export not implemented - use Supabase sync for backup' };
 }
 
 export { db };

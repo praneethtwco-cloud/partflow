@@ -98,16 +98,10 @@ D:\AA AKILA NODE\
 │   │   └── ...          # Feature components (OrderBuilder, etc.)
 │   ├── services/        # Logic Layer
 │   │   ├── db.ts        # Dexie DB + Sync Orchestration
-│   │   ├── sheets.ts    # API Communication
+│   │   ├── supabase.ts  # Supabase Client
 │   │   └── pdf.ts       # PDF Generation
 │   ├── utils/           # Helpers (formatting, validation)
 │   └── context/         # React Context (Auth, Toast, Theme)
-│
-├── 🐍 api/              # Python Backend
-│   ├── index.py         # Flask App Entry
-│   ├── auth_service.py  # JWT & User Management
-│   ├── database.py      # SQLite Fallback
-│   └── utils.py         # Google Auth Helpers
 │
 └── 📦 config/           # Build Configs
     ├── vite.config.ts
@@ -129,21 +123,20 @@ D:\AA AKILA NODE\
 
 ## Deployment
 
-### Full Stack (Vercel)
-The project is configured for a unified deployment on Vercel.
+### Frontend Only (Vercel)
+The project uses a frontend-only architecture with Supabase for data and auth.
 - **Frontend**: Built via `npm run build` -> served from `dist/`
-- **Backend**: Python serverless functions in `api/`
-- **Routing**: `vercel.json` routes `/api/*` to Python and `/*` to React.
+- **Data**: Supabase (PostgreSQL + Auth)
+- **Offline**: IndexedDB via Dexie.js with Supabase sync
 
-### Command
+### Commands
 ```bash
-vercel deploy
+npm run build           # Production build
+vercel deploy          # Deploy to Vercel
+npm run sync           # Build & sync to Android
 ```
 
 ### Environment Variables
-- `VITE_API_KEY`: Secure backend access key
-- `JWT_SECRET`: Secret for token signing
-- `GOOGLE_SERVICE_ACCOUNT_B64`: Base64 encoded GCP credentials
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY`: Supabase database connection credentials
 
 ---

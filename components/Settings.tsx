@@ -4,8 +4,7 @@ import { db } from '../services/db';
 import { getDatabaseInfo, getDatabasePlatform } from '../services/database';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
-
-import { API_CONFIG } from '../config';
+import { supabase } from '../services/supabase-client';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
 import { themeColors, ThemeColor } from '../utils/theme';
@@ -29,22 +28,10 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const handleExportDb = async () => {
         setIsExporting(true);
         try {
-            const platform = getDatabasePlatform();
-            if (platform !== 'android' && platform !== 'ios') {
-                setMessage('Export only available on mobile (Android/iOS)');
-                setTimeout(() => setMessage(''), 3000);
-                setIsExporting(false);
-                return;
-            }
-            
-            const { sqliteDatabase } = await import('../services/sqlite-db');
-            const result = await sqliteDatabase.exportDatabase();
-            if (!result.success) {
-                setMessage(result.message);
-                setTimeout(() => setMessage(''), 3000);
-            }
+            setMessage('Use Supabase sync for data backup');
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
-            setMessage('Failed to export database');
+            setMessage('Export not available');
             setTimeout(() => setMessage(''), 3000);
         } finally {
             setIsExporting(false);
@@ -97,38 +84,19 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
         }
 
         try {
-            // Call Python Backend
-            const response = await fetch(`${API_CONFIG.BACKEND_URL}/change-password`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': API_CONFIG.BACKEND_KEY
-                },
-                body: JSON.stringify({
-                    userId: user.id,
-                    oldPassword: passData.old,
-                    newPassword: passData.new
-                })
+            const { error } = await supabase.auth.updateUser({
+                password: passData.new
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                // Also update local DB for offline access if applicable
-                try {
-                    await db.changePassword(user.id, passData.old, passData.new);
-                } catch (e) {
-                    console.log("Local password sync skipped or failed:", e);
-                }
-
+            if (error) {
+                setPassMsg({ text: error.message || 'Failed to change password', type: 'danger' });
+            } else {
                 setPassMsg({ text: 'Password changed successfully!', type: 'success' });
                 setPassData({ old: '', new: '', confirm: '' });
                 setTimeout(() => setShowPassModal(false), 2000);
-            } else {
-                setPassMsg({ text: data.message || 'Failed to change password', type: 'danger' });
             }
         } catch (e: any) {
-            setPassMsg({ text: 'Could not connect to backend server', type: 'danger' });
+            setPassMsg({ text: 'Failed to change password', type: 'danger' });
         }
     };
 
