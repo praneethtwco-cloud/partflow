@@ -1080,8 +1080,14 @@ class LocalDB {
         monthlySales,
         criticalItems: criticalItems.length,
         totalOrders,
-        monthlyOrders
+        monthlyOrders,
+        totalCustomers: this.cache.customers.length,
+        totalItems: this.cache.items.length
     };
+  }
+
+  async reloadCache() {
+    await this.refreshCache();
   }
 
   // --- Auth (Keep in LocalStorage for now, simple) ---

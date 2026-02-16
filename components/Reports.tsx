@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../services/db';
 import { Customer, Item, Order } from '../types';
 import { pdfService } from '../services/pdf';
@@ -31,6 +31,44 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     });
 
     const settings = db.getSettings();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const pullRef = useRef<HTMLDivElement>(null);
+    const [pullDistance, setPullDistance] = useState(0);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await db.reloadCache();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setOrders(db.getOrders());
+        setItems(db.getItems());
+        setCustomers(db.getCustomers());
+        setIsRefreshing(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (window.scrollY === 0) {
+            pullRef.current?.setAttribute('data-touch-start', String(e.touches[0].clientY));
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        const start = pullRef.current?.getAttribute('data-touch-start');
+        if (start && window.scrollY === 0) {
+            const currentY = e.touches[0].clientY;
+            const diff = currentY - parseFloat(start);
+            if (diff > 0) {
+                setPullDistance(Math.min(diff * 0.5, 100));
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (pullDistance > 60) {
+            handleRefresh();
+        }
+        setPullDistance(0);
+        pullRef.current?.removeAttribute('data-touch-start');
+    };
 
     useEffect(() => {
         setOrders(db.getOrders());
@@ -671,7 +709,25 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     );
 
     return (
-        <div className="flex flex-col h-[calc(100vh-100px)] md:h-[calc(100vh-80px)] px-2 max-w-6xl mx-auto">
+        <div 
+            ref={pullRef}
+            className="flex flex-col h-[calc(100vh-100px)] md:h-[calc(100vh-80px)] px-2 max-w-6xl mx-auto"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Pull to Refresh Indicator */}
+            {pullDistance > 0 && (
+                <div 
+                    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-indigo-600 text-white py-2 transition-transform duration-200"
+                    style={{ transform: `translateY(${pullDistance}px)` }}
+                >
+                    <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="font-bold text-sm">{isRefreshing ? 'Refreshing...' : 'Pull to refresh'}</span>
+                </div>
+            )}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 no-print shrink-0 py-4">
                 <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase tracking-tighter">Business Intelligence</h2>
                 <div className="flex items-center justify-between md:justify-start gap-2 bg-white p-2 rounded-xl border border-slate-100 shadow-sm w-full md:w-auto">

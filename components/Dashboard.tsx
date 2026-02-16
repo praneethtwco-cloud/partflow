@@ -28,6 +28,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
     const { showToast } = useToast();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const pullRef = useRef<HTMLDivElement>(null);
+    const [pullDistance, setPullDistance] = useState(0);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        db.reloadCache();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const currentStats = db.getDashboardStats();
+        setStats(currentStats);
+        const allOrders = db.getOrders().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setRecentOrders(allOrders.slice(0, 5));
+        setIsRefreshing(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (window.scrollY === 0) {
+            pullRef.current?.setAttribute('data-touch-start', String(e.touches[0].clientY));
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        const start = pullRef.current?.getAttribute('data-touch-start');
+        if (start && window.scrollY === 0) {
+            const currentY = e.touches[0].clientY;
+            const diff = currentY - parseFloat(start);
+            if (diff > 0) {
+                setPullDistance(Math.min(diff * 0.5, 100));
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (pullDistance > 60) {
+            handleRefresh();
+        }
+        setPullDistance(0);
+        pullRef.current?.removeAttribute('data-touch-start');
+    };
 
     useEffect(() => {
         const updateWidget = async () => {
@@ -184,7 +223,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
     ];
 
     return (
-        <div className="space-y-4 pb-20 md:pb-0 px-2">
+        <div 
+            ref={pullRef}
+            className="space-y-4 pb-20 md:pb-0 px-2"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Pull to Refresh Indicator */}
+            {pullDistance > 0 && (
+                <div 
+                    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-indigo-600 text-white py-2 transition-transform duration-200"
+                    style={{ transform: `translateY(${pullDistance}px)` }}
+                >
+                    <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="font-bold text-sm">{isRefreshing ? 'Refreshing...' : 'Pull to refresh'}</span>
+                </div>
+            )}
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
