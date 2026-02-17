@@ -41,6 +41,8 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [isSyncing]);
 
   const totalPending = stats.pendingCustomers + stats.pendingItems + stats.pendingOrders;
+  const orderTitle = orderShopName || 'New Order';
+  const shouldAnimateOrderTitle = orderTitle.length > 18;
 
   const tabs = [
     {
@@ -145,7 +147,7 @@ export const Layout: React.FC<LayoutProps> = ({
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-3 sticky top-0 z-40 no-print">
         <div className="flex justify-between items-center">
           {/* Left: Close button + Shop name (for Order screen) or Logo (for other screens) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
             {isOrderScreen && onOrderClose ? (
               // Order screen: show close button and shop name
               <>
@@ -155,9 +157,11 @@ export const Layout: React.FC<LayoutProps> = ({
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
-                <h1 className="text-sm font-bold text-slate-800 truncate max-w-[180px]">
-                  {orderShopName || 'New Order'}
-                </h1>
+                <div className="overflow-hidden max-w-[calc(100vw-110px)]">
+                  <h1 className={`text-sm font-bold text-slate-800 whitespace-nowrap ${shouldAnimateOrderTitle ? 'animate-marquee' : ''}`}>
+                    {orderTitle}
+                  </h1>
+                </div>
               </>
             ) : (
               // Other screens: show logo
