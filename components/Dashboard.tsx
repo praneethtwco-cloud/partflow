@@ -10,17 +10,18 @@ import { useTheme } from '../context/ThemeContext';
 interface DashboardProps {
     onAction: (tab: string) => void;
     onViewOrder: (order: any) => void;
+    onOpenProfile: (customerId: string) => void;
 }
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onOpenProfile }) => {
     const { themeClasses } = useTheme();
     const [stats, setStats] = useState<any>({});
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [trendData, setTrendData] = useState<{ date: string, sales: number }[]>([]);
     const [greeting, setGreeting] = useState('');
-    const [topCustomers, setTopCustomers] = useState<{ name: string; total: number; count: number }[]>([]);
+    const [topCustomers, setTopCustomers] = useState<{ customerId: string; name: string; city: string; total: number; count: number }[]>([]);
     const [paymentBreakdown, setPaymentBreakdown] = useState<{ name: string; value: number }[]>([]);
     const [outstandingAmount, setOutstandingAmount] = useState(0);
     const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({});
@@ -101,12 +102,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
             // Top Customers this month
             const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
             const monthOrders = allOrders.filter(o => o.order_date >= firstOfMonth && o.delivery_status !== 'failed' && o.delivery_status !== 'cancelled');
-            const customerTotals: Record<string, { name: string; total: number; count: number }> = {};
+            const customerTotals: Record<string, { customerId: string; name: string; city: string; total: number; count: number }> = {};
             monthOrders.forEach(order => {
                 const customer = db.getCustomers().find(c => c.customer_id === order.customer_id);
                 const name = customer ? cleanText(customer.shop_name) : 'Unknown';
+                const city = customer ? cleanText(customer.city_ref) : 'Unknown City';
                 if (!customerTotals[order.customer_id]) {
-                    customerTotals[order.customer_id] = { name, total: 0, count: 0 };
+                    customerTotals[order.customer_id] = { customerId: order.customer_id, name, city, total: 0, count: 0 };
                 }
                 customerTotals[order.customer_id].total += order.net_total;
                 customerTotals[order.customer_id].count += 1;
@@ -255,6 +257,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                     <p className="text-slate-800 font-bold">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                 </div>
             </div>
+
 
             {/* Auto-sliding Stats Cards */}
             <div className="relative overflow-hidden rounded-3xl">
@@ -405,18 +408,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                         </div>
                         <div className="divide-y divide-slate-50">
                             {topCustomers.map((customer, idx) => (
-                                <div key={idx} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <button
+                                    key={customer.customerId}
+                                    onClick={() => onOpenProfile(customer.customerId)}
+                                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-600' : idx === 1 ? 'bg-slate-100 text-slate-600' : 'bg-orange-50 text-orange-600'}`}>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
                                             {idx + 1}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{customer.name}</p>
-                                            <p className="text-[10px] text-slate-400">{customer.count} orders</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{customer.name}</p>
+                                            <p className="text-[10px] text-slate-400">{customer.city} • {customer.count} orders</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
-                                </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600">
+                                            Profile
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </span>
+                                    </div>
+                                </button>
                             ))}
                         </div>
                     </div>
