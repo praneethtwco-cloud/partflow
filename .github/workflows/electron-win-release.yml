@@ -1,0 +1,79 @@
+name: Build Windows Electron EXE Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows portable EXE
+        run: npm run build:win
+
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="manual-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "name=FieldAudit Sales ${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Locate EXE artifact
+        id: exe_meta
+        shell: bash
+        run: |
+          EXE_PATH=$(find release -maxdepth 2 -type f -name '*.exe' | head -n 1)
+          if [[ -z "$EXE_PATH" ]]; then
+            echo 'No .exe file found in release directory.'
+            exit 1
+          fi
+          echo "path=${EXE_PATH}" >> "$GITHUB_OUTPUT"
+          echo "filename=$(basename "$EXE_PATH")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload EXE build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable-exe
+          path: ${{ steps.exe_meta.outputs.path }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          files: ${{ steps.exe_meta.outputs.path }}
+          generate_release_notes: true
+
+      - name: Upload EXE to workflow-dispatch release
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          files: ${{ steps.exe_meta.outputs.path }}
+          draft: true
+          prerelease: true
