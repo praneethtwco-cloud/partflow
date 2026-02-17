@@ -19,6 +19,8 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showInactive, setShowInactive] = useState(false);
+    const [selectedCity, setSelectedCity] = useState('all');
+    const [showFilterControls, setShowFilterControls] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [actionCustomer, setActionCustomer] = useState<Customer | null>(null);
     const [showAdminActions, setShowAdminActions] = useState(false);
@@ -120,13 +122,26 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
         });
     };
 
-    const filteredCustomers = customers.filter(c => {
+    const searchedCustomers = customers.filter(c => {
         const matchesSearch = c.shop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.city_ref.toLowerCase().includes(searchTerm.toLowerCase());
 
         if (showInactive) return matchesSearch;
         return matchesSearch && c.status === 'active';
     });
+
+    const availableCities = Array.from(new Set(searchedCustomers.map(customer => customer.city_ref.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+    const filteredCustomers = searchedCustomers.filter(customer => {
+        if (selectedCity === 'all') return true;
+        return customer.city_ref === selectedCity;
+    });
+
+    useEffect(() => {
+        if (selectedCity !== 'all' && !availableCities.includes(selectedCity)) {
+            setSelectedCity('all');
+        }
+    }, [availableCities, selectedCity]);
 
     // Helper for avatars
     const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
@@ -136,28 +151,56 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
 
             {/* Search & Action Bar */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center sticky top-0 bg-slate-50 pt-2 pb-2 z-10">
-                <div className="relative w-full md:w-96 group flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg className={`h-5 w-5 text-slate-400 group-focus-within:${themeClasses.text}`} viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search shops or cities..."
-                            className={`block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 ${themeClasses.ring} focus:border-transparent transition-shadow shadow-sm`}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                <div className="w-full md:w-96 space-y-2">
                     <button
-                        onClick={() => setShowInactive(!showInactive)}
-                        className={`p-3 rounded-xl border transition-all ${showInactive ? `${themeClasses.bg} text-white ${themeClasses.border} shadow-md` : `bg-white text-slate-400 border-slate-300 hover:${themeClasses.border}`}`}
-                        title={showInactive ? "Showing All Shops" : "Showing Active Only"}
+                        onClick={() => setShowFilterControls(!showFilterControls)}
+                        className="w-full md:w-auto px-4 py-3 border border-slate-300 bg-white rounded-xl text-slate-700 font-semibold flex items-center justify-center gap-2 shadow-sm"
+                        title={showFilterControls ? 'Hide filters' : 'Show filters'}
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.882 9.882L5.146 5.146m13.708 13.708L15.146 15.146M21 12a9 9 0 01-1.391 4.876m-9.474-9.474L3 3m18 18l-3-3" /></svg>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 01.8 1.6L14 13.333V19a1 1 0 01-.553.894l-4 2A1 1 0 018 21v-7.667L3.2 4.6A1 1 0 013 4z" /></svg>
+                        <span>{showFilterControls ? 'Hide Filters' : 'Filter'}</span>
                     </button>
+
+                    {showFilterControls && (
+                        <div className="space-y-2">
+                            <div className="relative w-full group flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg className={`h-5 w-5 text-slate-400 group-focus-within:${themeClasses.text}`} viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search shops or cities..."
+                                        className={`block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 ${themeClasses.ring} focus:border-transparent transition-shadow shadow-sm`}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => setShowInactive(!showInactive)}
+                                    className={`p-3 rounded-xl border transition-all ${showInactive ? `${themeClasses.bg} text-white ${themeClasses.border} shadow-md` : `bg-white text-slate-400 border-slate-300 hover:${themeClasses.border}`}`}
+                                    title={showInactive ? 'Showing All Shops' : 'Showing Active Only'}
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.882 9.882L5.146 5.146m13.708 13.708L15.146 15.146M21 12a9 9 0 01-1.391 4.876m-9.474-9.474L3 3m18 18l-3-3" /></svg>
+                                </button>
+                            </div>
+
+                            <p className="text-xs font-semibold text-slate-500">{filteredCustomers.length} shops in list</p>
+
+                            <select
+                                className="w-full p-3 border border-slate-300 rounded-xl bg-white text-sm text-slate-700"
+                                value={selectedCity}
+                                onChange={(event) => setSelectedCity(event.target.value)}
+                            >
+                                <option value="all">All Cities</option>
+                                {availableCities.map(city => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={() => setShowAddForm(true)}
