@@ -258,22 +258,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                 </div>
             </div>
 
-            <div className={`relative overflow-hidden rounded-3xl border ${themeClasses.border} ${themeClasses.bgSoft} p-4 md:p-5`}>
-                <div className="absolute -top-8 -right-10 w-32 h-32 bg-indigo-200/40 rounded-full blur-2xl"></div>
-                <div className="absolute -bottom-10 -left-8 w-32 h-32 bg-emerald-200/40 rounded-full blur-2xl"></div>
-                <div className="relative z-10 flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Performance Pulse</p>
-                        <h3 className="text-lg font-black text-slate-900 mt-1">Keep momentum this week 🚀</h3>
-                        <p className="text-xs text-slate-600 mt-1">Top customers are now tappable for quick profile access and faster follow-ups.</p>
-                    </div>
-                    <div className="hidden sm:flex gap-2">
-                        <span className="w-10 h-10 rounded-xl bg-white/80 border border-white flex items-center justify-center text-amber-500 shadow-sm">🏆</span>
-                        <span className="w-10 h-10 rounded-xl bg-white/80 border border-white flex items-center justify-center text-emerald-500 shadow-sm">📈</span>
-                        <span className="w-10 h-10 rounded-xl bg-white/80 border border-white flex items-center justify-center text-indigo-500 shadow-sm">👥</span>
-                    </div>
-                </div>
-            </div>
 
             {/* Auto-sliding Stats Cards */}
             <div className="relative overflow-hidden rounded-3xl">
