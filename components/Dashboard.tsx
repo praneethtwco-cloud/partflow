@@ -259,38 +259,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             </div>
 
 
-            {/* Daily Performance Card */}
-            <section className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-slate-900 text-base font-bold">Daily Performance</h2>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${animatedValues.dailySales > 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-500'}`}>
-                        {animatedValues.dailySales > 0 ? 'On Track' : 'No Sales Yet'}
-                    </span>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative h-24 w-24 flex-shrink-0">
-                        <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-slate-100" />
-                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className={`${themeClasses.text}`} strokeDasharray={`${Math.min(100, Math.round((animatedValues.dailySales / 5000) * 100))}, 100`} />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-lg font-black text-slate-900">{Math.min(100, Math.round((animatedValues.dailySales / 5000) * 100))}%</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Revenue</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-slate-900">{formatCurrency(animatedValues.dailySales)}</span>
-                            <span className="text-xs text-slate-400 font-semibold">/ {formatCurrency(5000)}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mt-3">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Orders</p>
-                                <p className="text-sm font-black text-slate-900">{animatedValues.monthlyOrders}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Items</p>
-                                <p className="text-sm font-black text-slate-900">{stats.totalItems || 0}</p>
+            {/* Auto-sliding Stats Cards */}
+            <div className="relative overflow-hidden rounded-3xl">
+                <div 
+                    ref={scrollContainerRef}
+                    className="flex transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                >
+                    {statCards.map((card, idx) => (
+                        <div key={idx} className="w-full flex-shrink-0 px-1">
+                            <div
+                                onClick={card.action}
+                                className={`bg-gradient-to-br ${card.gradient} p-5 md:p-6 rounded-3xl shadow-lg shadow-indigo-100 text-white relative overflow-hidden group cursor-pointer active:scale-95 transition-transform`}
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    {card.icon}
+                                </div>
+                                <div className="relative z-10">
+                                    <p className="text-xs uppercase font-bold text-white/80 tracking-wider mb-1">{card.title}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight truncate">
+                                        {card.isCount ? card.value : formatCurrency(card.value)}
+                                    </p>
+                                    <p className="text-white/60 text-xs font-medium mt-1">{card.subtitle}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -426,15 +417,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                         </div>
                         <div className="divide-y divide-slate-50">
                             {topCustomers.map((customer, idx) => (
-                                <button key={customer.customerId} onClick={() => onOpenProfile(customer.customerId)} className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left">
+                                <button
+                                    key={customer.customerId}
+                                    onClick={() => onOpenProfile(customer.customerId)}
+                                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>{idx + 1}</div>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
+                                            {idx + 1}
+                                        </div>
                                         <div>
                                             <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{customer.name}</p>
                                             <p className="text-[10px] text-slate-400">{customer.city} • {customer.count} orders</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600">
+                                            Profile
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </span>
+                                    </div>
                                 </button>
                             ))}
                         </div>
