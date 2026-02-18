@@ -293,23 +293,57 @@ export const InventoryList: React.FC = () => {
       }
   };
 
-  const filteredItems = items.filter(item => {
+  const baseFilteredItems = items.filter(item => {
     const matchesSearch = item.item_display_name.toLowerCase().includes(filter.toLowerCase()) ||
-        item.item_number.toLowerCase().includes(filter.toLowerCase());
-    
-    const matchesModel = !modelFilter || item.vehicle_model.toLowerCase().includes(modelFilter.toLowerCase());
-    const matchesCountry = !countryFilter || (item.source_brand && item.source_brand.toLowerCase().includes(countryFilter.toLowerCase()));
+      item.item_number.toLowerCase().includes(filter.toLowerCase());
 
     let matchesCategory = true;
     if (categoryFilter === 'Low Stock') {
-        matchesCategory = item.current_stock_qty <= item.low_stock_threshold;
+      matchesCategory = item.current_stock_qty <= item.low_stock_threshold;
     } else if (categoryFilter === 'Out of Stock') {
-        matchesCategory = item.is_out_of_stock === true;
+      matchesCategory = item.is_out_of_stock === true;
     } else if (categoryFilter !== 'All') {
-        matchesCategory = item.category === categoryFilter;
+      matchesCategory = item.category === categoryFilter;
     }
-    
-    return matchesSearch && matchesModel && matchesCountry && matchesCategory && item.status !== 'inactive';
+
+    return matchesSearch && matchesCategory && item.status !== 'inactive';
+  });
+
+  const availableModels = Array.from(
+    new Set(
+      baseFilteredItems
+        .filter(item => !countryFilter || item.source_brand === countryFilter)
+        .map(item => item.vehicle_model)
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const availableCountries = Array.from(
+    new Set(
+      baseFilteredItems
+        .filter(item => !modelFilter || item.vehicle_model === modelFilter)
+        .map(item => item.source_brand)
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  useEffect(() => {
+    if (modelFilter && !availableModels.includes(modelFilter)) {
+      setModelFilter('');
+    }
+  }, [availableModels, modelFilter]);
+
+  useEffect(() => {
+    if (countryFilter && !availableCountries.includes(countryFilter)) {
+      setCountryFilter('');
+    }
+  }, [availableCountries, countryFilter]);
+
+  const filteredItems = baseFilteredItems.filter(item => {
+    const matchesModel = !modelFilter || item.vehicle_model === modelFilter;
+    const matchesCountry = !countryFilter || item.source_brand === countryFilter;
+
+    return matchesModel && matchesCountry;
   }).sort((a, b) => {
       if (sortOrder === 'A-Z') return a.item_display_name.localeCompare(b.item_display_name);
       if (sortOrder === 'High-Low') return b.current_stock_qty - a.current_stock_qty;
@@ -354,19 +388,27 @@ export const InventoryList: React.FC = () => {
 
             <div className={`hidden md:flex gap-3 animate-in slide-in-from-top-2 md:animate-none`}>
                 <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                    <input 
-                        placeholder="Model" 
-                        className="w-full md:w-32 px-3 py-2 bg-transparent text-sm font-medium focus:outline-none"
+                    <select
+                        className="w-full md:w-36 px-3 py-2 bg-transparent text-sm font-medium focus:outline-none"
                         value={modelFilter}
                         onChange={e => setModelFilter(e.target.value)}
-                    />
+                    >
+                        <option value="">All Models</option>
+                        {availableModels.map(model => (
+                            <option key={model} value={model}>{cleanText(model)}</option>
+                        ))}
+                    </select>
                     <div className="w-px h-6 bg-slate-300"></div>
-                    <input 
-                        placeholder="Origin" 
-                        className="w-full md:w-32 px-3 py-2 bg-transparent text-sm font-medium focus:outline-none"
+                    <select
+                        className="w-full md:w-36 px-3 py-2 bg-transparent text-sm font-medium focus:outline-none"
                         value={countryFilter}
                         onChange={e => setCountryFilter(e.target.value)}
-                    />
+                    >
+                        <option value="">All Origins</option>
+                        {availableCountries.map(country => (
+                            <option key={country} value={country}>{cleanText(country)}</option>
+                        ))}
+                    </select>
                 </div>
                 <select 
                     className={`w-32 md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none shrink-0`}
@@ -374,8 +416,8 @@ export const InventoryList: React.FC = () => {
                     onChange={e => setSortOrder(e.target.value as 'A-Z' | 'High-Low' | 'Low-High')}
                 >
                     <option value="A-Z">Name A-Z</option>
-                    <option value="Price-High">Price High</option>
-                    <option value="Price-Low">Price Low</option>
+                    <option value="High-Low">Stock High</option>
+                    <option value="Low-High">Stock Low</option>
                 </select>
                 
                 <input 
@@ -407,18 +449,26 @@ export const InventoryList: React.FC = () => {
          {/* Mobile Filters (Collapsible) */}
          {showFilters && (
             <div className="md:hidden grid grid-cols-2 gap-2 animate-in slide-in-from-top-1">
-                <input
-                    placeholder="Model"
+                <select
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none"
                     value={modelFilter}
                     onChange={e => setModelFilter(e.target.value)}
-                />
-                <input
-                    placeholder="Origin"
+                >
+                    <option value="">All Models</option>
+                    {availableModels.map(model => (
+                        <option key={model} value={model}>{cleanText(model)}</option>
+                    ))}
+                </select>
+                <select
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none"
                     value={countryFilter}
                     onChange={e => setCountryFilter(e.target.value)}
-                />
+                >
+                    <option value="">All Origins</option>
+                    {availableCountries.map(country => (
+                        <option key={country} value={country}>{cleanText(country)}</option>
+                    ))}
+                </select>
                 <select
                     className="w-full col-span-2 px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-600 focus:outline-none"
                     value={sortOrder}

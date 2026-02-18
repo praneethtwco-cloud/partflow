@@ -138,6 +138,13 @@ function AppContent() {
       navigateTo('shop_profile');
   };
 
+  const handleOpenProfileFromDashboard = (customerId: string) => {
+      const customer = db.getCustomers().find(c => c.customer_id === customerId);
+      if (customer) {
+          handleOpenProfile(customer);
+      }
+  };
+
   const handleViewShopProfileFromHistory = (customerId: string) => {
       const customer = db.getCustomers().find(c => c.customer_id === customerId);
       if (customer) {
@@ -236,7 +243,7 @@ function AppContent() {
 
     switch (activeTab) {
       case 'home':
-        return <Dashboard onAction={(tab) => navigateTo(tab)} onViewOrder={handleViewInvoice} />;
+        return <Dashboard onAction={(tab) => navigateTo(tab)} onViewOrder={handleViewInvoice} onOpenProfile={handleOpenProfileFromDashboard} />;
       case 'customers':
         return <CustomerList onSelectCustomer={handleSelectCustomer} onOpenProfile={handleOpenProfile} />;
       case 'shop_profile':
