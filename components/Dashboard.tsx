@@ -6,6 +6,7 @@ import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
+import { RoutePlanEntry } from '../types';
 
 interface DashboardProps {
     onAction: (tab: string) => void;
@@ -32,6 +33,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
     const [isRefreshing, setIsRefreshing] = useState(false);
     const pullRef = useRef<HTMLDivElement>(null);
     const [pullDistance, setPullDistance] = useState(0);
+    const [todayRoutePlans, setTodayRoutePlans] = useState<RoutePlanEntry[]>([]);
+    const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+    const [newRoutePlan, setNewRoutePlan] = useState({ customerId: '', visitTime: '', note: '' });
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -176,13 +180,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
 
     // Auto-scroll carousel
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (scrollContainerRef.current) {
-                setCurrentSlide(prev => (prev + 1) % 3);
-            }
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        const today = new Date().toISOString().split('T')[0];
+        setTodayRoutePlans((settings.route_plans || []).filter(plan => plan.route_date === today));
+    }, [settings.route_plans]);
+
+    const handleAddRoutePlan = async (): Promise<void> => {
+        if (!newRoutePlan.customerId || !newRoutePlan.visitTime) {
+            showToast('Select shop and visit time', 'error');
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const routePlan: RoutePlanEntry = {
+            id: `${Date.now()}-${newRoutePlan.customerId}`,
+            customer_id: newRoutePlan.customerId,
+            visit_time: newRoutePlan.visitTime,
+            note: newRoutePlan.note,
+            route_date: today,
+            created_at: new Date().toISOString()
+        };
+
+        try {
+            const updatedRoutePlans = [...(settings.route_plans || []), routePlan];
+            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
+            setTodayRoutePlans(prev => [...prev, routePlan]);
+            setNewRoutePlan({ customerId: '', visitTime: '', note: '' });
+            setShowRoutePlanner(false);
+            showToast('Route stop added', 'success');
+        } catch (error) {
+            console.error('Failed to add route plan:', error);
+            showToast('Failed to add route plan', 'error');
+        }
+    };
+
+    const handleRemoveRoutePlan = async (planId: string): Promise<void> => {
+        try {
+            const updatedRoutePlans = (settings.route_plans || []).filter(plan => plan.id !== planId);
+            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
+            setTodayRoutePlans(prev => prev.filter(plan => plan.id !== planId));
+            showToast('Route stop removed', 'info');
+        } catch (error) {
+            console.error('Failed to remove route plan:', error);
+            showToast('Failed to remove route stop', 'error');
+        }
+    };
+
+    const customerOptions = db.getCustomers().filter(customer => customer.status === 'active');
 
     const statCards = [
         {
@@ -223,6 +266,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             isCount: true
         }
     ];
+
+    const routeStops = todayRoutePlans.length > 0
+        ? todayRoutePlans.map(plan => {
+            const customer = db.getCustomers().find(c => c.customer_id === plan.customer_id);
+            return {
+                key: plan.id,
+                customerId: plan.customer_id,
+                name: customer ? cleanText(customer.shop_name) : 'Unknown Shop',
+                city: customer ? cleanText(customer.city_ref) : 'No city',
+                count: 0,
+                visitTime: plan.visit_time,
+                note: plan.note || ''
+            };
+        })
+        : (topCustomers.slice(0, 3).length ? topCustomers.slice(0, 3).map(customer => ({
+            key: customer.customerId,
+            customerId: customer.customerId,
+            name: customer.name,
+            city: customer.city,
+            count: customer.count,
+            visitTime: '',
+            note: ''
+        })) : [{ key: 'empty', customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', count: 0, visitTime: '', note: '' }]);
 
     return (
         <div 
