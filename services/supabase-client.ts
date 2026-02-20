@@ -3,6 +3,8 @@ import { SUPABASE_CONFIG } from '../config';
 
 let sharedSupabaseClient: SupabaseClient | null = null;
 
+export const supabase = getSupabaseClient();
+
 export function getSupabaseClient(): SupabaseClient {
   if (!sharedSupabaseClient) {
     const supabaseUrl = SUPABASE_CONFIG.URL;

@@ -2,18 +2,8 @@
 
 **Project**: Enterprise Spare Parts Distribution Management System  
 **Tech Stack**: React 19.2.4 + TypeScript 5.8.2 + Vite 6.2.0 + Capacitor 8.0.2 + Dexie.js 4.3.0 + PWA  
-**Platform**: Web PWA + Android App  
+**Platform**: Web PWA + Android App + Desktop (Electron)  
 **Deployment**: Vercel (Frontend) + Local API (Flask)
-
-**Key Dependencies**:
-- React 19.2.4 with React DOM
-- Dexie.js 4.3.0 for IndexedDB operations  
-- Capacitor 8.0.2 for Android packaging
-- jsPDF 4.0.0 with autotable for PDF generation
-- html5-qrcode 2.3.8 for barcode scanning
-- Lucide React 0.563.0 for icons
-- Recharts 3.7.0 for data visualization
-- Supabase 2.95.3 for cloud sync
 
 ---
 
@@ -21,124 +11,77 @@
 
 ### Frontend (React + Vite)
 ```bash
-# Development
-npm run dev                # Start development server (http://localhost:3000)
-
-# Build & Deploy  
+npm run dev                # Start dev server (http://localhost:3000)
 npm run build              # Build for production
-npm run preview           # Preview production build locally
-npm run sync              # Build and sync to Android (Capacitor)
+npm run preview            # Preview production build locally
+npm run sync               # Build and sync to Android (Capacitor)
+npm run dev:electron       # Run Electron desktop app
+npm run build:electron     # Build Electron app
+npm run build:win          # Build Windows portable exe
+npm run test:auth          # Run auth sync test script
+```
 
-# Package Management
-npm install               # Install dependencies
-npm ci                    # Clean install for CI/CD
+### Testing (when configured with Vitest)
+```bash
+npm test                   # Run all tests
+npm test -- --run SingleFile.test.ts    # Run single test file
+npm test -- --watch      # Watch mode
+npm test -- --coverage   # Coverage report
+```
 
-# Testing (none configured - see below)
-# Once configured with Vitest:
-# npm test                 # Run all tests
-# npm test -- run SingleFile.test.ts   # Run single file
-# npm test -- --watch    # Watch mode
-# npm test -- --coverage # Coverage report
-
-# Linting (none configured - see below)
-# npm run lint            # Run ESLint (once configured)
+### Linting (when configured with ESLint)
+```bash
+npm run lint              # Run ESLint
+npm run lint -- --fix     # Auto-fix issues
 ```
 
 ### Android Development
 ```bash
-npm run sync             # Build and sync to Android
+npm run sync              # Build and sync to Android
 npx cap open android     # Open Android Studio
-npx cap run android      # Run on Android device/emulator
+npx cap run android      # Run on device/emulator
 ```
 
-### Backend (Flask API)
-```bash
-cd api
-pip install -r requirements.txt
-python index.py          # Start Flask API server
-```
 
-**Note**: No linting or testing framework currently configured. To add:
-```bash
-# Testing framework (recommended: Vitest)
-npm install --save-dev vitest jsdom @testing-library/react @testing-library/jest-dom
-npm install --save-dev @vitejs/plugin-react
-
-# Linting (recommended)
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install --save-dev prettier eslint-config-prettier
-```
-
----
-
-## Project Architecture
-
-### Frontend Structure
-- **Entry Point**: `App.tsx` - Main application with tab navigation and state management
-- **Components**: `components/` - Reusable UI components and feature modules
-- **Services**: `services/` - Business logic (database, sheets API, PDF generation)
-- **Utils**: `utils/` - Helper functions (currency, CSV, UUID generation)
-- **Types**: `types.ts` - TypeScript interfaces and type definitions
-- **Context**: `context/` - React context providers (Auth, Theme, Toast)
-
-### Backend Structure  
-- **Main API**: `api/index.py` - Flask application with CORS and rate limiting
-- **Auth Service**: `api/auth_service.py` - User authentication and password management
-
-### Data Layer
-- **Local Storage**: IndexedDB via Dexie.js for offline-first functionality
-- **Cloud Sync**: Supabase for bidirectional data synchronization with offline support
-- **Tables**: `customers`, `items`, `orders`, `payments`, `stock_adjustments`
 
 ---
 
 ## Code Style Guidelines
 
 ### TypeScript & React
-- **Framework**: React 19.x with functional components and hooks
-- **TypeScript**: Strict mode enabled with comprehensive type definitions in `types.ts`
-- **Component Pattern**: Functional components with explicit prop interfaces
-- **State Management**: React hooks for local state, context for global state
-- **Routing**: Tab-based navigation with history stack management
-- **Path Aliases**: `@/*` configured in tsconfig.json and vite.config.ts
+- React 19.x with functional components and hooks
+- TypeScript strict mode - avoid `any` type; use `unknown` or generics
+- Functional components with explicit prop interfaces (ComponentNameProps)
+- Path aliases: `@/*` configured in tsconfig.json
 
-### Import Organization (Order: External → Internal)
+### Import Order
 ```typescript
 // 1. React and React DOM
 import React, { useState, useEffect, useCallback } from 'react';
-
 // 2. Third-party libraries
 import Dexie, { Table } from 'dexie';
-import { useNavigate } from 'react-router-dom';
-
 // 3. Internal absolute imports (use @ alias)
 import { Customer, Order } from '@/types';
-import { db } from '@/services/db';
-import { useAuth } from '@/context/AuthContext';
-
 // 4. Relative imports for same-module files
 import { formatCurrency } from './currency';
 ```
 
 ### Component Structure
 ```typescript
-interface ComponentProps {
+interface ComponentNameProps {
   data: Item[];
   onAction: (id: string) => void;
   isLoading?: boolean;
 }
 
-export const Component: React.FC<ComponentProps> = ({ data, onAction, isLoading }) => {
-  // Hooks first (custom hooks, then state, then refs)
+export const ComponentName: React.FC<ComponentNameProps> = ({ data, onAction, isLoading }) => {
+  // Hooks: custom → state → refs
   const { themeClasses } = useTheme();
   const [state, setState] = useState<Type>(initialValue);
   
-  // Effects (alphabetically by dependency)
+  // Effects with cleanup
   useEffect(() => {
-    // Side effects with proper cleanup
-    return () => {
-      // Cleanup logic
-    };
+    return () => { /* cleanup */ };
   }, [dependencies]);
   
   // Event handlers (handleXxx naming)
@@ -146,36 +89,26 @@ export const Component: React.FC<ComponentProps> = ({ data, onAction, isLoading 
     onAction(id);
   }, [onAction]);
   
-  // Early returns for loading/error states
-  if (isLoading) {
-    return <Spinner />;
-  }
+  // Early returns
+  if (isLoading) return <Spinner />;
   
   // Render
-  return (
-    <div className={themeClasses.container}>
-      {data.map(item => (
-        <div key={item.id}>{item.name}</div>
-      ))}
-    </div>
-  );
+  return <div className={themeClasses.container}>{/* ... */}</div>;
 };
 ```
 
 ### Naming Conventions
-- **Components**: PascalCase (`OrderBuilder`, `CustomerList`, `ItemCard`)
-- **Hooks**: camelCase starting with `use` (`useAuth`, `useTheme`)
-- **Variables**: camelCase with semantic meaning (`outstandingBalance`, `syncStatus`)
-- **Types/Interfaces**: PascalCase (`Customer`, `Order`, `PaymentType`)
-- **Constants**: UPPER_SNAKE_CASE for config (`STORAGE_KEYS`, `API_ENDPOINTS`)
-- **Files**: kebab-case for components, camelCase for utilities
-- **Props Interfaces**: ComponentNameProps suffix (`OrderBuilderProps`)
+- **Components**: PascalCase (`OrderBuilder`, `CustomerList`)
+- **Hooks**: camelCase with `use` prefix (`useAuth`, `useTheme`)
+- **Variables**: camelCase (`outstandingBalance`, `syncStatus`)
+- **Types**: PascalCase (`Customer`, `Order`)
+- **Constants**: UPPER_SNAKE_CASE (`STORAGE_KEYS`)
+- **Files**: kebab-case (components), camelCase (utilities)
 
 ### Error Handling
-- **Try-Catch**: Always wrap async operations in try-catch
-- **User Feedback**: Use ToastContext for user-friendly error messages
-- **Error Boundaries**: Wrap critical sections with error boundaries
-- **Logging**: Log errors appropriately (console.error for dev, sentry for prod)
+- Always wrap async operations in try-catch
+- Use ToastContext for user feedback
+- Log errors with console.error
 ```typescript
 try {
   await db.orders.add(order);
@@ -186,9 +119,9 @@ try {
 ```
 
 ### Async Patterns
-- **Always use async/await**: Never chain `.then()` or `.catch()`
-- **Proper typing**: Always type async functions with return types
-- **Loading states**: Show loading indicators during async operations
+- Use async/await - never chain `.then()` or `.catch()`
+- Always declare return types
+- Show loading indicators during async operations
 ```typescript
 const handleSave = async (): Promise<void> => {
   setIsLoading(true);
@@ -203,41 +136,30 @@ const handleSave = async (): Promise<void> => {
 };
 ```
 
-### Database & API Patterns (Dexie.js)
-- **Service Layer**: All DB operations in `services/db.ts`
-- **Type Safety**: All tables and operations use TypeScript interfaces
-- **Transactions**: Use transactions for multiple related updates
-- **Offline First**: Design for offline-first with sync to Supabase
+### Database (Dexie.js)
+- All DB operations in `services/db.ts`
+- Use transactions for multiple related updates
+- Design for offline-first with Supabase sync
 
-### Styling & UI
-- **CSS Framework**: Tailwind CSS (utility-first approach)
-- **Theming**: Dynamic theming via `ThemeContext` with CSS classes
-- **Responsive**: Mobile-first design with touch-friendly interactions
-- **Modals**: Use `Modal` component from `components/ui/Modal.tsx`
-- **Loading States**: Skeleton components in `components/ui/skeletons/`
-
-### Code Quality Rules
-- **No `any`**: Avoid `any` type; use `unknown` or proper generics
-- **Explicit Returns**: Always declare return types for functions
-- **Early Returns**: Use early returns to reduce nesting
-- **Destructuring**: Prefer destructuring for props and state
-- **Constants**: Extract magic numbers to named constants
+### Styling
+- Tailwind CSS (utility-first)
+- Mobile-first design (375px primary viewport)
+- Dynamic theming via ThemeContext
 
 ---
 
 ## Agent-Specific Guidelines
 
-### When Making Changes
-1. Run `npm run build` before committing to verify no build errors
-2. Use TypeScript strict mode - avoid `any` types
-3. Test on mobile viewport (375px width) as primary target
+### Before Committing
+1. Run `npm run build` to verify no build errors
+2. Test on mobile viewport (375px width)
 
-### When Adding New Features
+### Adding New Features
 1. Follow existing component patterns in `components/`
 2. Add types to `types.ts` before implementing
-3. Use Dexie.js for local storage, not localStorage directly
+3. Use Dexie.js for local storage, never localStorage
 
-### When Fixing Bugs
-1. Identify root cause, not just symptoms
+### Fixing Bugs
+1. Identify root cause, not symptoms
 2. Add error handling where missing
-3. Test edge cases (empty data, network failure, etc.)
+3. Test edge cases (empty data, network failure)

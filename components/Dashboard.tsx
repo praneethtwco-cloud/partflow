@@ -6,21 +6,23 @@ import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
+import { RoutePlanEntry } from '../types';
 
 interface DashboardProps {
     onAction: (tab: string) => void;
     onViewOrder: (order: any) => void;
+    onOpenProfile: (customerId: string) => void;
 }
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onOpenProfile }) => {
     const { themeClasses } = useTheme();
     const [stats, setStats] = useState<any>({});
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [trendData, setTrendData] = useState<{ date: string, sales: number }[]>([]);
     const [greeting, setGreeting] = useState('');
-    const [topCustomers, setTopCustomers] = useState<{ name: string; total: number; count: number }[]>([]);
+    const [topCustomers, setTopCustomers] = useState<{ customerId: string; name: string; city: string; total: number; count: number }[]>([]);
     const [paymentBreakdown, setPaymentBreakdown] = useState<{ name: string; value: number }[]>([]);
     const [outstandingAmount, setOutstandingAmount] = useState(0);
     const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({});
@@ -28,6 +30,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
     const { showToast } = useToast();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const pullRef = useRef<HTMLDivElement>(null);
+    const [pullDistance, setPullDistance] = useState(0);
+    const [todayRoutePlans, setTodayRoutePlans] = useState<RoutePlanEntry[]>([]);
+    const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+    const [newRoutePlan, setNewRoutePlan] = useState({ customerId: '', visitTime: '', note: '' });
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        db.reloadCache();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const currentStats = db.getDashboardStats();
+        setStats(currentStats);
+        const allOrders = db.getOrders().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setRecentOrders(allOrders.slice(0, 5));
+        setIsRefreshing(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (window.scrollY === 0) {
+            pullRef.current?.setAttribute('data-touch-start', String(e.touches[0].clientY));
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        const start = pullRef.current?.getAttribute('data-touch-start');
+        if (start && window.scrollY === 0) {
+            const currentY = e.touches[0].clientY;
+            const diff = currentY - parseFloat(start);
+            if (diff > 0) {
+                setPullDistance(Math.min(diff * 0.5, 100));
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (pullDistance > 60) {
+            handleRefresh();
+        }
+        setPullDistance(0);
+        pullRef.current?.removeAttribute('data-touch-start');
+    };
 
     useEffect(() => {
         const updateWidget = async () => {
@@ -62,12 +106,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
             // Top Customers this month
             const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
             const monthOrders = allOrders.filter(o => o.order_date >= firstOfMonth && o.delivery_status !== 'failed' && o.delivery_status !== 'cancelled');
-            const customerTotals: Record<string, { name: string; total: number; count: number }> = {};
+            const customerTotals: Record<string, { customerId: string; name: string; city: string; total: number; count: number }> = {};
             monthOrders.forEach(order => {
                 const customer = db.getCustomers().find(c => c.customer_id === order.customer_id);
                 const name = customer ? cleanText(customer.shop_name) : 'Unknown';
+                const city = customer ? cleanText(customer.city_ref) : 'Unknown City';
                 if (!customerTotals[order.customer_id]) {
-                    customerTotals[order.customer_id] = { name, total: 0, count: 0 };
+                    customerTotals[order.customer_id] = { customerId: order.customer_id, name, city, total: 0, count: 0 };
                 }
                 customerTotals[order.customer_id].total += order.net_total;
                 customerTotals[order.customer_id].count += 1;
@@ -135,13 +180,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
 
     // Auto-scroll carousel
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (scrollContainerRef.current) {
-                setCurrentSlide(prev => (prev + 1) % 3);
-            }
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        const today = new Date().toISOString().split('T')[0];
+        setTodayRoutePlans((settings.route_plans || []).filter(plan => plan.route_date === today));
+    }, [settings.route_plans]);
+
+    const handleAddRoutePlan = async (): Promise<void> => {
+        if (!newRoutePlan.customerId || !newRoutePlan.visitTime) {
+            showToast('Select shop and visit time', 'error');
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const routePlan: RoutePlanEntry = {
+            id: `${Date.now()}-${newRoutePlan.customerId}`,
+            customer_id: newRoutePlan.customerId,
+            visit_time: newRoutePlan.visitTime,
+            note: newRoutePlan.note,
+            route_date: today,
+            created_at: new Date().toISOString()
+        };
+
+        try {
+            const updatedRoutePlans = [...(settings.route_plans || []), routePlan];
+            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
+            setTodayRoutePlans(prev => [...prev, routePlan]);
+            setNewRoutePlan({ customerId: '', visitTime: '', note: '' });
+            setShowRoutePlanner(false);
+            showToast('Route stop added', 'success');
+        } catch (error) {
+            console.error('Failed to add route plan:', error);
+            showToast('Failed to add route plan', 'error');
+        }
+    };
+
+    const handleRemoveRoutePlan = async (planId: string): Promise<void> => {
+        try {
+            const updatedRoutePlans = (settings.route_plans || []).filter(plan => plan.id !== planId);
+            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
+            setTodayRoutePlans(prev => prev.filter(plan => plan.id !== planId));
+            showToast('Route stop removed', 'info');
+        } catch (error) {
+            console.error('Failed to remove route plan:', error);
+            showToast('Failed to remove route stop', 'error');
+        }
+    };
+
+    const customerOptions = db.getCustomers().filter(customer => customer.status === 'active');
 
     const statCards = [
         {
@@ -183,8 +267,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
         }
     ];
 
+    const routeStops = todayRoutePlans.length > 0
+        ? todayRoutePlans.map(plan => {
+            const customer = db.getCustomers().find(c => c.customer_id === plan.customer_id);
+            return {
+                key: plan.id,
+                customerId: plan.customer_id,
+                name: customer ? cleanText(customer.shop_name) : 'Unknown Shop',
+                city: customer ? cleanText(customer.city_ref) : 'No city',
+                count: 0,
+                visitTime: plan.visit_time,
+                note: plan.note || ''
+            };
+        })
+        : (topCustomers.slice(0, 3).length ? topCustomers.slice(0, 3).map(customer => ({
+            key: customer.customerId,
+            customerId: customer.customerId,
+            name: customer.name,
+            city: customer.city,
+            count: customer.count,
+            visitTime: '',
+            note: ''
+        })) : [{ key: 'empty', customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', count: 0, visitTime: '', note: '' }]);
+
     return (
-        <div className="space-y-4 pb-20 md:pb-0 px-2">
+        <div 
+            ref={pullRef}
+            className="space-y-4 pb-20 md:pb-0 px-2"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Pull to Refresh Indicator */}
+            {pullDistance > 0 && (
+                <div 
+                    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-indigo-600 text-white py-2 transition-transform duration-200"
+                    style={{ transform: `translateY(${pullDistance}px)` }}
+                >
+                    <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="font-bold text-sm">{isRefreshing ? 'Refreshing...' : 'Pull to refresh'}</span>
+                </div>
+            )}
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
@@ -198,6 +323,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                     <p className="text-slate-800 font-bold">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                 </div>
             </div>
+
 
             {/* Auto-sliding Stats Cards */}
             <div className="relative overflow-hidden rounded-3xl">
@@ -224,51 +350,80 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Quick Actions */}
+            <section className="grid grid-cols-2 gap-3">
+                <button onClick={() => onAction('customers')} className={`flex flex-col items-center justify-center gap-2 ${themeClasses.bg} text-white p-4 rounded-2xl shadow-md active:scale-95 transition-transform`}>
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <span className="font-bold text-sm">New Order</span>
+                </button>
+                <button onClick={() => onAction('inventory')} className="flex flex-col items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 p-4 rounded-2xl shadow-sm active:scale-95 transition-transform">
+                    <svg className={`w-7 h-7 ${themeClasses.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                    <span className="font-bold text-sm">Search Catalog</span>
+                </button>
+            </section>
+
+            {/* Today's Route */}
+            <section>
+                <div className="flex items-center justify-between mb-3 px-1">
+                    <h2 className="text-slate-900 text-lg font-black">Today's Route</h2>
+                    <button onClick={() => onAction('customers')} className={`text-sm font-bold ${themeClasses.text}`}>View Shops</button>
+                </div>
+                <div className="space-y-3">
+                    {(topCustomers.slice(0, 3).length ? topCustomers.slice(0, 3) : [{ customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', total: 0, count: 0 }]).map((customer, index) => (
+                        <div key={`${customer.customerId || 'empty'}-${index}`} className={`rounded-2xl p-4 shadow-sm border ${index === 0 ? `bg-white border-l-4 ${themeClasses.border}` : 'bg-white border border-slate-100'} ${index > 0 ? 'opacity-90' : ''}`}>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex gap-3">
+                                    <div className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-500'}`}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a2 2 0 010-2.828l4.243-4.243m0 0L14.828 2.5m2.829 2.829L20.5 8.172" /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-slate-500 text-xs font-semibold mb-0.5">{index === 0 ? 'Current Stop' : index === 1 ? 'Next' : 'Upcoming'} • {customer.count || 0} orders</p>
+                                        <h3 className="text-slate-900 text-base font-bold">{customer.name}</h3>
+                                        <p className="text-slate-500 text-sm mt-1">{customer.city || 'No city'}</p>
+                                    </div>
+                                </div>
+                                {customer.customerId && (
+                                    <button onClick={() => onOpenProfile(customer.customerId)} className="text-slate-400 hover:text-slate-700">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                )}
+                            </div>
+                            {index === 0 && customer.customerId && (
+                                <div className="mt-3 flex gap-2">
+                                    <button onClick={() => onOpenProfile(customer.customerId)} className={`flex-1 ${themeClasses.bg} text-white text-xs font-bold py-2 rounded-lg`}>Check In</button>
+                                    <button onClick={() => onAction('customers')} className="flex-1 bg-slate-100 text-slate-700 text-xs font-bold py-2 rounded-lg">Navigate</button>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
-                
-                {/* Slide Indicators */}
-                <div className="flex justify-center gap-2 mt-3">
-                    {statCards.map((_, idx) => (
-                        <button
-                            key={idx}
-                            onClick={() => setCurrentSlide(idx)}
-                            className={`w-2 h-2 rounded-full transition-all ${currentSlide === idx ? 'w-6 bg-indigo-600' : 'bg-slate-300'}`}
-                        />
-                    ))}
-                </div>
-            </div>
+            </section>
 
             {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Customers</p>
-                    <p className="text-xl md:text-2xl font-black text-slate-800">{stats.totalCustomers || 0}</p>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Items</p>
-                    <p className="text-xl md:text-2xl font-black text-slate-800">{stats.totalItems || 0}</p>
-                </div>
-                {settings.stock_tracking_enabled ? (
-                    <div className="bg-white p-4 rounded-2xl border border-rose-100 shadow-sm cursor-pointer hover:shadow-md transition-all" onClick={() => onAction('inventory')}>
-                        <p className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">Low Stock</p>
-                        <p className="text-xl md:text-2xl font-black text-rose-600">{stats.criticalItems || 0}</p>
+            <section className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2 text-blue-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8L10 18l-5-5-7 7" /></svg>
+                        <span className="text-xs font-bold uppercase">Weekly Trend</span>
                     </div>
-                ) : (
-                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                        <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">System</p>
-                        <p className="text-xl md:text-2xl font-black text-emerald-600">Active</p>
-                    </div>
-                )}
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Outstanding</p>
-                    <p className="text-lg md:text-xl font-black text-amber-600 truncate" title={formatCurrency(outstandingAmount)}>
-                        {formatCurrency(outstandingAmount)}
-                    </p>
+                    <p className="text-slate-900 text-xl font-black">{formatCurrency(trendData.reduce((acc, curr) => acc + curr.sales, 0))}</p>
+                    <p className="text-slate-500 text-xs">Last 7 days total</p>
                 </div>
-            </div>
+                <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+                    <div className="flex items-center gap-2 mb-2 text-orange-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M3.34 16h17.32c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L1.61 13c-.77 1.33.19 3 1.73 3z" /></svg>
+                        <span className="text-xs font-bold uppercase">Pending</span>
+                    </div>
+                    <p className="text-slate-900 text-xl font-black">{paymentBreakdown.filter(p => p.name !== 'Paid').length}</p>
+                    <p className="text-slate-500 text-xs">Payment buckets open</p>
+                </div>
+            </section>
 
-            {/* Charts Row */}
+            {/* Existing analytics sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Weekly Performance */}
                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
@@ -300,25 +455,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                 </div>
 
                 {/* Payment Status */}
-                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h3 className="font-black text-slate-800">Payment Status</h3>
-                            <p className="text-xs text-slate-400">Collection overview</p>
-                        </div>
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="p-0 mb-4 flex justify-between items-center">
+                        <h3 className="font-black text-slate-800 text-sm">Payment Status</h3>
                     </div>
                     <div className="h-40 flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie
-                                    data={paymentBreakdown}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={45}
-                                    outerRadius={70}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                >
+                                <Pie data={paymentBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
                                     {paymentBreakdown.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
@@ -327,20 +471,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-center gap-4 mt-2">
-                        {paymentBreakdown.map((entry, index) => (
-                            <div key={entry.name} className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                                <span className="text-[10px] font-medium text-slate-500">{entry.name}</span>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
 
-            {/* Top Customers & Recent Activity */}
+            {/* Top customers / recent */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Top Customers */}
                 {topCustomers.length > 0 && (
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                         <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -348,24 +483,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                         </div>
                         <div className="divide-y divide-slate-50">
                             {topCustomers.map((customer, idx) => (
-                                <div key={idx} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <button
+                                    key={customer.customerId}
+                                    onClick={() => onOpenProfile(customer.customerId)}
+                                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-600' : idx === 1 ? 'bg-slate-100 text-slate-600' : 'bg-orange-50 text-orange-600'}`}>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
                                             {idx + 1}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{customer.name}</p>
-                                            <p className="text-[10px] text-slate-400">{customer.count} orders</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{customer.name}</p>
+                                            <p className="text-[10px] text-slate-400">{customer.city} • {customer.count} orders</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
-                                </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600">
+                                            Profile
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </span>
+                                    </div>
+                                </button>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Recent Transactions */}
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                         <h3 className="font-black text-slate-800 text-sm">Recent Transactions</h3>
@@ -376,58 +520,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder }) =
                             <p className="p-8 text-center text-slate-400 text-sm italic">No recent activity</p>
                         ) : (
                             recentOrders.slice(0, 4).map(order => (
-                                <div
-                                    key={order.order_id}
-                                    onClick={() => onViewOrder(order)}
-                                    className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors cursor-pointer"
-                                >
+                                <div key={order.order_id} onClick={() => onViewOrder(order)} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors cursor-pointer">
                                     <div>
-                                        <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">
-                                            {cleanText(db.getCustomers().find(c => c.customer_id === order.customer_id)?.shop_name || 'Unknown Shop')}
-                                        </p>
+                                        <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{cleanText(db.getCustomers().find(c => c.customer_id === order.customer_id)?.shop_name || 'Unknown Shop')}</p>
                                         <p className="text-[10px] text-slate-400">{order.order_date}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-black text-slate-800">{formatCurrency(order.net_total)}</p>
-                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${order.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                            {order.payment_status || 'unpaid'}
-                                        </span>
                                     </div>
                                 </div>
                             ))
                         )}
                     </div>
-                </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div>
-                <h3 className="text-lg font-black text-slate-800 mb-3 px-1">Quick Actions</h3>
-                <div className="grid grid-cols-4 gap-2">
-                    <button onClick={() => onAction('customers')} className="flex flex-col items-center justify-center bg-indigo-50 hover:bg-indigo-100 p-4 rounded-2xl transition-all active:scale-95 group">
-                        <div className={`w-12 h-12 ${themeClasses.bg} text-white rounded-xl flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform`}>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-700">New Sale</span>
-                    </button>
-                    <button onClick={() => { onAction('inventory'); showToast('Checking stock', 'info'); }} className="flex flex-col items-center justify-center bg-emerald-50 hover:bg-emerald-100 p-4 rounded-2xl transition-all active:scale-95 group">
-                        <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-900">Stock</span>
-                    </button>
-                    <button onClick={() => { onAction('sync'); showToast('Sync center', 'info'); }} className="flex flex-col items-center justify-center bg-amber-50 hover:bg-amber-100 p-4 rounded-2xl transition-all active:scale-95 group">
-                        <div className="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-900">Sync</span>
-                    </button>
-                    <button onClick={() => onAction('reports')} className="flex flex-col items-center justify-center bg-rose-50 hover:bg-rose-100 p-4 rounded-2xl transition-all active:scale-95 group">
-                        <div className="w-12 h-12 bg-rose-500 text-white rounded-xl flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        </div>
-                        <span className="text-[10px] font-bold text-rose-900">Reports</span>
-                    </button>
                 </div>
             </div>
         </div>

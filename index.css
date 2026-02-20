@@ -4,8 +4,8 @@ body {
     padding: 0;
 }
 
-/* Marquee animation for scrolling text */
-@keyframes scroll-left {
+/* Marquee Animation - Right to Left */
+@keyframes marquee {
     0% {
         transform: translateX(100%);
     }
@@ -15,8 +15,6 @@ body {
 }
 
 .animate-marquee {
+    animation: marquee 8s linear infinite;
     display: inline-block;
-    width: max-content;
-    animation: scroll-left 6s linear infinite;
-    padding-right: 50px;
 }

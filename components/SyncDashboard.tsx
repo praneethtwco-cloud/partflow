@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/database';
 import { SyncStats } from '../types';
-import { API_CONFIG } from '../config';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import { Modal } from './ui/Modal';
@@ -232,27 +231,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             
             switch (selectedExportType) {
                 case 'customers':
-                    csvContent = Papa.unparse(cloudData.customers, { 
-                        columns: CSV_TEMPLATES.customers.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.customers);
                     filename = `customers_${timestamp}.csv`;
                     break;
                 case 'items':
-                    csvContent = Papa.unparse(cloudData.items, { 
-                        columns: CSV_TEMPLATES.items.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.items);
                     filename = `items_${timestamp}.csv`;
                     break;
                 case 'orders':
-                    csvContent = Papa.unparse(cloudData.orders, { 
-                        columns: CSV_TEMPLATES.orders.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.orders);
                     filename = `orders_${timestamp}.csv`;
                     break;
                 case 'orderLines':
-                    csvContent = Papa.unparse(cloudData.orderLines, { 
-                        columns: CSV_TEMPLATES.orderLines.headers 
-                    });
+                    csvContent = Papa.unparse(cloudData.orderLines);
                     filename = `order_lines_${timestamp}.csv`;
                     break;
             }
@@ -275,19 +266,19 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             const files = [
                 {
                     name: `customers_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.customers, { columns: CSV_TEMPLATES.customers.headers })
+                    content: Papa.unparse(cloudData.customers)
                 },
                 {
                     name: `items_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.items, { columns: CSV_TEMPLATES.items.headers })
+                    content: Papa.unparse(cloudData.items)
                 },
                 {
                     name: `orders_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.orders, { columns: CSV_TEMPLATES.orders.headers })
+                    content: Papa.unparse(cloudData.orders)
                 },
                 {
                     name: `order_lines_${timestamp}.csv`,
-                    content: Papa.unparse(cloudData.orderLines, { columns: CSV_TEMPLATES.orderLines.headers })
+                    content: Papa.unparse(cloudData.orderLines)
                 }
             ];
             
@@ -594,9 +585,9 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                         {logs.map((log, i) => (
                             <div key={i} className={log.includes('Error') ? 'text-rose-400' : log.includes('Success') ? 'text-emerald-400' : 'text-slate-300'}>
                                 {log}
-                                {log.includes('Error') && (
+                            {log.includes('Error') && (
                                     <div className={`mt-1 text-[10px] ${themeClasses.text}`}>
-                                        Check diagnostics: <a href={`${API_CONFIG.BACKEND_URL}/health`} target="_blank" className="underline">Backend Health</a>
+                                        Check Supabase connection
                                     </div>
                                 )}
                             </div>

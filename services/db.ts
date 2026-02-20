@@ -409,62 +409,20 @@ class LocalDB {
     // Async Persist
     await this.db.customers.put(customerToSave);
 
-    // If offline, add to sync queue
-    if (!this.isOnline) {
-      syncQueueService.enqueue({
-        id: customer.customer_id,
-        entity: 'customer',
-        operation: index >= 0 ? 'update' : 'create',
-        data: customerToSave
-      });
+    // Queue sync operation and keep CRUD fast (manual sync will push to Supabase)
+    syncQueueService.enqueue({
+      id: customer.customer_id,
+      entity: 'customer',
+      operation: index >= 0 ? 'update' : 'create',
+      data: customerToSave
+    });
 
-      // Also add to the new Supabase sync queue
-      supabaseSyncService.enqueue({
-        id: customer.customer_id,
-        entity: 'customer',
-        operation: index >= 0 ? 'update' : 'create',
-        data: customerToSave
-      });
-    } else {
-      // If online, attempt to sync immediately
-      try {
-        // Check if user is authenticated before syncing
-        const { data: { session } } = await supabaseService.getCurrentUser();
-        if (!session) {
-          // If not authenticated, add to queue for later sync
-          supabaseSyncService.enqueue({
-            id: customer.customer_id,
-            entity: 'customer',
-            operation: index >= 0 ? 'update' : 'create',
-            data: customerToSave
-          });
-          return; // Exit early, will sync when authenticated
-        }
-
-        await supabaseService.syncData(
-          [customerToSave],
-          [],
-          [],
-          [],
-          [],
-          [],
-          'upsert'
-        );
-        // Update sync status to 'synced'
-        const updatedCustomer = { ...customerToSave, sync_status: 'synced' as const };
-        await this.db.customers.put(updatedCustomer);
-        this.cache.customers[this.cache.customers.findIndex(c => c.customer_id === customer.customer_id)] = updatedCustomer;
-      } catch (error) {
-        console.error('Error syncing customer immediately:', error);
-        // If immediate sync fails, add to queue for later
-        supabaseSyncService.enqueue({
-          id: customer.customer_id,
-          entity: 'customer',
-          operation: index >= 0 ? 'update' : 'create',
-          data: customerToSave
-        });
-      }
-    }
+    supabaseSyncService.enqueue({
+      id: customer.customer_id,
+      entity: 'customer',
+      operation: index >= 0 ? 'update' : 'create',
+      data: customerToSave
+    });
   }
 
   async deleteCustomer(customerId: string): Promise<void> {
@@ -502,62 +460,20 @@ class LocalDB {
 
     await this.db.items.put(itemToSave);
 
-    // If offline, add to sync queue
-    if (!this.isOnline) {
-      syncQueueService.enqueue({
-        id: item.item_id,
-        entity: 'item',
-        operation: index >= 0 ? 'update' : 'create',
-        data: itemToSave
-      });
+    // Queue sync operation and keep CRUD fast (manual sync will push to Supabase)
+    syncQueueService.enqueue({
+      id: item.item_id,
+      entity: 'item',
+      operation: index >= 0 ? 'update' : 'create',
+      data: itemToSave
+    });
 
-      // Also add to the new Supabase sync queue
-      supabaseSyncService.enqueue({
-        id: item.item_id,
-        entity: 'item',
-        operation: index >= 0 ? 'update' : 'create',
-        data: itemToSave
-      });
-    } else {
-      // If online, attempt to sync immediately
-      try {
-        // Check if user is authenticated before syncing
-        const { data: { session } } = await supabaseService.getCurrentUser();
-        if (!session) {
-          // If not authenticated, add to queue for later sync
-          supabaseSyncService.enqueue({
-            id: item.item_id,
-            entity: 'item',
-            operation: index >= 0 ? 'update' : 'create',
-            data: itemToSave
-          });
-          return; // Exit early, will sync when authenticated
-        }
-
-        await supabaseService.syncData(
-          [],
-          [],
-          [itemToSave],
-          [],
-          [],
-          [],
-          'upsert'
-        );
-        // Update sync status to 'synced'
-        const updatedItem = { ...itemToSave, sync_status: 'synced' as const };
-        await this.db.items.put(updatedItem);
-        this.cache.items[this.cache.items.findIndex(i => i.item_id === item.item_id)] = updatedItem;
-      } catch (error) {
-        console.error('Error syncing item immediately:', error);
-        // If immediate sync fails, add to queue for later
-        supabaseSyncService.enqueue({
-          id: item.item_id,
-          entity: 'item',
-          operation: index >= 0 ? 'update' : 'create',
-          data: itemToSave
-        });
-      }
-    }
+    supabaseSyncService.enqueue({
+      id: item.item_id,
+      entity: 'item',
+      operation: index >= 0 ? 'update' : 'create',
+      data: itemToSave
+    });
   }
 
   async deleteItem(itemId: string): Promise<void> {
@@ -640,62 +556,20 @@ class LocalDB {
 
     await this.db.orders.put(orderToSave);
 
-    // If offline, add to sync queue
-    if (!this.isOnline) {
-      syncQueueService.enqueue({
-        id: order.order_id,
-        entity: 'order',
-        operation: index >= 0 ? 'update' : 'create',
-        data: orderToSave
-      });
+    // Queue sync operation and keep CRUD fast (manual sync will push to Supabase)
+    syncQueueService.enqueue({
+      id: order.order_id,
+      entity: 'order',
+      operation: index >= 0 ? 'update' : 'create',
+      data: orderToSave
+    });
 
-      // Also add to the new Supabase sync queue
-      supabaseSyncService.enqueue({
-        id: order.order_id,
-        entity: 'order',
-        operation: index >= 0 ? 'update' : 'create',
-        data: orderToSave
-      });
-    } else {
-      // If online, attempt to sync immediately
-      try {
-        // Check if user is authenticated before syncing
-        const { data: { session } } = await supabaseService.getCurrentUser();
-        if (!session) {
-          // If not authenticated, add to queue for later sync
-          supabaseSyncService.enqueue({
-            id: order.order_id,
-            entity: 'order',
-            operation: index >= 0 ? 'update' : 'create',
-            data: orderToSave
-          });
-          return; // Exit early, will sync when authenticated
-        }
-
-        await supabaseService.syncData(
-          [],
-          [orderToSave],
-          [],
-          [],
-          [],
-          [],
-          'upsert'
-        );
-        // Update sync status to 'synced'
-        const updatedOrder = { ...orderToSave, sync_status: 'synced' as const };
-        await this.db.orders.put(updatedOrder);
-        this.cache.orders[this.cache.orders.findIndex(o => o.order_id === order.order_id)] = updatedOrder;
-      } catch (error) {
-        console.error('Error syncing order immediately:', error);
-        // If immediate sync fails, add to queue for later
-        supabaseSyncService.enqueue({
-          id: order.order_id,
-          entity: 'order',
-          operation: index >= 0 ? 'update' : 'create',
-          data: orderToSave
-        });
-      }
-    }
+    supabaseSyncService.enqueue({
+      id: order.order_id,
+      entity: 'order',
+      operation: index >= 0 ? 'update' : 'create',
+      data: orderToSave
+    });
 
     // Update Customer Balance
     await this.recalcCustomerBalance(order.customer_id);
@@ -1127,6 +1001,10 @@ class LocalDB {
         totalCustomers: this.cache.customers.length,
         totalItems: this.cache.items.length
     };
+  }
+
+  async reloadCache() {
+    await this.refreshCache();
   }
 
   // --- Auth (Keep in LocalStorage for now, simple) ---

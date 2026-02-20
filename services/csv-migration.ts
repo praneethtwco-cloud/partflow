@@ -119,14 +119,10 @@ export function transformItemFromCsv(csvData: any): any {
     current_stock_qty: parseInt(csvData['Stock Qty'] || csvData.current_stock_qty || csvData.stock || csvData['Current Stock'] || csvData['Stock'] || '0') || 0,
     low_stock_threshold: parseInt(csvData['Low Stock Threshold'] || csvData.low_stock_threshold || csvData['Low Stock'] || '0') || 0,
     is_out_of_stock: (() => {
-      const outOfStockValue = csvData['Out of Stock'] ?? csvData.is_out_of_stock ?? csvData['Is Out of Stock'] ?? false;
-      if (typeof outOfStockValue === 'boolean') return outOfStockValue;
-      if (typeof outOfStockValue === 'number') return outOfStockValue === 1;
-      if (typeof outOfStockValue === 'string') {
-        const lower = outOfStockValue.toLowerCase().trim();
-        return lower === 'true' || lower === '1' || lower === 'yes';
-      }
-      return false;
+      const outOfStock = csvData['Out of Stock'] ?? csvData.is_out_of_stock ?? csvData['Is Out of Stock'] ?? false;
+      if (typeof outOfStock === 'boolean') return outOfStock;
+      if (typeof outOfStock === 'string') return outOfStock.toLowerCase() === 'true';
+      return Boolean(outOfStock);
     })(),
     status: csvData.Status || csvData.status || 'active',
     last_updated: csvData.last_updated || csvData['Last Updated'] || new Date().toISOString(),

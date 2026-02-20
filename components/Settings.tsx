@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CompanySettings } from '../types';
-import { db, getDatabaseInfo, getDatabasePlatform, exportDatabase } from '../services/database';
+import { db } from '../services/db';
 import { useAuth } from '../context/AuthContext';
-import { Capacitor } from '@capacitor/core';
-
-import { API_CONFIG } from '../config';
+import { supabase } from '../services/supabase-client';
 import { cleanText } from '../utils/cleanText';
 import { useTheme } from '../context/ThemeContext';
 import { themeColors, ThemeColor } from '../utils/theme';
@@ -18,36 +16,6 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const { colorTheme, setColorTheme, themeClasses } = useTheme();
     const [settings, setSettings] = useState<CompanySettings>(db.getSettings());
     const [message, setMessage] = useState('');
-    const [dbInfo, setDbInfo] = useState<{ path: string; platform: string; type: string }>({ path: '', platform: '', type: '' });
-    const [isExporting, setIsExporting] = useState(false);
-    
-    useEffect(() => {
-        setDbInfo(getDatabaseInfo());
-    }, []);
-
-    const handleExportDb = async () => {
-        setIsExporting(true);
-        try {
-            const platform = getDatabasePlatform();
-            if (platform !== 'android' && platform !== 'ios') {
-                setMessage('Export only available on mobile (Android/iOS)');
-                setTimeout(() => setMessage(''), 3000);
-                setIsExporting(false);
-                return;
-            }
-            
-            const result = await exportDatabase();
-            if (!result.success) {
-                setMessage(result.message);
-                setTimeout(() => setMessage(''), 3000);
-            }
-        } catch (error: any) {
-            setMessage(`Failed to export database: ${error.message}`);
-            setTimeout(() => setMessage(''), 3000);
-        } finally {
-            setIsExporting(false);
-        }
-    };
     
     // Password State
     const [showPassModal, setShowPassModal] = useState(false);
@@ -95,38 +63,19 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
         }
 
         try {
-            // Call Python Backend
-            const response = await fetch(`${API_CONFIG.BACKEND_URL}/change-password`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': API_CONFIG.BACKEND_KEY
-                },
-                body: JSON.stringify({
-                    userId: user.id,
-                    oldPassword: passData.old,
-                    newPassword: passData.new
-                })
+            const { error } = await supabase.auth.updateUser({
+                password: passData.new
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                // Also update local DB for offline access if applicable
-                try {
-                    await db.changePassword(user.id, passData.old, passData.new);
-                } catch (e) {
-                    console.log("Local password sync skipped or failed:", e);
-                }
-
+            if (error) {
+                setPassMsg({ text: error.message || 'Failed to change password', type: 'danger' });
+            } else {
                 setPassMsg({ text: 'Password changed successfully!', type: 'success' });
                 setPassData({ old: '', new: '', confirm: '' });
                 setTimeout(() => setShowPassModal(false), 2000);
-            } else {
-                setPassMsg({ text: data.message || 'Failed to change password', type: 'danger' });
             }
         } catch (e: any) {
-            setPassMsg({ text: 'Could not connect to backend server', type: 'danger' });
+            setPassMsg({ text: 'Failed to change password', type: 'danger' });
         }
     };
 
@@ -397,61 +346,6 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                             />
                         </div>
                     </div>
-                </div>
-
-                {/* Section: Data Sync */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
-                    <SectionHeader 
-                        icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
-                        title="Cloud Sync"
-                        subtitle="Supabase integration"
-                    />
-
-                    {/* Database Info */}
-                    {dbInfo.platform && (
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                            <div className="flex items-center gap-2 mb-2">
-                                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
-                                <span className="text-xs font-bold text-slate-500 uppercase">Local Database</span>
-                            </div>
-                            <div className="space-y-1">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] text-slate-400 uppercase">Type</span>
-                                    <span className="text-xs font-bold text-slate-700">{dbInfo.type}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] text-slate-400 uppercase">Platform</span>
-                                    <span className="text-xs font-bold text-slate-700 capitalize">{dbInfo.platform}</span>
-                                </div>
-                                <div className="flex justify-between items-start">
-                                    <span className="text-[10px] text-slate-400 uppercase">Path</span>
-                                    <span className="text-[10px] font-mono text-slate-600 text-right max-w-[180px] break-all">{dbInfo.path}</span>
-                                </div>
-                            </div>
-                            
-                            {/* Export Button - Only for Android/iOS */}
-                            {(dbInfo.platform === 'android' || dbInfo.platform === 'ios') && (
-                                <button 
-                                    onClick={handleExportDb}
-                                    disabled={isExporting}
-                                    className={`w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 transition-all ${isExporting ? 'opacity-50' : ''}`}
-                                >
-                                    {isExporting ? (
-                                        <>
-                                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                            Exporting...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                            Export Database
-                                        </>
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                    )}
-
                 </div>
 
             </div>

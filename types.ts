@@ -132,6 +132,16 @@ export interface OrderLine {
   line_total: number;
 }
 
+
+export interface RoutePlanEntry {
+  id: string;
+  customer_id: string;
+  visit_time: string;
+  note?: string;
+  route_date: string;
+  created_at: string;
+}
+
 export interface CompanySettings {
   company_name: string;
   address: string;
@@ -148,6 +158,7 @@ export interface CompanySettings {
   show_sku_in_item_cards?: boolean; // New Setting - default false
   logo_base64?: string;
   show_advanced_sync_options?: boolean; // New Setting for advanced sync options visibility
+  route_plans?: RoutePlanEntry[];
 }
 
 export interface StockAdjustment extends BaseEntity {
