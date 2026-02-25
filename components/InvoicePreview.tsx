@@ -181,23 +181,23 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                 <table className="w-full border-collapse mb-3 overflow-hidden rounded-lg">
                                     <thead>
                                         <tr className="bg-slate-100 border-y border-black">
-                                            <th className="py-1 px-2 w-[5%] text-center font-black uppercase text-[10px]">No</th>
-                                            <th className="py-1 px-2 w-[55%] text-left font-black uppercase text-[10px]">Description</th>
-                                            <th className="py-1 px-2 w-[10%] text-center font-black uppercase text-[10px]">Qty</th>
-                                            <th className="py-1 px-2 w-[15%] text-right font-black uppercase text-[10px]">Price</th>
-                                            <th className="py-1 px-2 w-[15%] text-right font-black uppercase text-[10px]">Amount</th>
+                                            <th className="py-2 px-2 w-[5%] text-center font-black uppercase text-[10px] h-8 align-middle">No</th>
+                                            <th className="py-2 px-2 w-[55%] text-left font-black uppercase text-[10px] h-8 align-middle">Description</th>
+                                            <th className="py-2 px-2 w-[10%] text-center font-black uppercase text-[10px] h-8 align-middle">Qty</th>
+                                            <th className="py-2 px-2 w-[15%] text-right font-black uppercase text-[10px] h-8 align-middle">Price</th>
+                                            <th className="py-2 px-2 w-[15%] text-right font-black uppercase text-[10px] h-8 align-middle">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {pageLines.map((line, idx) => {
                                             const globalIdx = linePages.slice(0, pageIndex).flat().length + idx;
                                             return (
-                                                <tr key={line.line_id} className="even:bg-slate-50/50">
-                                                    <td className="py-1 px-2 text-center font-medium">{globalIdx + 1}</td>
-                                                    <td className="py-1 px-2 font-bold uppercase text-[11px]">{cleanText(line.item_name)}</td>
-                                                    <td className="py-1 px-2 text-center font-bold">{line.quantity}</td>
-                                                    <td className="py-1 px-2 text-right font-medium">{formatCurrency(line.unit_value, false)}</td>
-                                                    <td className="py-1 px-2 text-right font-black">{formatCurrency(line.line_total, false)}</td>
+                                                <tr key={line.line_id} className="even:bg-slate-50/50 h-7">
+                                                    <td className="py-1 px-2 text-center font-medium align-middle h-7">{globalIdx + 1}</td>
+                                                    <td className="py-1 px-2 font-bold uppercase text-[11px] align-middle h-7">{cleanText(line.item_name)}</td>
+                                                    <td className="py-1 px-2 text-center font-bold align-middle h-7">{line.quantity}</td>
+                                                    <td className="py-1 px-2 text-right font-medium align-middle h-7">{formatCurrency(line.unit_value, false)}</td>
+                                                    <td className="py-1 px-2 text-right font-black align-middle h-7">{formatCurrency(line.line_total, false)}</td>
                                                 </tr>
                                             );
                                         })}
@@ -218,28 +218,28 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                         <div className="flex justify-end">
                                             <table className="w-[45%] border-collapse overflow-hidden rounded-lg">
                                                 <tbody className="divide-y divide-slate-100">
-                                                    <tr>
-                                                        <td className="py-1 px-2 text-left font-bold uppercase text-[10px]">Gross Total</td>
-                                                        <td className="py-1 px-2 text-right font-black">
+                                                    <tr className="h-6">
+                                                        <td className="py-1 px-2 text-left font-bold uppercase text-[10px] align-middle h-6">Gross Total</td>
+                                                        <td className="py-1 px-2 text-right font-black align-middle h-6">
                                                             {formatCurrency(order.gross_total, false)}
                                                         </td>
                                                     </tr>
                                                     {(order.discount_value || 0) > 0 && (
                                                         <>
-                                                            <tr>
-                                                                <td className="py-1 px-2 text-left font-bold text-rose-600 uppercase text-[9px]">
+                                                            <tr className="h-6">
+                                                                <td className="py-1 px-2 text-left font-bold text-rose-600 uppercase text-[9px] align-middle h-6">
                                                                     Discount - {((order.discount_rate || 0) * 100).toFixed(0)}%
                                                                 </td>
-                                                                <td className="py-1 px-2 text-right font-black text-rose-600">
+                                                                <td className="py-1 px-2 text-right font-black text-rose-600 align-middle h-6">
                                                                     -{formatCurrency(order.discount_value || 0, false)}
                                                                 </td>
                                                             </tr>
                                                             {(order.secondary_discount_value || 0) > 0 && (
-                                                                <tr className="bg-slate-50 border-t border-slate-100">
-                                                                    <td className="py-0.5 px-2 text-left font-bold uppercase text-[9px] text-slate-500">
+                                                                <tr className="bg-slate-50 border-t border-slate-100 h-6">
+                                                                    <td className="py-0.5 px-2 text-left font-bold uppercase text-[9px] text-slate-500 align-middle h-6">
                                                                         Sub Total
                                                                     </td>
-                                                                    <td className="py-0.5 px-2 text-right font-black text-slate-700">
+                                                                    <td className="py-0.5 px-2 text-right font-black text-slate-700 align-middle h-6">
                                                                         {formatCurrency(order.gross_total - (order.discount_value || 0), false)}
                                                                     </td>
                                                                 </tr>
@@ -247,35 +247,45 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ order, customer, settin
                                                         </>
                                                     )}
                                                     {(order.secondary_discount_value || 0) > 0 && (
-                                                        <tr>
-                                                            <td className="py-1 px-2 text-left font-bold text-rose-600 uppercase text-[9px]">
+                                                        <tr className="h-6">
+                                                            <td className="py-1 px-2 text-left font-bold text-rose-600 uppercase text-[9px] align-middle h-6">
                                                                 Discount - {((order.secondary_discount_rate || 0) * 100).toFixed(0)}%
                                                             </td>
-                                                            <td className="py-1 px-2 text-right font-black text-rose-600">
+                                                            <td className="py-1 px-2 text-right font-black text-rose-600 align-middle h-6">
                                                                 -{formatCurrency(order.secondary_discount_value || 0, false)}
                                                             </td>
                                                         </tr>
                                                     )}
+                                                    {(order.custom_discount_value || 0) > 0 && (
+                                                        <tr className="h-6">
+                                                            <td className="py-1 px-2 text-left font-bold text-rose-600 uppercase text-[9px] align-middle h-6">
+                                                                Custom Discount
+                                                            </td>
+                                                            <td className="py-1 px-2 text-right font-black text-rose-600 align-middle h-6">
+                                                                -{formatCurrency(order.custom_discount_value || 0, false)}
+                                                            </td>
+                                                        </tr>
+                                                    )}
                                                     {(order.tax_value || 0) > 0 && (
-                                                        <tr>
-                                                            <td className="py-1 px-2 text-left font-bold text-slate-600 uppercase text-[9px]">
+                                                        <tr className="h-6">
+                                                            <td className="py-1 px-2 text-left font-bold text-slate-600 uppercase text-[9px] align-middle h-6">
                                                                 Tax - {((order.tax_rate || 0) * 100).toFixed(1)}%
                                                             </td>
-                                                            <td className="py-1 px-2 text-right font-black text-slate-800">
+                                                            <td className="py-1 px-2 text-right font-black text-slate-800 align-middle h-6">
                                                                 +{formatCurrency(order.tax_value || 0, false)}
                                                             </td>
                                                         </tr>
                                                     )}
-                                                    <tr className="bg-slate-100 border-y border-black">
-                                                        <td className="py-1.5 px-2 text-left font-black text-[14px] uppercase tracking-tighter">Net Total</td>
-                                                        <td className="py-1.5 px-2 text-right font-black text-[16px]">
+                                                    <tr className="bg-slate-100 border-y border-black h-8">
+                                                        <td className="py-1.5 px-2 text-left font-black text-[14px] uppercase tracking-tighter align-middle h-8">Net Total</td>
+                                                        <td className="py-1.5 px-2 text-right font-black text-[16px] align-middle h-8">
                                                             {formatCurrency(order.net_total)}
                                                         </td>
                                                     </tr>
                                                     {(order.paid_amount || 0) > 0 && (
-                                                        <tr>
-                                                            <td className="py-1 px-2 text-left font-bold text-emerald-700 uppercase text-[10px]">Paid Amount</td>
-                                                            <td className="py-1 px-2 text-right font-black text-emerald-700">
+                                                        <tr className="h-6">
+                                                            <td className="py-1 px-2 text-left font-bold text-emerald-700 uppercase text-[10px] align-middle h-6">Paid Amount</td>
+                                                            <td className="py-1 px-2 text-right font-black text-emerald-700 align-middle h-6">
                                                                 -{formatCurrency(order.paid_amount || 0, false)}
                                                             </td>
                                                         </tr>

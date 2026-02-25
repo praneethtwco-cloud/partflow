@@ -5,7 +5,9 @@ import {
   Order,
   CompanySettings,
   StockAdjustment,
-  User
+  User,
+  RoutePlanEntry,
+  VisitEntry
 } from '../types';
 import { SUPABASE_CONFIG } from '../config';
 import { supabaseSyncTracker } from './supabase-sync-tracker';
@@ -25,9 +27,11 @@ interface SupabaseSyncResult {
   pulledItems?: Item[];
   pulledCustomers?: Customer[];
   pulledOrders?: Order[];
-  pulledSettings?: CompanySettings;
+  pulledSettings?: CompanySettings[];
   pulledUsers?: User[];
   pulledAdjustments?: StockAdjustment[];
+  pulledRoutePlans?: RoutePlanEntry[];
+  pulledVisits?: VisitEntry[];
   conflicts?: Array<{
     type: string;
     local: any;
@@ -115,6 +119,8 @@ class SupabaseSyncService {
     settings: CompanySettings[] = [],
     users: User[] = [],
     adjustments: StockAdjustment[] = [],
+    routePlans: RoutePlanEntry[] = [],
+    visits: VisitEntry[] = [],
     mode: 'upsert' | 'overwrite' = 'upsert'
   ): Promise<SupabaseSyncResult> {
     this.currentLogs = [];
@@ -134,7 +140,9 @@ class SupabaseSyncService {
         items: mode === 'overwrite' ? items : items.filter(i => i.sync_status === 'pending'),
         settings: settings,
         users: users.filter(u => u.password), // Only sync users with passwords
-        adjustments: mode === 'overwrite' ? adjustments : adjustments.filter(a => a.sync_status === 'pending')
+        adjustments: mode === 'overwrite' ? adjustments : adjustments.filter(a => a.sync_status === 'pending'),
+        routePlans: mode === 'overwrite' ? routePlans : routePlans.filter(r => r.sync_status === 'pending'),
+        visits: mode === 'overwrite' ? visits : visits.filter(v => v.sync_status === 'pending')
       };
 
       // Upload pending changes to Supabase
@@ -173,6 +181,11 @@ class SupabaseSyncService {
       this.addLog(`Pulled ${pulledData.settings?.length || 0} settings from cloud.`);
       this.addLog(`Pulled ${pulledData.users?.length || 0} users from cloud.`);
       this.addLog(`Pulled ${pulledData.adjustments?.length || 0} adjustments from cloud.`);
+      this.addLog(`Pulled ${pulledData.routePlans?.length || 0} route plans from cloud.`);
+      this.addLog(`Pulled ${pulledData.visits?.length || 0} visits from cloud.`);
+
+      supabaseSyncTracker.logPullFromSupabase('routePlans', pulledData.routePlans?.length || 0, true);
+      supabaseSyncTracker.logPullFromSupabase('visits', pulledData.visits?.length || 0, true);
 
       return {
         success: true,
@@ -182,6 +195,8 @@ class SupabaseSyncService {
         pulledSettings: pulledData.settings?.[0], // Settings is a singleton
         pulledUsers: pulledData.users,
         pulledAdjustments: pulledData.adjustments,
+        pulledRoutePlans: pulledData.routePlans,
+        pulledVisits: pulledData.visits,
         logs: this.currentLogs
       };
     } catch (err: any) {
@@ -209,6 +224,8 @@ class SupabaseSyncService {
     settings: CompanySettings[];
     users: User[];
     adjustments: StockAdjustment[];
+    routePlans: RoutePlanEntry[];
+    visits: VisitEntry[];
   }, mode: 'upsert' | 'overwrite') {
     // Transform data to ensure compatibility with Supabase schema
     const transformDates = (obj: any) => {
@@ -337,9 +354,37 @@ class SupabaseSyncService {
     if (data.settings.length > 0) {
       this.addLog(`Uploading settings to Supabase...`);
       const transformedSettings = data.settings.map(transformDates);
+      // Filter out fields not in Supabase schema
+      const settingsToSync = { 
+        ...transformedSettings[0], 
+        id: 'main'
+      };
+      // Explicitly filter out new fields not in Supabase
+      const cleanSettings = {
+        id: settingsToSync.id,
+        company_name: settingsToSync.company_name,
+        address: settingsToSync.address,
+        phone: settingsToSync.phone,
+        rep_name: settingsToSync.rep_name,
+        invoice_prefix: settingsToSync.invoice_prefix,
+        starting_invoice_number: settingsToSync.starting_invoice_number,
+        footer_note: settingsToSync.footer_note,
+        currency_symbol: settingsToSync.currency_symbol,
+        tax_rate: settingsToSync.tax_rate,
+        auto_sku_enabled: settingsToSync.auto_sku_enabled,
+        stock_tracking_enabled: settingsToSync.stock_tracking_enabled,
+        category_enabled: settingsToSync.category_enabled,
+        show_sku_in_item_cards: settingsToSync.show_sku_in_item_cards,
+        logo_base64: settingsToSync.logo_base64,
+        show_advanced_sync_options: settingsToSync.show_advanced_sync_options,
+        created_at: settingsToSync.created_at,
+        updated_at: settingsToSync.updated_at,
+        sync_status: settingsToSync.sync_status,
+        last_updated: settingsToSync.last_updated
+      };
       const { error } = await this.supabase
         .from('settings')
-        .upsert([{ ...transformedSettings[0], id: 'main' }], {
+        .upsert([cleanSettings], {
           onConflict: 'id',
           ignoreDuplicates: false
         })
@@ -407,6 +452,68 @@ class SupabaseSyncService {
       } else {
         console.log(`Successfully uploaded ${data.adjustments.length} adjustments to Supabase`);
         supabaseSyncTracker.logPushToSupabase('adjustments', data.adjustments.length, true, `${mode} mode`);
+      }
+    }
+
+    // Upload route plans
+    if (data.routePlans && data.routePlans.length > 0) {
+      this.addLog(`Uploading ${data.routePlans.length} route plans to Supabase...`);
+      const routePlansToUpload = data.routePlans.map(p => ({
+        id: p.id,
+        customer_id: p.customer_id,
+        visit_time: p.visit_time,
+        note: p.note,
+        route_date: p.route_date,
+        created_at: p.created_at,
+        sync_status: p.sync_status
+      }));
+      const { error } = await this.supabase
+        .from('route_plans')
+        .upsert(routePlansToUpload, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+        .select();
+
+      if (error) {
+        console.error('Route plans upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('routePlans', data.routePlans.length, false, error.message);
+        throw new Error(`Failed to upload route plans: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('routePlans', data.routePlans.length, true, `${mode} mode`);
+      }
+    }
+
+    // Upload visits
+    if (data.visits && data.visits.length > 0) {
+      this.addLog(`Uploading ${data.visits.length} visits to Supabase...`);
+      const visitsToUpload = data.visits.map(v => ({
+        id: v.id,
+        customer_id: v.customer_id,
+        plan_id: v.plan_id,
+        check_in_time: v.check_in_time,
+        check_out_time: v.check_out_time,
+        check_in_note: v.check_in_note,
+        check_out_note: v.check_out_note,
+        status: v.status,
+        route_date: v.route_date,
+        created_at: v.created_at,
+        sync_status: v.sync_status
+      }));
+      const { error } = await this.supabase
+        .from('visits')
+        .upsert(visitsToUpload, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+        .select();
+
+      if (error) {
+        console.error('Visits upload error details:', error);
+        supabaseSyncTracker.logPushToSupabase('visits', data.visits.length, false, error.message);
+        throw new Error(`Failed to upload visits: ${error.message}`);
+      } else {
+        supabaseSyncTracker.logPushToSupabase('visits', data.visits.length, true, `${mode} mode`);
       }
     }
   }
@@ -522,13 +629,39 @@ class SupabaseSyncService {
       supabaseSyncTracker.logPullFromSupabase('adjustments', adjustments?.length || 0, true);
     }
 
+    // Pull route plans
+    const { data: routePlans, error: routePlansError } = await this.supabase
+      .from('route_plans')
+      .select('*');
+
+    if (routePlansError) {
+      console.error(`Error: Failed to pull route_plans: ${routePlansError.message}`);
+      supabaseSyncTracker.logPullFromSupabase('routePlans', 0, false, routePlansError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('routePlans', routePlans?.length || 0, true);
+    }
+
+    // Pull visits
+    const { data: visits, error: visitsError } = await this.supabase
+      .from('visits')
+      .select('*');
+
+    if (visitsError) {
+      console.error(`Error: Failed to pull visits: ${visitsError.message}`);
+      supabaseSyncTracker.logPullFromSupabase('visits', 0, false, visitsError.message);
+    } else {
+      supabaseSyncTracker.logPullFromSupabase('visits', visits?.length || 0, true);
+    }
+
     return {
       items: transformedItems,
       customers: customers || [],
       orders: ordersWithLines,
       settings: settings || [],
       users: users || [],
-      adjustments: adjustments || []
+      adjustments: adjustments || [],
+      routePlans: routePlans || [],
+      visits: visits || []
     };
   }
 
@@ -556,7 +689,7 @@ class SupabaseSyncService {
       this.addLog('Successfully processed all queued operations');
       
       // Now sync with Supabase to ensure consistency
-      return await this.syncData([], [], [], [], [], []);
+      return await this.syncData([], [], [], [], [], [], [], []);
     } catch (error: any) {
       this.addLog(`Error processing queued operations: ${error.message}`);
       return {

@@ -28,6 +28,8 @@ class MigrationService {
         settings,
         users,
         adjustments,
+        [],
+        [],
         'upsert'
       );
 
@@ -77,7 +79,7 @@ class MigrationService {
     
     try {
       // Pull data from Supabase
-      const pullResult = await supabaseService.syncData([], [], [], [], [], []);
+      const pullResult = await supabaseService.syncData([], [], [], [], [], [], [], []);
       
       if (!pullResult.success) {
         return {

@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment } from '../types';
+import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment, RoutePlanEntry, VisitEntry } from '../types';
 import { supabaseService } from './supabase';
 import { supabaseSyncService } from './supabase-sync-service';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
@@ -41,17 +41,21 @@ class PartFlowDB extends Dexie {
     orders!: Table<Order, string>;
     settings!: Table<CompanySettings, string>; 
     stockAdjustments!: Table<StockAdjustment, string>;
-    users!: Table<User, string>; // New users table
+    users!: Table<User, string>;
+    routePlans!: Table<RoutePlanEntry, string>;
+    visits!: Table<VisitEntry, string>;
 
     constructor() {
         super('PartFlowDB');
-        this.version(11).stores({
+        this.version(12).stores({
             customers: 'customer_id, shop_name, sync_status, city, discount_1, discount_2, balance, last_updated',
             items: 'item_id, item_number, item_display_name, sync_status, status, internal_name, last_updated',
             orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status, invoice_number, original_invoice_number, approval_status, disc_1_rate, disc_1_value, disc_2_rate, disc_2_value, paid, status, last_updated',
             stockAdjustments: 'adjustment_id, item_id, sync_status',
             settings: 'id',
-            users: 'id, username'
+            users: 'id, username',
+            routePlans: 'id, customer_id, route_date, sync_status',
+            visits: 'id, customer_id, route_date, status, sync_status'
         });
     }
 }
@@ -66,6 +70,8 @@ class LocalDB {
       settings: CompanySettings;
       adjustments: StockAdjustment[];
       users: User[];
+      routePlans: RoutePlanEntry[];
+      visits: VisitEntry[];
   };
   private initialized: boolean = false;
   private isOnline: boolean = true;
@@ -79,13 +85,16 @@ class LocalDB {
         orders: [],
         settings: {} as CompanySettings,
         adjustments: [],
-        users: []
+        users: [],
+        routePlans: [],
+        visits: []
     };
   }
 
   // --- Initialization ---
   async initialize(): Promise<void> {
       if (this.initialized) return;
+      this.initialized = true;
 
       // Check if migration is needed
       const isInitialized = localStorage.getItem(STORAGE_KEYS.INIT);
@@ -104,7 +113,6 @@ class LocalDB {
       // Subscribe to connection status changes
       connectionService.subscribe(this.handleConnectionChange);
 
-      this.initialized = true;
       console.log("Database initialized and cache loaded.");
   }
 
@@ -210,13 +218,15 @@ class LocalDB {
   }
 
   private async refreshCache() {
-      const [c, i, o, s, a, u] = await Promise.all([
+      const [c, i, o, s, a, u, rp, v] = await Promise.all([
           this.db.customers.toArray(),
           this.db.items.toArray(),
           this.db.orders.toArray(),
           this.db.settings.get('main'),
           this.db.stockAdjustments.toArray(),
-          this.db.users.toArray()
+          this.db.users.toArray(),
+          this.db.routePlans.toArray(),
+          this.db.visits.toArray()
       ]);
 
       // Migrate existing customers to include new CSV-compatible fields
@@ -359,14 +369,6 @@ class LocalDB {
           if (!order.original_invoice_number) {
               updatedOrder = {
                   ...updatedOrder,
-                  original_invoice_number: order.invoice_number || updatedOrder.invoice_number
-              };
-          }
-
-          // Set original_invoice_number if not already set
-          if (!order.original_invoice_number) {
-              updatedOrder = {
-                  ...updatedOrder,
                   original_invoice_number: order.invoice_number || order.order_id
               };
           }
@@ -380,6 +382,8 @@ class LocalDB {
       this.cache.settings = (s as CompanySettings) || SEED_SETTINGS;
       this.cache.adjustments = a;
       this.cache.users = u;
+      this.cache.routePlans = rp || [];
+      this.cache.visits = v || [];
   }
 
   // --- Customers ---
@@ -652,15 +656,15 @@ class LocalDB {
       // Logical Fix: Restore stock if delivery failed or cancelled
       // only if it wasn't already failed/cancelled (to prevent double restoration)
       if ((status === 'failed' || status === 'cancelled') && (oldStatus !== 'failed' && oldStatus !== 'cancelled')) {
-          order.lines.forEach(async line => {
+          for (const line of order.lines) {
               await this.updateStock(line.item_id, line.quantity);
-          });
+          }
       }
       // If moving BACK to an active state, re-deduce stock
       else if ((status !== 'failed' && status !== 'cancelled') && (oldStatus === 'failed' || oldStatus === 'cancelled')) {
-          order.lines.forEach(async line => {
+          for (const line of order.lines) {
               await this.updateStock(line.item_id, -line.quantity);
-          });
+          }
       }
 
       await this.db.orders.put(order);
@@ -702,9 +706,9 @@ class LocalDB {
 
           // Restore Stock if order was confirmed
           if (order.order_status === 'confirmed') {
-              order.lines.forEach(async line => {
+              for (const line of order.lines) {
                   await this.updateStock(line.item_id, line.quantity); // Positive qty to add back
-              });
+              }
           }
 
           // Delete from Cache
@@ -789,6 +793,8 @@ class LocalDB {
             [],
             [],
             [adjustmentToSave],
+            [],
+            [],
             'upsert'
           );
           
@@ -867,7 +873,9 @@ class LocalDB {
         show_advanced_sync_options: false
       },
       adjustments: [],
-      users: []
+      users: [],
+      routePlans: [],
+      visits: []
     };
   }
 
@@ -925,6 +933,8 @@ class LocalDB {
           [settingsToSave],
           [],
           [],
+          [],
+          [],
           'upsert'
         );
         // Update sync status to 'synced'
@@ -942,6 +952,38 @@ class LocalDB {
         });
       }
     }
+  }
+
+  // --- Route Plans ---
+  getRoutePlans(): RoutePlanEntry[] {
+    return this.cache.routePlans;
+  }
+
+  async saveRoutePlans(plans: RoutePlanEntry[]): Promise<void> {
+    const plansWithSync = plans.map(p => ({
+      ...p,
+      sync_status: 'pending' as const,
+      last_updated: new Date().toISOString()
+    }));
+    this.cache.routePlans = plansWithSync;
+    await this.db.routePlans.clear();
+    await this.db.routePlans.bulkPut(plansWithSync);
+  }
+
+  // --- Visits ---
+  getVisits(): VisitEntry[] {
+    return this.cache.visits;
+  }
+
+  async saveVisits(visits: VisitEntry[]): Promise<void> {
+    const visitsWithSync = visits.map(v => ({
+      ...v,
+      sync_status: 'pending' as const,
+      last_updated: new Date().toISOString()
+    }));
+    this.cache.visits = visitsWithSync;
+    await this.db.visits.clear();
+    await this.db.visits.bulkPut(visitsWithSync);
   }
 
   // --- Sync Stats (Read from Cache - Fast) ---
@@ -1077,6 +1119,8 @@ class LocalDB {
     const settings = [this.getSettings()];
     const users = this.cache.users;
     const adjustments = mode === 'overwrite' ? this.cache.adjustments : this.cache.adjustments.filter(a => a.sync_status === 'pending');
+    const routePlans = this.cache.routePlans;
+    const visits = this.cache.visits;
 
     console.log("DEBUG: Pending Customers for Sync:", pendingCustomers);
 
@@ -1087,6 +1131,8 @@ class LocalDB {
         settings,
         users,
         adjustments,
+        routePlans,
+        visits,
         mode
     );
 
@@ -1329,6 +1375,44 @@ class LocalDB {
         // Update cache: merge pulled adjustments with local pending adjustments
         const localPendingAdjustments = this.cache.adjustments.filter(a => a.sync_status === 'pending');
         this.cache.adjustments = [...processedAdjustments, ...localPendingAdjustments];
+    }
+
+    // UPDATE ROUTE PLANS FROM PULL
+    if (result.pulledRoutePlans && result.pulledRoutePlans.length > 0) {
+        if (onLog) onLog(`Updating local route plans from cloud: ${result.pulledRoutePlans.length} records.`);
+        const processedRoutePlans = result.pulledRoutePlans.map(plan => ({
+          ...plan,
+          sync_status: 'synced' as const
+        }));
+        
+        await this.db.transaction('rw', this.db.routePlans, async () => {
+            for (const plan of processedRoutePlans) {
+              await this.db.routePlans.put(plan);
+            }
+        });
+        
+        // Update cache: merge pulled route plans with local pending ones
+        const localPendingPlans = this.cache.routePlans.filter(p => p.sync_status === 'pending');
+        this.cache.routePlans = [...processedRoutePlans, ...localPendingPlans];
+    }
+
+    // UPDATE VISITS FROM PULL
+    if (result.pulledVisits && result.pulledVisits.length > 0) {
+        if (onLog) onLog(`Updating local visits from cloud: ${result.pulledVisits.length} records.`);
+        const processedVisits = result.pulledVisits.map(visit => ({
+          ...visit,
+          sync_status: 'synced' as const
+        }));
+        
+        await this.db.transaction('rw', this.db.visits, async () => {
+            for (const visit of processedVisits) {
+              await this.db.visits.put(visit);
+            }
+        });
+        
+        // Update cache: merge pulled visits with local pending ones
+        const localPendingVisits = this.cache.visits.filter(v => v.sync_status === 'pending');
+        this.cache.visits = [...processedVisits, ...localPendingVisits];
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
@@ -1732,6 +1816,8 @@ class LocalDB {
         settings,
         users,
         adjustments,
+        [],
+        [],
         'upsert'
       );
 

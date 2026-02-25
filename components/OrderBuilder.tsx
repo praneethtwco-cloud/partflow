@@ -30,6 +30,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const [discountRate, setDiscountRate] = useState<number>((draftState?.discount_rate !== undefined ? draftState.discount_rate : (editingOrder ? editingOrder.discount_rate : (existingCustomer?.discount_rate || 0))) * 100);
     const [secondaryDiscountRate, setSecondaryDiscountRate] = useState<number>((draftState?.secondary_discount_rate !== undefined ? draftState.secondary_discount_rate : (editingOrder ? (editingOrder.secondary_discount_rate || 0) : (existingCustomer?.secondary_discount_rate || 0))) * 100);
     const [taxRate, setTaxRate] = useState<number>((draftState?.tax_rate !== undefined ? draftState.tax_rate : (editingOrder ? (editingOrder.tax_rate || 0) : (settings.tax_rate || 0))) * 100);
+    const [useCustomDiscount, setUseCustomDiscount] = useState<boolean>(editingOrder ? !!editingOrder.custom_discount_value : false);
+    const [customDiscountInput, setCustomDiscountInput] = useState<number>(editingOrder?.custom_discount_value || 0);
     
     // Utility function to extract the numeric part from an invoice number
     const extractInvoiceNumber = (invoiceNumber: string): number => {
@@ -144,11 +146,12 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                 order_date: orderDate,
                 discount_rate: discountRate / 100,
                 secondary_discount_rate: secondaryDiscountRate / 100,
+                custom_discount_value: useCustomDiscount ? customDiscountInput : undefined,
                 tax_rate: taxRate / 100,
                 invoice_number: invoiceNumber
             });
         }
-    }, [lines, orderDate, discountRate, secondaryDiscountRate, taxRate, invoiceNumber]);
+    }, [lines, orderDate, discountRate, secondaryDiscountRate, customDiscountInput, useCustomDiscount, taxRate, invoiceNumber]);
 
     // Effect to handle suggested invoice number (using sequential numbering)
     useEffect(() => {
@@ -215,8 +218,10 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
 
     const secondaryDiscountValue = amountAfterPrimary * (secondaryDiscountRate / 100);
     const amountAfterDiscounts = amountAfterPrimary - secondaryDiscountValue;
-    const taxValue = amountAfterDiscounts * (taxRate / 100);
-    const netTotal = amountAfterDiscounts + taxValue;
+    const customDiscountValue = useCustomDiscount ? customDiscountInput : 0;
+    const amountAfterCustom = amountAfterDiscounts - customDiscountValue;
+    const taxValue = amountAfterCustom * (taxRate / 100);
+    const netTotal = amountAfterCustom + taxValue;
 
     const addItem = () => {
         if (!selectedItem) return;
@@ -302,17 +307,6 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
         if (!customer) return;
         if (lines.length === 0) return;
 
-        // Credit Limit Check
-        const currentBalance = customer.outstanding_balance || 0;
-        const creditLimit = customer.credit_limit || 0;
-        const newTotalBalance = currentBalance + netTotal;
-
-        if (creditLimit > 0 && newTotalBalance > creditLimit && paymentType !== 'cash') {
-             // Warn user but allow proceed if they pay cash?
-             // Or strict block? Let's use a Toast warning for now, maybe block if unpaid.
-             showToast(`Warning: Credit Limit Exceeded (Limit: ${formatCurrency(creditLimit)}, New Balance: ${formatCurrency(newTotalBalance)})`, "warning");
-        }
-
         setPaymentAmount('0'); // Default to 0 as requested
         setShowPaymentModal(true);
     };
@@ -331,14 +325,23 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             return;
         }
 
+        // Credit Limit Check - Block if exceeded and not paying cash
+        const currentBalance = customer.outstanding_balance || 0;
+        const creditLimit = customer.credit_limit || 0;
+        const payAmount = parseFloat(paymentAmount) || 0;
+        const newTotalBalance = currentBalance + netTotal - payAmount;
+
+        if (creditLimit > 0 && newTotalBalance > creditLimit && paymentType !== 'cash') {
+            showToast(`Credit Limit Exceeded. Limit: ${formatCurrency(creditLimit)}, New Balance: ${formatCurrency(newTotalBalance)}`, "error");
+            return;
+        }
+
         // For existing orders, preserve the original order ID
         // For new orders, we can use the invoice number as the order ID
         const orderId = editingOrder ? editingOrder.order_id : invoiceNumber;
         const finalLines = lines.map(l => ({...l, order_id: orderId}));
 
         // Prepare Payment Data
-        const payAmount = parseFloat(paymentAmount) || 0;
-
         if (payAmount > netTotal) {
              showToast("Payment cannot exceed total amount", "error");
              return;
@@ -369,6 +372,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
             discount_value: primaryDiscountValue,
             secondary_discount_rate: secondaryDiscountRate / 100,
             secondary_discount_value: secondaryDiscountValue,
+            custom_discount_rate: useCustomDiscount && amountAfterDiscounts > 0 ? customDiscountInput / amountAfterDiscounts : undefined,
+            custom_discount_value: useCustomDiscount ? customDiscountInput : undefined,
             tax_rate: taxRate / 100,
             tax_value: taxValue,
             net_total: netTotal,
@@ -1001,6 +1006,39 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="flex justify-between items-center text-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={useCustomDiscount}
+                                            onChange={(e) => setUseCustomDiscount(e.target.checked)}
+                                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                            disabled={isEditingDisabled}
+                                        />
+                                        <span className="text-slate-700 font-medium">Custom Discount</span>
+                                    </label>
+                                    {useCustomDiscount && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-500">Rs.</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                className={`w-20 p-1 text-right text-xs border rounded focus:ring-2 ${themeClasses.ring} outline-none font-bold ${isEditingDisabled ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+                                                value={customDiscountInput}
+                                                onFocus={(e) => e.target.select()}
+                                                onChange={(e) => {
+                                                    let val = parseFloat(e.target.value) || 0;
+                                                    if (val < 0) val = 0;
+                                                    setCustomDiscountInput(val);
+                                                }}
+                                                disabled={isEditingDisabled}
+                                            />
+                                            <span className="text-rose-600">-{formatCurrency(customDiscountInput)}</span>
+                                        </div>
+                                    )}
+                                </div>
                                 
                                 <div className="flex justify-between items-center text-sm text-slate-600">
                                     <span>Tax (%)</span>

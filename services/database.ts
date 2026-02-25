@@ -2,15 +2,26 @@ import { Capacitor } from '@capacitor/core';
 import { db } from './db';
 
 let isInitialized = false;
+let initPromise: Promise<void> | null = null;
 
 export async function getDatabase() {
     return db;
 }
 
 export async function initializeDatabase(): Promise<void> {
-    if (isInitialized) return;
-    await db.open();
-    isInitialized = true;
+    if (initPromise) return initPromise;
+    
+    initPromise = (async () => {
+        if (isInitialized) {
+            await db.initialize();
+            return;
+        }
+        isInitialized = true;
+        await db.initialize();
+        console.log("Database initialized and cache loaded");
+    })();
+    
+    return initPromise;
 }
 
 export function getDatabasePlatform(): 'web' | 'android' | 'ios' | 'electron' {

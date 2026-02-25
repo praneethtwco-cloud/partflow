@@ -42,15 +42,23 @@ export const pdfService = {
       for (let i = 0; i < elements.length; i++) {
         const element = elements[i] as HTMLElement;
         
+        const elementWidth = element.offsetWidth;
+        
         const canvas = await html2canvas(element, {
           scale: 2, 
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
-          windowWidth: 800 
+          windowWidth: elementWidth,
+          onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.querySelector(selector) as HTMLElement | null;
+            if (clonedElement) {
+              clonedElement.style.width = `${elementWidth}px`;
+            }
+          }
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.8);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const imgWidthPx = canvas.width;
         const imgHeightPx = canvas.height;
         
@@ -112,8 +120,12 @@ export const pdfService = {
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: 1200, 
+        windowWidth: element.offsetWidth,
         onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.querySelector(selector) as HTMLElement | null;
+          if (clonedEl) {
+            clonedEl.style.width = `${element.offsetWidth}px`;
+          }
           const header = clonedDoc.getElementById('pdf-header');
           if (header) header.style.display = 'block';
           const content = clonedDoc.getElementById('report-content');
@@ -121,7 +133,7 @@ export const pdfService = {
         }
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.8);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const imgWidthPx = canvas.width;

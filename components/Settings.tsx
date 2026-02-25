@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CompanySettings } from '../types';
+import React, { useState, useEffect } from 'react';
+import { CompanySettings, RoutePlanEntry } from '../types';
 import { db } from '../services/db';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase-client';
@@ -16,6 +16,14 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const { colorTheme, setColorTheme, themeClasses } = useTheme();
     const [settings, setSettings] = useState<CompanySettings>(db.getSettings());
     const [message, setMessage] = useState('');
+    const [routePlans, setRoutePlans] = useState<RoutePlanEntry[]>(db.getRoutePlans());
+    const [showRouteModal, setShowRouteModal] = useState(false);
+    const [editingRoutePlan, setEditingRoutePlan] = useState<RoutePlanEntry | null>(null);
+    const [routeForm, setRouteForm] = useState({ customerId: '', visitTime: '', note: '', routeDate: new Date().toISOString().split('T')[0] });
+    
+    useEffect(() => {
+        setRoutePlans(db.getRoutePlans());
+    }, []);
     
     // Password State
     const [showPassModal, setShowPassModal] = useState(false);
@@ -44,6 +52,68 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     const handleSave = () => {
         db.saveSettings(settings);
         setMessage('Settings saved successfully!');
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+    const customers = db.getCustomers();
+
+    const handleAddRoutePlan = async () => {
+        if (!routeForm.customerId || !routeForm.visitTime) {
+            setMessage('Please select a shop and visit time');
+            setTimeout(() => setMessage(''), 3000);
+            return;
+        }
+        const customer = customers.find(c => c.customer_id === routeForm.customerId);
+        const newPlan: RoutePlanEntry = {
+            id: `${Date.now()}-${routeForm.customerId}`,
+            customer_id: routeForm.customerId,
+            visit_time: routeForm.visitTime,
+            note: routeForm.note,
+            route_date: routeForm.routeDate,
+            created_at: new Date().toISOString(),
+            sync_status: 'pending' as const
+        };
+        const updated = [...routePlans, newPlan];
+        setRoutePlans(updated);
+        await db.saveRoutePlans(updated);
+        setRouteForm({ customerId: '', visitTime: '', note: '', routeDate: new Date().toISOString().split('T')[0] });
+        setShowRouteModal(false);
+        setMessage('Route plan added!');
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+    const handleDeleteRoutePlan = async (planId: string) => {
+        const updated = routePlans.filter(p => p.id !== planId);
+        setRoutePlans(updated);
+        await db.saveRoutePlans(updated);
+        setMessage('Route stop removed');
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+    const handleEditRoutePlan = (plan: RoutePlanEntry) => {
+        setEditingRoutePlan(plan);
+        setRouteForm({
+            customerId: plan.customer_id,
+            visitTime: plan.visit_time,
+            note: plan.note || '',
+            routeDate: plan.route_date
+        });
+        setShowRouteModal(true);
+    };
+
+    const handleUpdateRoutePlan = async () => {
+        if (!editingRoutePlan) return;
+        const updated = routePlans.map(p => 
+            p.id === editingRoutePlan.id 
+                ? { ...p, customer_id: routeForm.customerId, visit_time: routeForm.visitTime, note: routeForm.note, route_date: routeForm.routeDate, sync_status: 'pending' as const }
+                : p
+        );
+        setRoutePlans(updated);
+        await db.saveRoutePlans(updated);
+        setEditingRoutePlan(null);
+        setRouteForm({ customerId: '', visitTime: '', note: '', routeDate: new Date().toISOString().split('T')[0] });
+        setShowRouteModal(false);
+        setMessage('Route plan updated!');
         setTimeout(() => setMessage(''), 3000);
     };
 
@@ -348,6 +418,53 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     </div>
                 </div>
 
+                {/* Section: Route Plans */}
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4 col-span-1 md:col-span-2">
+                    <div className="flex justify-between items-center">
+                        <SectionHeader 
+                            icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>}
+                            title="Route Plans"
+                            subtitle="Manage your visit schedule"
+                        />
+                        <button 
+                            onClick={() => { setEditingRoutePlan(null); setRouteForm({ customerId: '', visitTime: '', note: '', routeDate: new Date().toISOString().split('T')[0] }); setShowRouteModal(true); }}
+                            className={`${themeClasses.bg} text-white text-xs font-bold px-4 py-2 rounded-xl`}
+                        >
+                            + Add Stop
+                        </button>
+                    </div>
+
+                    {routePlans.length === 0 ? (
+                        <p className="text-slate-400 text-sm text-center py-4 italic">No route plans added yet. Add stops to plan your daily visits.</p>
+                    ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {routePlans.map(plan => {
+                                const customer = customers.find(c => c.customer_id === plan.customer_id);
+                                return (
+                                    <div key={plan.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-slate-800 truncate">{cleanText(customer?.shop_name || 'Unknown Shop')}</p>
+                                            <p className="text-xs text-slate-500">{cleanText(customer?.city_ref || '')} • {plan.visit_time}</p>
+                                            {plan.note && <p className="text-xs text-slate-400 italic mt-1">"{plan.note}"</p>}
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-2">
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded ${plan.route_date === new Date().toISOString().split('T')[0] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                {plan.route_date}
+                                            </span>
+                                            <button onClick={() => handleEditRoutePlan(plan)} className="text-slate-400 hover:text-indigo-600 p-1">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            </button>
+                                            <button onClick={() => handleDeleteRoutePlan(plan.id)} className="text-slate-400 hover:text-rose-600 p-1">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
             </div>
 
             {/* Save Action Area */}
@@ -439,6 +556,79 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                                     className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all"
                                 >
                                     Update
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Route Plan Modal */}
+            {showRouteModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-lg font-black text-slate-800 tracking-tight">{editingRoutePlan ? 'Edit Route Stop' : 'Add Route Stop'}</h3>
+                            <button onClick={() => { setShowRouteModal(false); setEditingRoutePlan(null); }} className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Date</label>
+                                <input 
+                                    type="date"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    value={routeForm.routeDate}
+                                    onChange={e => setRouteForm({...routeForm, routeDate: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Select Shop</label>
+                                <select 
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    value={routeForm.customerId}
+                                    onChange={e => setRouteForm({...routeForm, customerId: e.target.value})}
+                                >
+                                    <option value="">Choose a shop...</option>
+                                    {customers.filter(c => c.status === 'active').map(customer => (
+                                        <option key={customer.customer_id} value={customer.customer_id}>
+                                            {cleanText(customer.shop_name)} - {cleanText(customer.city_ref)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Visit Time</label>
+                                <input 
+                                    type="time"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    value={routeForm.visitTime}
+                                    onChange={e => setRouteForm({...routeForm, visitTime: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Note (Optional)</label>
+                                <textarea 
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    rows={2}
+                                    value={routeForm.note}
+                                    onChange={e => setRouteForm({...routeForm, note: e.target.value})}
+                                    placeholder="Add a note..."
+                                />
+                            </div>
+                            <div className="pt-2 flex gap-3">
+                                <button 
+                                    onClick={() => { setShowRouteModal(false); setEditingRoutePlan(null); }}
+                                    className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={editingRoutePlan ? handleUpdateRoutePlan : handleAddRoutePlan}
+                                    className={`flex-1 py-3 ${themeClasses.bg} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all`}
+                                >
+                                    {editingRoutePlan ? 'Update' : 'Add Stop'}
                                 </button>
                             </div>
                         </div>

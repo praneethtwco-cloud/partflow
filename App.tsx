@@ -245,7 +245,10 @@ function AppContent() {
 
     switch (activeTab) {
       case 'home':
-        return <Dashboard onAction={(tab) => navigateTo(tab)} onViewOrder={handleViewInvoice} onOpenProfile={handleOpenProfileFromDashboard} />;
+        return <Dashboard onAction={(tab) => navigateTo(tab)} onViewOrder={handleViewInvoice} onOpenProfile={handleOpenProfileFromDashboard} onSelectCustomerForOrder={(customerId) => {
+          const customer = db.getCustomers().find(c => c.customer_id === customerId);
+          if (customer) handleSelectCustomer(customer);
+        }} />;
       case 'customers':
         return <CustomerList onSelectCustomer={handleSelectCustomer} onOpenProfile={handleOpenProfile} />;
       case 'shop_profile':

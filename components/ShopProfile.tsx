@@ -27,8 +27,16 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
     const [paymentType, setPaymentType] = useState<PaymentType>('cash');
     const [paymentRef, setPaymentRef] = useState('');
     
-    // Edit Customer Modal
+    // Edit Customer Modal State
     const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({
+        shop_name: customer.shop_name,
+        address: customer.address,
+        city_ref: customer.city_ref,
+        phone: customer.phone,
+        credit_limit: customer.credit_limit || 0
+    });
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         // Load orders for this customer
@@ -37,6 +45,15 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
             .filter(o => o.customer_id === customer.customer_id)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setOrders(shopOrders);
+        
+        // Reset edit form when customer changes
+        setEditForm({
+            shop_name: customer.shop_name,
+            address: customer.address,
+            city_ref: customer.city_ref,
+            phone: customer.phone,
+            credit_limit: customer.credit_limit || 0
+        });
     }, [customer]);
 
     const handleSettle = async () => {
@@ -96,8 +113,10 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
         }
     };
 
-    const unpaidOrders = orders.filter(o => o.payment_status !== 'paid');
-    const paidOrders = orders.filter(o => o.payment_status === 'paid');
+    // Filter out cancelled/failed delivery status - these don't count as unpaid/paid
+    const activeOrders = orders.filter(o => o.delivery_status !== 'cancelled' && o.delivery_status !== 'failed');
+    const unpaidOrders = activeOrders.filter(o => o.payment_status !== 'paid');
+    const paidOrders = activeOrders.filter(o => o.payment_status === 'paid');
 
     const getDeliveryColor = (status: any) => {
         switch (status) {
@@ -318,7 +337,8 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 <input
                                     type="text"
                                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 focus:outline-none"
-                                    defaultValue={customer.shop_name}
+                                    value={editForm.shop_name}
+                                    onChange={e => setEditForm(prev => ({ ...prev, shop_name: e.target.value }))}
                                 />
                             </div>
                             <div>
@@ -326,7 +346,8 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 <input
                                     type="text"
                                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 focus:outline-none"
-                                    defaultValue={customer.address}
+                                    value={editForm.address}
+                                    onChange={e => setEditForm(prev => ({ ...prev, address: e.target.value }))}
                                 />
                             </div>
                             <div>
@@ -334,7 +355,8 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 <input
                                     type="text"
                                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 focus:outline-none"
-                                    defaultValue={customer.city_ref}
+                                    value={editForm.city_ref}
+                                    onChange={e => setEditForm(prev => ({ ...prev, city_ref: e.target.value }))}
                                 />
                             </div>
                             <div>
@@ -342,7 +364,8 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 <input
                                     type="text"
                                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 focus:outline-none"
-                                    defaultValue={customer.phone}
+                                    value={editForm.phone}
+                                    onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
                                 />
                             </div>
                             <div>
@@ -350,7 +373,8 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 <input
                                     type="number"
                                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 focus:outline-none"
-                                    defaultValue={customer.credit_limit || 0}
+                                    value={editForm.credit_limit}
+                                    onChange={e => setEditForm(prev => ({ ...prev, credit_limit: parseFloat(e.target.value) || 0 }))}
                                 />
                             </div>
                         </div>
@@ -363,14 +387,31 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
                                 Cancel
                             </button>
                             <button 
-                                onClick={() => {
-                                    // TODO: Implement save functionality
-                                    setShowEditModal(false);
-                                    showToast("Customer updated successfully!", "success");
-                                }}
-                                className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg"
+                                onClick={async () => {
+                                    setIsSaving(true);
+                                    try {
+                                        const updatedCustomer: Customer = {
+                                            ...customer,
+                                            shop_name: editForm.shop_name,
+                                            address: editForm.address,
+                                            city_ref: editForm.city_ref,
+                                            phone: editForm.phone,
+                                            credit_limit: editForm.credit_limit
+                                        };
+                                        await db.saveCustomer(updatedCustomer);
+                                        showToast("Customer updated successfully!", "success");
+                                        setShowEditModal(false);
+                                    } catch (error) {
+                                        console.error('Error saving customer:', error);
+                                        showToast("Failed to update customer", "error");
+                                    } finally {
+                                        setIsSaving(false);
+                                    }
+                                }} 
+                                disabled={isSaving}
+                                className={`flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg ${isSaving ? 'opacity-50' : ''}`}
                             >
-                                Save
+                                {isSaving ? 'Saving...' : 'Save'}
                             </button>
                         </div>
                     </div>

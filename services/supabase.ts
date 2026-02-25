@@ -5,7 +5,9 @@ import {
   Order, 
   CompanySettings, 
   StockAdjustment, 
-  User 
+  User,
+  RoutePlanEntry,
+  VisitEntry
 } from '../types';
 import { SUPABASE_CONFIG } from '../config';
 import { getSupabaseClient } from './supabase-client';
@@ -19,6 +21,8 @@ interface SupabaseSyncResult {
   pulledSettings?: CompanySettings;
   pulledUsers?: User[];
   pulledAdjustments?: StockAdjustment[];
+  pulledRoutePlans?: RoutePlanEntry[];
+  pulledVisits?: VisitEntry[];
   conflicts?: Array<{
     type: string;
     local: any;
@@ -48,6 +52,8 @@ class SupabaseService {
     settings: CompanySettings[] = [],
     users: User[] = [],
     adjustments: StockAdjustment[] = [],
+    routePlans: RoutePlanEntry[] = [],
+    visits: VisitEntry[] = [],
     mode: 'upsert' | 'overwrite' = 'upsert'
   ): Promise<SupabaseSyncResult> {
     this.currentLogs = [];
@@ -67,7 +73,9 @@ class SupabaseService {
         items: mode === 'overwrite' ? items : items.filter(i => i.sync_status === 'pending'),
         settings: settings,
         users: users.filter(u => u.password), // Only sync users with passwords
-        adjustments: mode === 'overwrite' ? adjustments : adjustments.filter(a => a.sync_status === 'pending')
+        adjustments: mode === 'overwrite' ? adjustments : adjustments.filter(a => a.sync_status === 'pending'),
+        routePlans: routePlans,
+        visits: visits
       };
 
       // Upload pending changes to Supabase
@@ -113,6 +121,8 @@ class SupabaseService {
     settings: CompanySettings[];
     users: User[];
     adjustments: StockAdjustment[];
+    routePlans: RoutePlanEntry[];
+    visits: VisitEntry[];
   }, mode: 'upsert' | 'overwrite') {
     // Transform data to ensure compatibility with Supabase schema
     const transformDates = (obj: any) => {
@@ -232,9 +242,36 @@ class SupabaseService {
     if (data.settings.length > 0) {
       this.addLog(`Uploading settings to Supabase...`);
       const transformedSettings = data.settings.map(transformDates);
+      const settingsToSync = { 
+        ...transformedSettings[0], 
+        id: 'main'
+      };
+      // Explicitly filter out new fields not in Supabase
+      const cleanSettings = {
+        id: settingsToSync.id,
+        company_name: settingsToSync.company_name,
+        address: settingsToSync.address,
+        phone: settingsToSync.phone,
+        rep_name: settingsToSync.rep_name,
+        invoice_prefix: settingsToSync.invoice_prefix,
+        starting_invoice_number: settingsToSync.starting_invoice_number,
+        footer_note: settingsToSync.footer_note,
+        currency_symbol: settingsToSync.currency_symbol,
+        tax_rate: settingsToSync.tax_rate,
+        auto_sku_enabled: settingsToSync.auto_sku_enabled,
+        stock_tracking_enabled: settingsToSync.stock_tracking_enabled,
+        category_enabled: settingsToSync.category_enabled,
+        show_sku_in_item_cards: settingsToSync.show_sku_in_item_cards,
+        logo_base64: settingsToSync.logo_base64,
+        show_advanced_sync_options: settingsToSync.show_advanced_sync_options,
+        created_at: settingsToSync.created_at,
+        updated_at: settingsToSync.updated_at,
+        sync_status: settingsToSync.sync_status,
+        last_updated: settingsToSync.last_updated
+      };
       const { error } = await this.supabase
         .from('settings')
-        .upsert([{ ...transformedSettings[0], id: 'main' }], {
+        .upsert([cleanSettings], {
           onConflict: 'id',
           ignoreDuplicates: false
         })
@@ -289,6 +326,64 @@ class SupabaseService {
       if (error) {
         console.error('Adjustment upload error details:', error);
         throw new Error(`Failed to upload adjustments: ${error.message}`);
+      }
+    }
+
+    // Upload route plans
+    const routePlansToUploadRaw = data.routePlans || [];
+    if (routePlansToUploadRaw.length > 0) {
+      this.addLog(`Uploading ${routePlansToUploadRaw.length} route plans to Supabase...`);
+      const routePlansToUpload = routePlansToUploadRaw.map(p => ({
+        id: p.id,
+        customer_id: p.customer_id,
+        visit_time: p.visit_time,
+        note: p.note,
+        route_date: p.route_date,
+        created_at: p.created_at,
+        sync_status: p.sync_status
+      }));
+      const { error } = await this.supabase
+        .from('route_plans')
+        .upsert(routePlansToUpload, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+        .select();
+
+      if (error) {
+        console.error('Route plans upload error details:', error);
+        throw new Error(`Failed to upload route plans: ${error.message}`);
+      }
+    }
+
+    // Upload visits
+    const visitsToUploadRaw = data.visits || [];
+    if (visitsToUploadRaw.length > 0) {
+      this.addLog(`Uploading ${visitsToUploadRaw.length} visits to Supabase...`);
+      const visitsToUpload = visitsToUploadRaw.map(v => ({
+        id: v.id,
+        customer_id: v.customer_id,
+        plan_id: v.plan_id,
+        check_in_time: v.check_in_time,
+        check_out_time: v.check_out_time,
+        check_in_note: v.check_in_note,
+        check_out_note: v.check_out_note,
+        status: v.status,
+        route_date: v.route_date,
+        created_at: v.created_at,
+        sync_status: v.sync_status
+      }));
+      const { error } = await this.supabase
+        .from('visits')
+        .upsert(visitsToUpload, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+        .select();
+
+      if (error) {
+        console.error('Visits upload error details:', error);
+        throw new Error(`Failed to upload visits: ${error.message}`);
       }
     }
   }
@@ -385,13 +480,33 @@ class SupabaseService {
       console.error('Error details:', adjustmentsError);
     }
 
+    // Pull route plans
+    const { data: routePlans, error: routePlansError } = await this.supabase
+      .from('route_plans')
+      .select('*');
+
+    if (routePlansError) {
+      console.error(`Error: Failed to pull route_plans: ${routePlansError.message}`);
+    }
+
+    // Pull visits
+    const { data: visits, error: visitsError } = await this.supabase
+      .from('visits')
+      .select('*');
+
+    if (visitsError) {
+      console.error(`Error: Failed to pull visits: ${visitsError.message}`);
+    }
+
     return {
       items: transformedItems,
       customers: customers || [],
       orders: ordersWithLines,
       settings: settings || [],
       users: users || [],
-      adjustments: adjustments || []
+      adjustments: adjustments || [],
+      routePlans: routePlans || [],
+      visits: visits || []
     };
   }
 

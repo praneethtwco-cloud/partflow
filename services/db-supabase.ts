@@ -211,14 +211,6 @@ class LocalDB {
           if (!order.original_invoice_number) {
               updatedOrder = {
                   ...updatedOrder,
-                  original_invoice_number: order.invoice_number || updatedOrder.invoice_number
-              };
-          }
-
-          // Set original_invoice_number if not already set
-          if (!order.original_invoice_number) {
-              updatedOrder = {
-                  ...updatedOrder,
                   original_invoice_number: order.invoice_number || order.order_id
               };
           }
@@ -428,15 +420,15 @@ class LocalDB {
       // Logical Fix: Restore stock if delivery failed or cancelled
       // only if it wasn't already failed/cancelled (to prevent double restoration)
       if ((status === 'failed' || status === 'cancelled') && (oldStatus !== 'failed' && oldStatus !== 'cancelled')) {
-          order.lines.forEach(async line => {
+          for (const line of order.lines) {
               await this.updateStock(line.item_id, line.quantity);
-          });
+          }
       }
       // If moving BACK to an active state, re-deduce stock
       else if ((status !== 'failed' && status !== 'cancelled') && (oldStatus === 'failed' || oldStatus === 'cancelled')) {
-          order.lines.forEach(async line => {
+          for (const line of order.lines) {
               await this.updateStock(line.item_id, -line.quantity);
-          });
+          }
       }
 
       await this.db.orders.put(order);
@@ -476,9 +468,9 @@ class LocalDB {
 
           // Restore Stock if order was confirmed
           if (order.order_status === 'confirmed') {
-              order.lines.forEach(async line => {
+              for (const line of order.lines) {
                   await this.updateStock(line.item_id, line.quantity); // Positive qty to add back
-              });
+              }
           }
 
           // Delete from Cache
@@ -644,6 +636,8 @@ class LocalDB {
         settings,
         users,
         adjustments,
+        [],
+        [],
         mode
     );
 
@@ -1050,54 +1044,6 @@ class LocalDB {
 
     // Refresh cache to reflect changes
     await this.refreshCache();
-  }
-
-  /**
-   * Generate the next sequential invoice number based on settings
-   */
-  generateNextInvoiceNumber(): string {
-    const settings = this.cache.settings;
-    const prefix = settings.invoice_prefix || 'INV';
-    const startingNumber = settings.starting_invoice_number || 1;
-
-    // Find the highest invoice number currently in the system
-    const highestNumber = this.findHighestInvoiceNumber();
-
-    // Determine the next number to use
-    const nextNumber = highestNumber > 0 ? highestNumber + 1 : startingNumber;
-
-    // Format the number with zero padding (minimum 4 digits)
-    const paddedNumber = nextNumber.toString().padStart(4, '0');
-
-    // Combine prefix and padded number
-    return `${prefix}${paddedNumber}`;
-  }
-
-  /**
-   * Find the highest invoice number in the database
-   */
-  findHighestInvoiceNumber(): number {
-    const orders = this.cache.orders;
-    const invoiceNumbers = orders
-      .filter(order => order.invoice_number) // Only consider orders with invoice numbers
-      .map(order => this.extractInvoiceNumber(order.invoice_number!));
-
-    if (invoiceNumbers.length === 0) {
-      return 0;
-    }
-
-    return Math.max(...invoiceNumbers);
-  }
-
-  /**
-   * Extract the numeric part from an invoice number
-   */
-  private extractInvoiceNumber(invoiceNumber: string): number {
-    const match = invoiceNumber.match(/\d+$/);
-    if (match) {
-      return parseInt(match[0], 10);
-    }
-    return 0;
   }
 }
 export const db = new LocalDB();

@@ -6,17 +6,18 @@ import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
-import { RoutePlanEntry } from '../types';
+import { RoutePlanEntry, CompanySettings, VisitEntry } from '../types';
 
 interface DashboardProps {
     onAction: (tab: string) => void;
     onViewOrder: (order: any) => void;
     onOpenProfile: (customerId: string) => void;
+    onSelectCustomerForOrder?: (customerId: string) => void;
 }
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onOpenProfile }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onOpenProfile, onSelectCustomerForOrder }) => {
     const { themeClasses } = useTheme();
     const [stats, setStats] = useState<any>({});
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -26,7 +27,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
     const [paymentBreakdown, setPaymentBreakdown] = useState<{ name: string; value: number }[]>([]);
     const [outstandingAmount, setOutstandingAmount] = useState(0);
     const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({});
-    const settings = db.getSettings();
+    const [settings, setSettings] = useState<CompanySettings>(db.getSettings());
+    const [routePlans, setRoutePlans] = useState<RoutePlanEntry[]>(db.getRoutePlans());
+    const [visits, setVisits] = useState<VisitEntry[]>(db.getVisits());
     const { showToast } = useToast();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -34,7 +37,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
     const pullRef = useRef<HTMLDivElement>(null);
     const [pullDistance, setPullDistance] = useState(0);
     const [todayRoutePlans, setTodayRoutePlans] = useState<RoutePlanEntry[]>([]);
+    const [todayVisits, setTodayVisits] = useState<VisitEntry[]>([]);
     const [showRoutePlanner, setShowRoutePlanner] = useState(false);
+    const [showCheckInModal, setShowCheckInModal] = useState(false);
+    const [checkInCustomer, setCheckInCustomer] = useState<{ id: string; name: string; planId?: string } | null>(null);
+    const [checkInNote, setCheckInNote] = useState('');
     const [newRoutePlan, setNewRoutePlan] = useState({ customerId: '', visitTime: '', note: '' });
 
     const handleRefresh = async () => {
@@ -45,6 +52,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
         setStats(currentStats);
         const allOrders = db.getOrders().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setRecentOrders(allOrders.slice(0, 5));
+        setRoutePlans(db.getRoutePlans());
+        setVisits(db.getVisits());
         setIsRefreshing(false);
     };
 
@@ -181,8 +190,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
     // Auto-scroll carousel
     useEffect(() => {
         const today = new Date().toISOString().split('T')[0];
-        setTodayRoutePlans((settings.route_plans || []).filter(plan => plan.route_date === today));
-    }, [settings.route_plans]);
+        setTodayRoutePlans((routePlans || []).filter(plan => plan.route_date === today));
+        setTodayVisits((visits || []).filter(v => v.route_date === today));
+    }, [routePlans, visits]);
+
+    const getVisitStatus = (customerId: string): VisitEntry | undefined => {
+        return todayVisits.find(v => v.customer_id === customerId && v.status !== 'missed');
+    };
+
+    const handleCheckIn = (customerId: string, planId?: string) => {
+        const customer = db.getCustomers().find(c => c.customer_id === customerId);
+        setCheckInCustomer({ id: customerId, name: cleanText(customer?.shop_name || 'Unknown'), planId });
+        setCheckInNote('');
+        setShowCheckInModal(true);
+    };
+
+    const handleConfirmCheckIn = async () => {
+        if (!checkInCustomer) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const visit: VisitEntry = {
+            id: `visit-${Date.now()}`,
+            customer_id: checkInCustomer.id,
+            plan_id: checkInCustomer.planId,
+            check_in_time: new Date().toISOString(),
+            check_in_note: checkInNote,
+            status: 'checked_in',
+            route_date: today,
+            created_at: new Date().toISOString(),
+            sync_status: 'pending' as const
+        };
+
+        const updatedVisits = [...(visits || []), visit];
+        await db.saveVisits(updatedVisits);
+        setVisits(updatedVisits);
+        setShowCheckInModal(false);
+        setCheckInCustomer(null);
+        showToast('Checked in successfully!', 'success');
+    };
+
+    const handleCheckOut = async (visitId: string, note: string = '') => {
+        const updatedVisits = (visits || []).map(v => 
+            v.id === visitId 
+                ? { ...v, check_out_time: new Date().toISOString(), check_out_note: note, status: 'completed' as const, sync_status: 'pending' as const }
+                : v
+        );
+        await db.saveVisits(updatedVisits);
+        setVisits(updatedVisits);
+        showToast('Visit completed!', 'success');
+    };
 
     const handleAddRoutePlan = async (): Promise<void> => {
         if (!newRoutePlan.customerId || !newRoutePlan.visitTime) {
@@ -197,13 +253,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             visit_time: newRoutePlan.visitTime,
             note: newRoutePlan.note,
             route_date: today,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            sync_status: 'pending' as const
         };
 
         try {
-            const updatedRoutePlans = [...(settings.route_plans || []), routePlan];
-            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
-            setTodayRoutePlans(prev => [...prev, routePlan]);
+            const updatedRoutePlans = [...(routePlans || []), routePlan];
+            await db.saveRoutePlans(updatedRoutePlans);
+            setRoutePlans(updatedRoutePlans);
             setNewRoutePlan({ customerId: '', visitTime: '', note: '' });
             setShowRoutePlanner(false);
             showToast('Route stop added', 'success');
@@ -215,9 +272,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
 
     const handleRemoveRoutePlan = async (planId: string): Promise<void> => {
         try {
-            const updatedRoutePlans = (settings.route_plans || []).filter(plan => plan.id !== planId);
-            await db.saveSettings({ ...settings, route_plans: updatedRoutePlans });
-            setTodayRoutePlans(prev => prev.filter(plan => plan.id !== planId));
+            const updatedRoutePlans = (routePlans || []).filter(plan => plan.id !== planId);
+            await db.saveRoutePlans(updatedRoutePlans);
+            setRoutePlans(updatedRoutePlans);
             showToast('Route stop removed', 'info');
         } catch (error) {
             console.error('Failed to remove route plan:', error);
@@ -272,23 +329,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             const customer = db.getCustomers().find(c => c.customer_id === plan.customer_id);
             return {
                 key: plan.id,
+                planId: plan.id,
                 customerId: plan.customer_id,
                 name: customer ? cleanText(customer.shop_name) : 'Unknown Shop',
                 city: customer ? cleanText(customer.city_ref) : 'No city',
                 count: 0,
                 visitTime: plan.visit_time,
-                note: plan.note || ''
+                note: plan.note || '',
+                isPlanned: true
             };
         })
         : (topCustomers.slice(0, 3).length ? topCustomers.slice(0, 3).map(customer => ({
             key: customer.customerId,
+            planId: null,
             customerId: customer.customerId,
             name: customer.name,
             city: customer.city,
             count: customer.count,
             visitTime: '',
-            note: ''
-        })) : [{ key: 'empty', customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', count: 0, visitTime: '', note: '' }]);
+            note: '',
+            isPlanned: false
+        })) : [{ key: 'empty', planId: null, customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', count: 0, visitTime: '', note: '', isPlanned: false }]);
 
     return (
         <div 
@@ -350,9 +411,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </div>
-            </section>
+            </div>
 
             {/* Quick Actions */}
             <section className="grid grid-cols-2 gap-3">
@@ -370,36 +431,92 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             <section>
                 <div className="flex items-center justify-between mb-3 px-1">
                     <h2 className="text-slate-900 text-lg font-black">Today's Route</h2>
-                    <button onClick={() => onAction('customers')} className={`text-sm font-bold ${themeClasses.text}`}>View Shops</button>
+                    <button onClick={() => setShowRoutePlanner(true)} className={`text-sm font-bold ${themeClasses.text}`}>+ Add Stop</button>
                 </div>
-                <div className="space-y-3">
-                    {(topCustomers.slice(0, 3).length ? topCustomers.slice(0, 3) : [{ customerId: '', name: 'No customer visits planned', city: 'Add customers to start route planning', total: 0, count: 0 }]).map((customer, index) => (
-                        <div key={`${customer.customerId || 'empty'}-${index}`} className={`rounded-2xl p-4 shadow-sm border ${index === 0 ? `bg-white border-l-4 ${themeClasses.border}` : 'bg-white border border-slate-100'} ${index > 0 ? 'opacity-90' : ''}`}>
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="flex gap-3">
-                                    <div className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-500'}`}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a2 2 0 010-2.828l4.243-4.243m0 0L14.828 2.5m2.829 2.829L20.5 8.172" /></svg>
+                <div className="space-y-2 md:space-y-3">
+                    {routeStops.map((customer, index) => {
+                        const visit = customer.customerId ? getVisitStatus(customer.customerId) : undefined;
+                        const isCheckedIn = visit?.status === 'checked_in';
+                        const isCompleted = visit?.status === 'completed';
+                        const customerData = customer.customerId ? db.getCustomers().find(c => c.customer_id === customer.customerId) : null;
+                        const outstandingBalance = customerData?.outstanding_balance || 0;
+                        const hasOutstanding = outstandingBalance > 0;
+                        
+                        return (
+                        <div key={`${customer.customerId || 'empty'}-${index}`} className={`rounded-xl md:rounded-2xl p-3 md:p-4 shadow-sm border ${index === 0 ? `bg-white border-l-4 ${themeClasses.border}` : 'bg-white border border-slate-100'} ${index > 0 ? 'opacity-90' : ''} ${isCompleted ? 'border-emerald-200 bg-emerald-50/30' : ''}`}>
+                            <div className="flex items-start justify-between gap-2 md:gap-3">
+                                <div className="flex gap-2 md:gap-3 min-w-0 flex-1">
+                                    <div className={`mt-0.5 md:mt-1 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full flex-shrink-0 ${isCompleted ? 'bg-emerald-100 text-emerald-600' : index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-500'}`}>
+                                        {isCompleted ? (
+                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        ) : isCheckedIn ? (
+                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        ) : (
+                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a2 2 0 010-2.828l4.243-4.243m0 0L14.828 2.5m2.829 2.829L20.5 8.172" /></svg>
+                                        )}
                                     </div>
-                                    <div>
-                                        <p className="text-slate-500 text-xs font-semibold mb-0.5">{index === 0 ? 'Current Stop' : index === 1 ? 'Next' : 'Upcoming'} • {customer.count || 0} orders</p>
-                                        <h3 className="text-slate-900 text-base font-bold">{customer.name}</h3>
-                                        <p className="text-slate-500 text-sm mt-1">{customer.city || 'No city'}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 flex-wrap">
+                                            <p className="text-slate-500 text-[10px] md:text-xs font-semibold truncate max-w-[80px] md:max-w-none">
+                                                {isCompleted ? 'Completed' : isCheckedIn ? 'In Progress' : index === 0 ? 'Current' : index === 1 ? 'Next' : 'Upcoming'}
+                                            </p>
+                                            {customer.isPlanned && customer.visitTime && (
+                                                <span className="text-[9px] md:text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{customer.visitTime}</span>
+                                            )}
+                                            {isCheckedIn && (
+                                                <span className="text-[9px] md:text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">In</span>
+                                            )}
+                                            {hasOutstanding && (
+                                                <span className="text-[9px] md:text-[10px] font-bold bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">{formatCurrency(outstandingBalance)}</span>
+                                            )}
+                                        </div>
+                                        <h3 className="text-sm md:text-base font-bold text-slate-900 truncate">{customer.name}</h3>
+                                        <p className="text-slate-500 text-xs md:text-sm truncate">{customer.city || 'No city'}</p>
                                     </div>
                                 </div>
-                                {customer.customerId && (
-                                    <button onClick={() => onOpenProfile(customer.customerId)} className="text-slate-400 hover:text-slate-700">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                    </button>
-                                )}
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                    {customer.customerId && (
+                                        <button onClick={() => onOpenProfile(customer.customerId)} className="text-slate-400 hover:text-slate-700 p-1">
+                                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            {index === 0 && customer.customerId && (
-                                <div className="mt-3 flex gap-2">
-                                    <button onClick={() => onOpenProfile(customer.customerId)} className={`flex-1 ${themeClasses.bg} text-white text-xs font-bold py-2 rounded-lg`}>Check In</button>
-                                    <button onClick={() => onAction('customers')} className="flex-1 bg-slate-100 text-slate-700 text-xs font-bold py-2 rounded-lg">Navigate</button>
+                            {customer.customerId && (
+                                <div className="mt-2 md:mt-3 flex gap-1.5 md:gap-2">
+                                    {!isCheckedIn && !isCompleted && (
+                                        <>
+                                            <button onClick={() => handleCheckIn(customer.customerId, customer.planId || undefined)} className={`flex-1 ${themeClasses.bg} text-white text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg`}>Check In</button>
+                                            {hasOutstanding && (
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-rose-50 text-rose-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-rose-100">Collect {formatCurrency(outstandingBalance)}</button>
+                                            )}
+                                            {!hasOutstanding && (
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-slate-100 text-slate-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg">New Order</button>
+                                            )}
+                                        </>
+                                    )}
+                                    {isCheckedIn && (
+                                        <>
+                                            <button onClick={() => onOpenProfile(customer.customerId)} className={`flex-1 ${themeClasses.bg} text-white text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg`}>View Shop</button>
+                                            {hasOutstanding && (
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-rose-50 text-rose-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-rose-100">Collect {formatCurrency(outstandingBalance)}</button>
+                                            )}
+                                            {!hasOutstanding && (
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-emerald-50 text-emerald-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-emerald-100">New Order</button>
+                                            )}
+                                            <button onClick={() => handleCheckOut(visit!.id)} className="px-3 md:px-4 bg-slate-100 text-slate-600 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg">Out</button>
+                                        </>
+                                    )}
+                                    {isCompleted && (
+                                        <div className="flex-1 flex items-center justify-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg">
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            Done
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    ))}
+                    )})}
                 </div>
             </section>
 
@@ -488,12 +605,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                                     onClick={() => onOpenProfile(customer.customerId)}
                                     className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black flex-shrink-0 ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
                                             {idx + 1}
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{customer.name}</p>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-slate-900">{customer.name}</p>
                                             <p className="text-[10px] text-slate-400">{customer.city} • {customer.count} orders</p>
                                         </div>
                                     </div>
@@ -521,11 +638,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                         ) : (
                             recentOrders.slice(0, 4).map(order => (
                                 <div key={order.order_id} onClick={() => onViewOrder(order)} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors cursor-pointer">
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-900 truncate max-w-[140px]">{cleanText(db.getCustomers().find(c => c.customer_id === order.customer_id)?.shop_name || 'Unknown Shop')}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-bold text-slate-900">{cleanText(db.getCustomers().find(c => c.customer_id === order.customer_id)?.shop_name || 'Unknown Shop')}</p>
                                         <p className="text-[10px] text-slate-400">{order.order_date}</p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right flex-shrink-0 ml-2">
                                         <p className="text-sm font-black text-slate-800">{formatCurrency(order.net_total)}</p>
                                     </div>
                                 </div>
@@ -534,6 +651,124 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                     </div>
                 </div>
             </div>
+
+            {/* Route Planner Modal */}
+            {showRoutePlanner && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center pb-24 md:pb-0">
+                    <div className="bg-white rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 animate-in slide-in-from-bottom-20 duration-300">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-black text-slate-900">Add Route Stop</h3>
+                            <button onClick={() => setShowRoutePlanner(false)} className="p-2 text-slate-400 hover:text-slate-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Select Shop</label>
+                                <select 
+                                    value={newRoutePlan.customerId}
+                                    onChange={(e) => setNewRoutePlan(prev => ({ ...prev, customerId: e.target.value }))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="">Choose a shop...</option>
+                                    {customerOptions.map(customer => (
+                                        <option key={customer.customer_id} value={customer.customer_id}>
+                                            {cleanText(customer.shop_name)} - {cleanText(customer.city_ref)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Visit Time</label>
+                                <input 
+                                    type="time"
+                                    value={newRoutePlan.visitTime}
+                                    onChange={(e) => setNewRoutePlan(prev => ({ ...prev, visitTime: e.target.value }))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Note (Optional)</label>
+                                <textarea 
+                                    value={newRoutePlan.note}
+                                    onChange={(e) => setNewRoutePlan(prev => ({ ...prev, note: e.target.value }))}
+                                    placeholder="Add a note for this stop..."
+                                    rows={2}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                />
+                            </div>
+
+                            <button 
+                                onClick={handleAddRoutePlan}
+                                className={`w-full ${themeClasses.bg} text-white font-bold py-3 rounded-xl active:scale-95 transition-transform`}
+                            >
+                                Add to Route
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Check In Modal */}
+            {showCheckInModal && checkInCustomer && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center pb-24 md:pb-0">
+                    <div className="bg-white rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 animate-in slide-in-from-bottom-20 duration-300">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900">Check In</h3>
+                                <p className="text-sm text-slate-500">{checkInCustomer.name}</p>
+                            </div>
+                            <button onClick={() => setShowCheckInModal(false)} className="p-2 text-slate-400 hover:text-slate-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-emerald-600 font-bold uppercase">Check-in Time</p>
+                                        <p className="text-lg font-black text-emerald-700">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Check-in Note (Optional)</label>
+                                <textarea 
+                                    value={checkInNote}
+                                    onChange={(e) => setCheckInNote(e.target.value)}
+                                    placeholder="Add notes about this visit..."
+                                    rows={3}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setShowCheckInModal(false)}
+                                    className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleConfirmCheckIn}
+                                    className={`flex-1 py-3 ${themeClasses.bg} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2`}
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    Confirm Check In
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

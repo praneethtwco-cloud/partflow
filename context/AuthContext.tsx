@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthState } from '../types';
 import { supabase } from '../services/supabase-client';
+import { autoSyncService } from '../services/auto-sync';
 
 interface AuthContextType extends AuthState {
     login: (user: User, token: string) => void;
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = async () => {
+        autoSyncService.stop();
         await supabase.auth.signOut();
         setState({ user: null, token: null, isAuthenticated: false });
         localStorage.removeItem('partflow_auth');

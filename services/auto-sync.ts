@@ -93,6 +93,8 @@ class AutoSyncService {
         [],
         [],
         [],
+        [],
+        [],
         'upsert'
       );
 

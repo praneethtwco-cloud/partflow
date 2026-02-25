@@ -69,6 +69,8 @@ export interface Order extends BaseEntity {
   discount_value: number;
   secondary_discount_rate?: number;
   secondary_discount_value?: number;
+  custom_discount_rate?: number;
+  custom_discount_value?: number;
   tax_rate?: number; // 0.0 to 1.0
   tax_value?: number;
   net_total: number;
@@ -140,9 +142,27 @@ export interface RoutePlanEntry {
   note?: string;
   route_date: string;
   created_at: string;
+  sync_status?: 'pending' | 'synced';
+  last_updated?: string;
+}
+
+export interface VisitEntry {
+  id: string;
+  customer_id: string;
+  plan_id?: string;
+  check_in_time: string;
+  check_out_time?: string;
+  check_in_note?: string;
+  check_out_note?: string;
+  status: 'checked_in' | 'completed' | 'missed';
+  route_date: string;
+  created_at: string;
+  sync_status?: 'pending' | 'synced';
+  last_updated?: string;
 }
 
 export interface CompanySettings {
+  id?: string;
   company_name: string;
   address: string;
   phone: string;
@@ -159,6 +179,10 @@ export interface CompanySettings {
   logo_base64?: string;
   show_advanced_sync_options?: boolean; // New Setting for advanced sync options visibility
   route_plans?: RoutePlanEntry[];
+  visits?: VisitEntry[];
+  sync_status?: SyncStatus;
+  last_updated?: string;
+  updated_at?: string;
 }
 
 export interface StockAdjustment extends BaseEntity {
@@ -167,6 +191,7 @@ export interface StockAdjustment extends BaseEntity {
   adjustment_type: 'restock' | 'damage' | 'correction' | 'return';
   quantity: number; // Always positive
   reason: string;
+  last_updated?: string;
 }
 
 export interface SyncStats {
