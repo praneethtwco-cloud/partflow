@@ -1091,7 +1091,11 @@ class LocalDB {
   }
 
   // --- Real Sync Action ---
-  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert'): Promise<void> {
+  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert', onProgress?: (progress: number) => void): Promise<void> {
+    const updateProgress = (progress: number) => {
+      if (onProgress) onProgress(progress);
+    };
+
     // Process any queued operations first
     if (!syncQueueService.isEmpty()) {
       if (onLog) onLog(`Processing ${syncQueueService.length()} queued operations from offline period...`);
@@ -1099,9 +1103,11 @@ class LocalDB {
       // Process the queue
       await this.processSyncQueue(onLog);
     }
+    updateProgress(5);
 
     // Create local backup (CSV)
     if (onLog) onLog("Creating local backup (CSV)...");
+    updateProgress(10);
     const currentItems = this.getItems();
     const csvData = jsonToCsv(currentItems);
     downloadCsv(csvData, `inventory_backup_${new Date().toISOString().split('T')[0]}.csv`);
@@ -1143,6 +1149,8 @@ class LocalDB {
     if (!result.success) {
         throw new Error(result.message || "Sync failed");
     }
+
+    updateProgress(75);
 
     // UPDATE STATUSES (Update Cache + DB)
     if (pendingCustomers.length > 0) {
@@ -1261,6 +1269,7 @@ class LocalDB {
         // Update cache: merge pulled items with local pending items
         const localPendingItems = this.cache.items.filter(i => i.sync_status === 'pending');
         this.cache.items = [...processedItems, ...localPendingItems];
+        updateProgress(82);
     }
 
     // FULLY REPLACE CUSTOMERS FROM PULL
@@ -1288,6 +1297,7 @@ class LocalDB {
         // Update cache: merge pulled customers with local pending customers
         const localPendingCustomers = this.cache.customers.filter(c => c.sync_status === 'pending');
         this.cache.customers = [...processedCustomers, ...localPendingCustomers];
+        updateProgress(88);
     }
 
     // REPLACE ONLY SYNCED ORDERS FROM PULL, PRESERVE LOCAL DRAFT ORDERS
@@ -1415,6 +1425,7 @@ class LocalDB {
         this.cache.visits = [...processedVisits, ...localPendingVisits];
     }
 
+    updateProgress(100);
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
   }
 

@@ -606,9 +606,14 @@ class LocalDB {
   }
 
   // --- Real Sync Action (Updated to use Supabase) ---
-  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert'): Promise<void> {
+  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert', onProgress?: (progress: number) => void): Promise<void> {
+    const updateProgress = (progress: number) => {
+      if (onProgress) onProgress(progress);
+    };
+
     // Create local backup (CSV)
     if (onLog) onLog("Creating local backup (CSV)...");
+    updateProgress(5);
     const currentItems = this.getItems();
     const csvData = jsonToCsv(currentItems);
     downloadCsv(csvData, `inventory_backup_${new Date().toISOString().split('T')[0]}.csv`);
@@ -628,6 +633,7 @@ class LocalDB {
     const adjustments = this.cache.adjustments.filter(a => a.sync_status === 'pending');
 
     console.log("DEBUG: Pending Customers for Sync:", pendingCustomers);
+    updateProgress(15);
 
     const result = await supabaseService.syncData(
         pendingCustomers,
@@ -638,7 +644,8 @@ class LocalDB {
         adjustments,
         [],
         [],
-        mode
+        mode,
+        (p: number) => updateProgress(15 + Math.round(p * 0.5))
     );
 
     if (onLog && result.logs) {
@@ -648,6 +655,8 @@ class LocalDB {
     if (!result.success) {
         throw new Error(result.message || "Sync failed");
     }
+
+    updateProgress(92);
 
     // UPDATE STATUSES (Update Cache + DB)
     if (pendingCustomers.length > 0) {
@@ -728,6 +737,7 @@ class LocalDB {
              await this.db.items.bulkPut(result.pulledItems!);
         });
         this.cache.items = result.pulledItems;
+        updateProgress(94);
     }
 
     // FULLY REPLACE CUSTOMERS FROM PULL
@@ -741,6 +751,7 @@ class LocalDB {
             await this.db.customers.bulkPut(result.pulledCustomers!);
         });
         this.cache.customers = result.pulledCustomers;
+        updateProgress(96);
     }
 
     // REPLACE ONLY SYNCED ORDERS FROM PULL, PRESERVE LOCAL DRAFT ORDERS
@@ -800,6 +811,7 @@ class LocalDB {
         this.cache.adjustments = result.pulledAdjustments;
     }
 
+    updateProgress(100);
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
   }
 

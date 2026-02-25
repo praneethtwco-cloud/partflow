@@ -30,6 +30,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
     const [serviceEmail, setServiceEmail] = useState('');
     const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, onConfirm: () => void} | null>(null);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+    const [syncProgress, setSyncProgress] = useState(0);
 
     // Conflict State
     const [showConflictResolver, setShowConflictResolver] = useState(false);
@@ -91,12 +92,14 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
         setStatus('syncing');
         setLogs([]);
+        setSyncProgress(0);
         addLog('Auto-sync triggered - processing queued operations...');
 
         try {
             const result = await supabaseSyncService.processQueuedOperations();
             
             if (result.success) {
+                setSyncProgress(100);
                 setStatus('success');
                 setLastAutoSync(new Date().toISOString());
                 showToast("Auto-sync completed successfully!", "success");
@@ -133,11 +136,16 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
         setStatus('syncing');
         setLogs([]);
+        setSyncProgress(0);
+
+        const updateProgress = (progress: number) => setSyncProgress(progress);
 
         if (mode === 'overwrite') {
              addLog('Starting FULL data upload (Overwrite mode)...');
+             updateProgress(5);
              try {
-                await db.performSync((msg) => addLog(msg), 'overwrite');
+                await db.performSync((msg) => addLog(msg), 'overwrite', updateProgress);
+                setSyncProgress(100);
                 setStatus('success');
                 showToast("Sync completed successfully!", "success");
                 setStats(await db.getSyncStats());
@@ -151,8 +159,8 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             return;
         }
 
-        // Smart Sync (Check conflicts first)
         addLog('Checking for conflicts...');
+        updateProgress(10);
         setStatus('checking');
 
         try {
@@ -168,8 +176,10 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
             }
 
             addLog('No conflicts found. Proceeding with sync...');
-            await db.performSync((msg) => addLog(msg), 'upsert');
+            updateProgress(20);
+            await db.performSync((msg) => addLog(msg), 'upsert', updateProgress);
 
+            setSyncProgress(100);
             setStatus('success');
             showToast("Sync completed successfully!", "success");
             setStats(await db.getSyncStats());
@@ -205,10 +215,12 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
         if (!sheetId) return;
         setStatus('syncing');
         setLogs([]);
+        setSyncProgress(0);
         addLog('Pulling latest inventory from server...');
         try {
             // Upsert mode but we are mainly interested in the pulledItems return
-            await db.performSync((msg) => addLog(msg), 'upsert');
+            await db.performSync((msg) => addLog(msg), 'upsert', (p) => setSyncProgress(p));
+            setSyncProgress(100);
             setStatus('success');
             showToast("Master records downloaded", "success");
             setStats(await db.getSyncStats());
@@ -327,10 +339,26 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                               Last Auto-sync: {new Date(lastAutoSync).toLocaleString()}
                           </p>
                       )}
-                      <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">
-
+                       <p className="text-slate-500 text-sm mb-4 max-w-xs mx-auto">
+ 
                         {status === 'syncing' || status === 'checking' ? 'Please wait while we exchange data with HQ.' : 'Push local orders to the cloud and pull latest inventory.'}
-                     </p>
+                      </p>
+
+                      {/* Progress Bar */}
+                      {(status === 'syncing' || status === 'checking') && syncProgress > 0 && (
+                        <div className="mb-4">
+                          <div className="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Progress</span>
+                            <span>{syncProgress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-300 ${themeClasses.bg}`}
+                              style={{ width: `${syncProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex flex-col gap-3 max-w-sm mx-auto">
                         <button

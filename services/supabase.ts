@@ -54,7 +54,8 @@ class SupabaseService {
     adjustments: StockAdjustment[] = [],
     routePlans: RoutePlanEntry[] = [],
     visits: VisitEntry[] = [],
-    mode: 'upsert' | 'overwrite' = 'upsert'
+    mode: 'upsert' | 'overwrite' = 'upsert',
+    onProgress?: (progress: number) => void
   ): Promise<SupabaseSyncResult> {
     this.currentLogs = [];
     try {
@@ -80,8 +81,10 @@ class SupabaseService {
 
       // Upload pending changes to Supabase
       if (mode === 'upsert' || mode === 'overwrite') {
-        await this.uploadPendingChanges(uploadData, mode);
+        await this.uploadPendingChanges(uploadData, mode, onProgress);
       }
+
+      if (onProgress) onProgress(65);
 
       // Pull latest data from Supabase
       const pulledData = await this.pullLatestData();
@@ -114,16 +117,20 @@ class SupabaseService {
     }
   }
 
-  private async uploadPendingChanges(data: {
-    customers: Customer[];
-    orders: Order[];
-    items: Item[];
-    settings: CompanySettings[];
-    users: User[];
-    adjustments: StockAdjustment[];
-    routePlans: RoutePlanEntry[];
-    visits: VisitEntry[];
-  }, mode: 'upsert' | 'overwrite') {
+  private async uploadPendingChanges(
+    data: {
+      customers: Customer[];
+      orders: Order[];
+      items: Item[];
+      settings: CompanySettings[];
+      users: User[];
+      adjustments: StockAdjustment[];
+      routePlans: RoutePlanEntry[];
+      visits: VisitEntry[];
+    },
+    mode: 'upsert' | 'overwrite',
+    onProgress?: (progress: number) => void
+  ) {
     // Transform data to ensure compatibility with Supabase schema
     const transformDates = (obj: any) => {
       const result = { ...obj };
@@ -148,7 +155,26 @@ class SupabaseService {
     // Upload customers
     if (data.customers.length > 0) {
       this.addLog(`Uploading ${data.customers.length} customers to Supabase...`);
-      const transformedCustomers = data.customers.map(transformDates);
+      
+      // Filter to only include fields that exist in Supabase schema
+      const validCustomerFields = [
+        'customer_id', 'shop_name', 'address', 'phone', 'city_ref', 'city',
+        'discount_rate', 'discount_1', 'discount_2', 'secondary_discount_rate',
+        'outstanding_balance', 'balance', 'credit_period', 'credit_limit', 'status',
+        'created_at', 'updated_at', 'sync_status', 'last_updated'
+      ];
+      
+      const transformedCustomers = data.customers.map(customer => {
+        const transformed = transformDates(customer);
+        const filtered: Record<string, unknown> = {};
+        for (const key of validCustomerFields) {
+          if (key in transformed) {
+            filtered[key] = transformed[key];
+          }
+        }
+        return filtered;
+      });
+      
       const { error } = await this.supabase
         .from('customers')
         .upsert(transformedCustomers, {
@@ -161,11 +187,21 @@ class SupabaseService {
         console.error('Customer upload error details:', error);
         throw new Error(`Failed to upload customers: ${error.message}`);
       }
+      if (onProgress) onProgress(20);
     }
 
     // Upload items
     if (data.items.length > 0) {
       this.addLog(`Uploading ${data.items.length} items to Supabase...`);
+      
+      // Filter to only include fields that exist in Supabase schema
+      const validItemFields = [
+        'item_id', 'item_display_name', 'item_name', 'internal_name', 'item_number',
+        'vehicle_model', 'source_brand', 'brand_origin', 'category',
+        'unit_value', 'current_stock_qty', 'low_stock_threshold', 'is_out_of_stock',
+        'stock_qty', 'low_stock_threshold_csv', 'status',
+        'created_at', 'updated_at', 'sync_status', 'last_updated'
+      ];
       
       // Transform items: map app's item_name to Supabase's internal_name
       const transformedItems = data.items.map(item => {
@@ -174,7 +210,14 @@ class SupabaseService {
         if (transformed.item_name && !transformed.internal_name) {
           transformed.internal_name = transformed.item_name;
         }
-        return transformed;
+        // Filter to only valid fields
+        const filtered: Record<string, unknown> = {};
+        for (const key of validItemFields) {
+          if (key in transformed) {
+            filtered[key] = transformed[key];
+          }
+        }
+        return filtered;
       });
       
       const { error } = await this.supabase
@@ -189,16 +232,40 @@ class SupabaseService {
         console.error('Item upload error details:', error);
         throw new Error(`Failed to upload items: ${error.message}`);
       }
+      if (onProgress) onProgress(35);
     }
 
     // Upload orders (without lines)
     if (data.orders.length > 0) {
       this.addLog(`Uploading ${data.orders.length} orders to Supabase...`);
       
+      // Filter to only include fields that exist in Supabase schema
+      const validOrderFields = [
+        'order_id', 'customer_id', 'rep_id', 'order_date',
+        'disc_1_rate', 'disc_1_value', 'disc_2_rate', 'disc_2_value',
+        'discount_rate', 'discount_value', 'gross_total',
+        'secondary_discount_rate', 'secondary_discount_value',
+        'custom_discount_rate', 'custom_discount_value',
+        'tax_rate', 'tax_value', 'net_total',
+        'credit_period', 'paid_amount', 'paid', 'balance_due',
+        'payment_status', 'payments', 'delivery_status', 'delivery_notes',
+        'order_status', 'status', 'invoice_number',
+        'approval_status', 'original_invoice_number',
+        'created_at', 'updated_at', 'sync_status', 'last_updated'
+      ];
+      
       // Remove 'lines' field from orders before uploading (lines stored separately)
       const ordersWithoutLines = data.orders.map(order => {
         const { lines, ...orderWithoutLines } = order;
-        return transformDates(orderWithoutLines);
+        const transformed = transformDates(orderWithoutLines);
+        // Only keep fields that exist in Supabase schema
+        const filtered: Record<string, unknown> = {};
+        for (const key of validOrderFields) {
+          if (key in transformed) {
+            filtered[key] = transformed[key];
+          }
+        }
+        return filtered;
       });
       
       const { error } = await this.supabase
@@ -215,11 +282,18 @@ class SupabaseService {
       }
       
       // Upload order lines separately
+      const validLineFields = ['line_id', 'order_id', 'item_id', 'item_name', 'quantity', 'unit_value', 'unit_price', 'line_total', 'created_at'];
       const allLines = data.orders.flatMap(order => 
-        (order.lines || []).map(line => ({
-          ...line,
-          order_id: order.order_id
-        }))
+        (order.lines || []).map(line => {
+          const transformed = transformDates(line);
+          const filtered: Record<string, unknown> = {};
+          for (const key of validLineFields) {
+            if (key in transformed) {
+              filtered[key] = transformed[key];
+            }
+          }
+          return { ...filtered, order_id: order.order_id };
+        })
       );
       
       if (allLines.length > 0) {
@@ -236,6 +310,7 @@ class SupabaseService {
           this.addLog(`Warning: Failed to upload some order lines: ${linesError.message}`);
         }
       }
+      if (onProgress) onProgress(50);
     }
 
     // Upload settings (as a singleton)
@@ -281,6 +356,7 @@ class SupabaseService {
         console.error('Settings upload error details:', error);
         throw new Error(`Failed to upload settings: ${error.message}`);
       }
+      if (onProgress) onProgress(55);
     }
 
     // Upload users
@@ -309,6 +385,7 @@ class SupabaseService {
         console.error('User upload error details:', error);
         throw new Error(`Failed to upload users: ${error.message}`);
       }
+      if (onProgress) onProgress(58);
     }
 
     // Upload stock adjustments
@@ -327,6 +404,7 @@ class SupabaseService {
         console.error('Adjustment upload error details:', error);
         throw new Error(`Failed to upload adjustments: ${error.message}`);
       }
+      if (onProgress) onProgress(62);
     }
 
     // Upload route plans
@@ -385,10 +463,11 @@ class SupabaseService {
         console.error('Visits upload error details:', error);
         throw new Error(`Failed to upload visits: ${error.message}`);
       }
+      if (onProgress) onProgress(65);
     }
   }
 
-  private async pullLatestData() {
+  private async pullLatestData(onProgress?: (progress: number) => void) {
     // Note: Authentication check removed - using anon policies for sync
     // If you want auth-required sync, uncomment the following:
     // const { data: { session } } = await this.supabase.auth.getSession();
@@ -405,6 +484,7 @@ class SupabaseService {
       console.error(`Error: Failed to pull items: ${itemsError.message}`);
       console.error('Error details:', itemsError);
     }
+    if (onProgress) onProgress(70);
 
     // Transform items from Supabase: map internal_name to app's item_name
     const transformedItems = (items || []).map(item => {
@@ -423,6 +503,7 @@ class SupabaseService {
       console.error(`Error: Failed to pull customers: ${customersError.message}`);
       console.error('Error details:', customersError);
     }
+    if (onProgress) onProgress(75);
 
     // Pull orders
     const { data: orders, error: ordersError } = await this.supabase
@@ -433,6 +514,7 @@ class SupabaseService {
       console.error(`Error: Failed to pull orders: ${ordersError.message}`);
       console.error('Error details:', ordersError);
     }
+    if (onProgress) onProgress(78);
 
     // Pull order_lines and merge into orders
     const { data: orderLines, error: orderLinesError } = await this.supabase
@@ -497,6 +579,7 @@ class SupabaseService {
     if (visitsError) {
       console.error(`Error: Failed to pull visits: ${visitsError.message}`);
     }
+    if (onProgress) onProgress(90);
 
     return {
       items: transformedItems,
