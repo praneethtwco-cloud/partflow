@@ -3,6 +3,10 @@ name: Cleanup Old Artifacts
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
