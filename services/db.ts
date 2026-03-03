@@ -647,7 +647,7 @@ class LocalDB {
       await this.saveOrder(order);
   }
 
-  async updateDeliveryStatus(orderId: string, status: any, notes?: string): Promise<void> {
+  async updateDeliveryStatus(orderId: string, status: any, notes?: string, deliveryDate?: string): Promise<void> {
       const index = this.cache.orders.findIndex(o => o.order_id === orderId);
       if (index === -1) throw new Error("Order not found");
 
@@ -655,6 +655,8 @@ class LocalDB {
       const oldStatus = order.delivery_status;
       order.delivery_status = status;
       if (notes !== undefined) order.delivery_notes = notes;
+      if (deliveryDate !== undefined) order.delivery_date = deliveryDate;
+      else order.delivery_date = new Date().toISOString();
       order.updated_at = new Date().toISOString();
       order.last_updated = new Date().toISOString(); // Update last_updated for CSV compatibility
       order.sync_status = 'pending';

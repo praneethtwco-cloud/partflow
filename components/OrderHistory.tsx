@@ -28,8 +28,13 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     const [deliveryFilter, setDeliveryFilter] = useState<DeliveryStatus | 'all'>('all');
     const [customerFilter, setCustomerFilter] = useState('all');
 
+    // Batch selection
+    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+    const [showBatchActions, setShowBatchActions] = useState(false);
+
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [deliveryDate, setDeliveryDate] = useState('');
     const [visibleCount, setVisibleCount] = useState(20);
     const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -146,10 +151,44 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
 
     const handleUpdateDelivery = async (status: DeliveryStatus) => {
         if (!selectedOrder) return;
-        await db.updateDeliveryStatus(selectedOrder.order_id, status);
+        
+        await db.updateDeliveryStatus(selectedOrder.order_id, status, undefined, deliveryDate || undefined);
         setOrders([...db.getOrders()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
         setShowDeliveryModal(false);
         setSelectedOrder(null);
+        setDeliveryDate('');
+    };
+
+    // Batch selection handlers
+    const toggleOrderSelection = (orderId: string) => {
+        const newSelected = new Set(selectedOrders);
+        if (newSelected.has(orderId)) {
+            newSelected.delete(orderId);
+        } else {
+            newSelected.add(orderId);
+        }
+        setSelectedOrders(newSelected);
+        setShowBatchActions(newSelected.size > 0);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedOrders.size === filteredOrders.length) {
+            setSelectedOrders(new Set());
+            setShowBatchActions(false);
+        } else {
+            setSelectedOrders(new Set(filteredOrders.map(o => o.order_id)));
+            setShowBatchActions(true);
+        }
+    };
+
+    const handleBatchUpdateDelivery = async (status: DeliveryStatus) => {
+        const orderIds = Array.from(selectedOrders);
+        for (const orderId of orderIds) {
+            await db.updateDeliveryStatus(orderId, status);
+        }
+        setOrders([...db.getOrders()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+        setSelectedOrders(new Set());
+        setShowBatchActions(false);
     };
 
     const getDeliveryColor = (status: DeliveryStatus) => {
@@ -165,7 +204,56 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
 
     return (
         <div className="space-y-4 pb-20 md:pb-0">
+            {/* Batch Actions Bar */}
+            {showBatchActions && (
+                <div className="fixed bottom-20 md:bottom-4 left-2 right-2 z-30 animate-in slide-in-from-bottom-4">
+                    <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl flex items-center justify-between max-w-md mx-auto">
+                        <span className="text-sm font-bold">{selectedOrders.size} selected</span>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => handleBatchUpdateDelivery('shipped')}
+                                className="px-3 py-1.5 bg-blue-600 rounded-lg text-xs font-bold"
+                            >
+                                Mark Shipped
+                            </button>
+                            <button 
+                                onClick={() => handleBatchUpdateDelivery('out_for_delivery')}
+                                className="px-3 py-1.5 bg-indigo-600 rounded-lg text-xs font-bold"
+                            >
+                                Out for Delivery
+                            </button>
+                            <button 
+                                onClick={() => handleBatchUpdateDelivery('delivered')}
+                                className="px-3 py-1.5 bg-emerald-600 rounded-lg text-xs font-bold"
+                            >
+                                Delivered
+                            </button>
+                            <button 
+                                onClick={() => { setSelectedOrders(new Set()); setShowBatchActions(false); }}
+                                className="px-3 py-1.5 bg-slate-700 rounded-lg text-xs font-bold"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 sticky top-0 z-20 mx-2 mt-2 space-y-3">
+                {/* Select All Row */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-xs font-bold text-slate-500">Select All</span>
+                    </label>
+                    <span className="text-xs text-slate-400">{filteredOrders.length} orders</span>
+                </div>
+                
                 <div className="flex gap-2">
                     <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -255,19 +343,35 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                         </h3>
                         <div className="space-y-3 px-2 mt-2">
                             {groupedOrders[date].map(order => (
-                                <div key={order.order_id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 active:scale-[0.99] transition-transform">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 
-                                                className={`font-bold text-sm cursor-pointer ${onViewShopProfile ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-900'}`}
-                                                onClick={() => onViewShopProfile && onViewShopProfile(order.customer_id)}
-                                            >
-                                                {getCustomerName(order.customer_id)}
-                                            </h3>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all">
-                                                    #{(order.invoice_number || order.order_id).toUpperCase()}
-                                                </span>
+                                <div key={order.order_id} className={`bg-white p-4 rounded-2xl shadow-sm border active:scale-[0.99] transition-transform ${selectedOrders.has(order.order_id) ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100'}`}>
+                                    <div className="flex items-start gap-3 mb-3">
+                                        {/* Checkbox */}
+                                        <input 
+                                            type="checkbox"
+                                            checked={selectedOrders.has(order.order_id)}
+                                            onChange={() => toggleOrderSelection(order.order_id)}
+                                            className="w-5 h-5 mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 
+                                                        className={`font-bold text-sm cursor-pointer ${onViewShopProfile ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-900'}`}
+                                                        onClick={() => onViewShopProfile && onViewShopProfile(order.customer_id)}
+                                                    >
+                                                        {getCustomerName(order.customer_id)}
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all">
+                                                            #{(order.invoice_number || order.order_id).toUpperCase()}
+                                                        </span>
+                                                        {order.delivery_date && (
+                                                            <span className="text-[9px] text-slate-400">
+                                                                {new Date(order.delivery_date).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 {order.delivery_status && (
                                                     <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border ${getDeliveryColor(order.delivery_status)}`}>
                                                         {order.delivery_status.replace(/_/g, ' ')}
@@ -286,7 +390,34 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                     <div className="flex justify-between items-center pt-3 border-t border-slate-50">
                                         <p className="text-xs text-slate-400 font-medium">{order.lines.length} Items</p>
                                         
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5">
+                                            {/* Quick Delivery Buttons */}
+                                            {order.delivery_status !== 'delivered' && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => db.updateDeliveryStatus(order.order_id, 'shipped')}
+                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                                        title="Mark Shipped"
+                                                    >
+                                                        Ship
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => db.updateDeliveryStatus(order.order_id, 'out_for_delivery')}
+                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                                                        title="Out for Delivery"
+                                                    >
+                                                        Out
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => db.updateDeliveryStatus(order.order_id, 'delivered')}
+                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                                        title="Mark Delivered"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </>
+                                            )}
+                                            
                                             {/* Action Buttons */}
                                             <button 
                                                 onClick={() => { setSelectedOrder(order); setShowDeliveryModal(true); }}
@@ -349,9 +480,21 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                 <h3 className="text-lg font-black text-slate-800 mb-1">Update Delivery</h3>
                                 <p className="text-xs font-mono text-slate-500 break-all">#{(selectedOrder.invoice_number || selectedOrder.order_id).toUpperCase()}</p>
                             </div>
-                            <button onClick={() => { setShowDeliveryModal(false); setSelectedOrder(null); }} className="bg-slate-100 p-2 rounded-full text-slate-500">
+                            <button onClick={() => { setShowDeliveryModal(false); setSelectedOrder(null); setDeliveryDate(''); }} className="bg-slate-100 p-2 rounded-full text-slate-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
+                        </div>
+
+                        {/* Date Picker */}
+                        <div className="mb-4">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Delivery Date</label>
+                            <input 
+                                type="datetime-local" 
+                                value={deliveryDate}
+                                onChange={e => setDeliveryDate(e.target.value)}
+                                className="w-full p-3 border border-slate-200 rounded-xl text-sm"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">Leave empty to use current date/time</p>
                         </div>
                         
                         <div className="grid grid-cols-1 gap-2 mb-4">

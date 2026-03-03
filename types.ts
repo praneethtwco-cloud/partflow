@@ -84,6 +84,7 @@ export interface Order extends BaseEntity {
   payments: Payment[];
 
   delivery_status: DeliveryStatus;
+  delivery_date?: string; // Timestamp when delivery status was last changed
   delivery_notes?: string;
 
   order_status: OrderStatus;
