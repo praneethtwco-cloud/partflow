@@ -4,6 +4,7 @@ import { Customer, Item, Order } from '../types';
 import { pdfService } from '../services/pdf';
 import { formatCurrency } from '../utils/currency';
 import InvoicePreview from './InvoicePreview';
+import StockReportPreview from './StockReportPreview';
 import { cleanText } from '../utils/cleanText';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
@@ -36,6 +37,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const pullRef = useRef<HTMLDivElement>(null);
     const [pullDistance, setPullDistance] = useState(0);
+    const [showStockReport, setShowStockReport] = useState(false);
 
     useImperativeHandle(onGoBack, () => () => {
         goBack();
@@ -675,7 +677,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
                             <button key={f} onClick={() => setStockFilter(f as any)} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${stockFilter === f ? 'bg-white shadow-sm' : 'text-slate-400'}`}>{f}</button>
                         ))}
                     </div>
-                    <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
+                    <button onClick={() => setShowStockReport(true)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                         Print PDF
                     </button>
@@ -788,6 +790,10 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
                 {view === 'aging' && renderAgingReport()}
                 {view === 'invoice' && selectedOrder && (
                     <InvoicePreview order={selectedOrder} customer={customers.find(c => c.customer_id === selectedOrder.customer_id)!} settings={settings} onClose={goBack} />
+                )}
+
+                {view === 'stock' && showStockReport && (
+                    <StockReportPreview items={items} settings={settings} filter={stockFilter} onClose={() => setShowStockReport(false)} />
                 )}
             </div>
         </div>
