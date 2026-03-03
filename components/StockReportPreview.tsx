@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { Item, CompanySettings } from '../types';
+import { pdfService } from '../services/pdf';
 import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
+import { useToast } from '../context/ToastContext';
 
 interface StockReportPreviewProps {
     items: Item[];
@@ -11,6 +13,8 @@ interface StockReportPreviewProps {
 }
 
 const StockReportPreview: React.FC<StockReportPreviewProps> = ({ items, settings, filter, onClose }) => {
+    const { showToast } = useToast();
+
     const filteredItems = items.filter(i => filter === 'all' || (filter === 'out' ? i.is_out_of_stock : !i.is_out_of_stock));
 
     const totalItems = filteredItems.length;
@@ -20,6 +24,38 @@ const StockReportPreview: React.FC<StockReportPreviewProps> = ({ items, settings
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleSave = async () => {
+        try {
+            const fileName = `StockReport_${new Date().toISOString().split('T')[0]}.pdf`;
+            await pdfService.generatePdfFromElement('.stock-report', fileName);
+            showToast('PDF saved successfully', 'success');
+        } catch (error) {
+            console.error('Save PDF error:', error);
+            showToast('Failed to save PDF', 'error');
+        }
+    };
+
+    const handleShare = async () => {
+        try {
+            const fileName = `StockReport_${new Date().toISOString().split('T')[0]}.pdf`;
+            const { blob } = await pdfService.generatePdfFromElement('.stock-report', fileName);
+            
+            if (navigator.share) {
+                const file = new File([blob], fileName, { type: 'application/pdf' });
+                await navigator.share({
+                    title: 'Stock Report',
+                    text: `Stock Status Report - ${new Date().toLocaleDateString()}`,
+                    files: [file]
+                });
+            } else {
+                showToast('Sharing not supported on this device', 'error');
+            }
+        } catch (error) {
+            console.error('Share error:', error);
+            showToast('Failed to share PDF', 'error');
+        }
     };
 
     return (
@@ -37,6 +73,20 @@ const StockReportPreview: React.FC<StockReportPreviewProps> = ({ items, settings
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             Print
+                        </button>
+                        <button
+                            onClick={handleShare}
+                            className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95 transition-all text-sm"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            Share
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 border border-slate-200 shadow-sm active:scale-95 transition-all text-sm"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Save
                         </button>
                     </div>
                 </div>
