@@ -377,6 +377,8 @@ class SupabaseSyncService {
         show_sku_in_item_cards: settingsToSync.show_sku_in_item_cards,
         logo_base64: settingsToSync.logo_base64,
         show_advanced_sync_options: settingsToSync.show_advanced_sync_options,
+        gemini_api_key: settingsToSync.gemini_api_key,
+        gemini_model: settingsToSync.gemini_model,
         created_at: settingsToSync.created_at,
         updated_at: settingsToSync.updated_at,
         sync_status: settingsToSync.sync_status,
@@ -465,6 +467,7 @@ class SupabaseSyncService {
         note: p.note,
         route_date: p.route_date,
         created_at: p.created_at,
+        last_updated: p.last_updated,
         sync_status: p.sync_status
       }));
       const { error } = await this.supabase
@@ -498,6 +501,7 @@ class SupabaseSyncService {
         status: v.status,
         route_date: v.route_date,
         created_at: v.created_at,
+        last_updated: v.last_updated,
         sync_status: v.sync_status
       }));
       const { error } = await this.supabase

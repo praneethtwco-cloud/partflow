@@ -339,6 +339,8 @@ class SupabaseService {
         show_sku_in_item_cards: settingsToSync.show_sku_in_item_cards,
         logo_base64: settingsToSync.logo_base64,
         show_advanced_sync_options: settingsToSync.show_advanced_sync_options,
+        gemini_api_key: settingsToSync.gemini_api_key,
+        gemini_model: settingsToSync.gemini_model,
         created_at: settingsToSync.created_at,
         updated_at: settingsToSync.updated_at,
         sync_status: settingsToSync.sync_status,
