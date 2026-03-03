@@ -6,7 +6,7 @@ import { formatCurrency } from '../utils/currency';
 import { cleanText } from '../utils/cleanText';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
-import { RoutePlanEntry, CompanySettings, VisitEntry } from '../types';
+import { RoutePlanEntry, CompanySettings, VisitEntry, MonthlyTarget } from '../types';
 
 interface DashboardProps {
     onAction: (tab: string) => void;
@@ -43,6 +43,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
     const [checkInCustomer, setCheckInCustomer] = useState<{ id: string; name: string; planId?: string } | null>(null);
     const [checkInNote, setCheckInNote] = useState('');
     const [newRoutePlan, setNewRoutePlan] = useState({ customerId: '', visitTime: '', note: '' });
+    const [targets, setTargets] = useState<MonthlyTarget[]>([]);
+    const [targetProgress, setTargetProgress] = useState({ lastMonthSale: 0, thisMonthTarget: 0, thisMonthSale: 0 });
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -148,6 +150,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             // Widget storage
             await Preferences.set({ key: 'widget_daily_sales', value: formatCurrency(currentStats.dailySales) });
             await Preferences.set({ key: 'widget_last_update', value: `Updated: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` });
+
+            // Load targets
+            const allTargets = db.getAllTargets();
+            setTargets(allTargets);
+
+            // Calculate target progress
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+            const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+            const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+            // Last month sales
+            const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
+            const lastMonthEnd = new Date(lastMonthYear, lastMonth, 0).toISOString().split('T')[0];
+            const lastMonthOrders = allOrders.filter(o => 
+                o.order_date >= lastMonthStart && 
+                o.order_date <= lastMonthEnd &&
+                o.delivery_status !== 'failed' && 
+                o.delivery_status !== 'cancelled'
+            );
+            const lastMonthSale = lastMonthOrders.reduce((sum, o) => sum + o.net_total, 0);
+
+            // This month target
+            const thisMonthTarget = allTargets.find(t => t.month === currentMonth && t.year === currentYear);
+            const thisMonthTargetAmount = thisMonthTarget?.target_amount || 0;
+
+            // This month sales (for target comparison)
+            const thisMonthStart = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+            const thisMonthOrders = allOrders.filter(o => 
+                o.order_date >= thisMonthStart &&
+                o.delivery_status !== 'failed' && 
+                o.delivery_status !== 'cancelled'
+            );
+            const thisMonthSale = thisMonthOrders.reduce((sum, o) => sum + o.net_total, 0);
+
+            setTargetProgress({
+                lastMonthSale,
+                thisMonthTarget: thisMonthTargetAmount,
+                thisMonthSale
+            });
         };
 
         updateWidget();
@@ -324,6 +367,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
         }
     ];
 
+    // Target progress calculation
+    const targetPercentage = targetProgress.thisMonthTarget > 0 
+        ? Math.min((targetProgress.thisMonthSale / targetProgress.thisMonthTarget) * 100, 100) 
+        : 0;
+    const targetDiff = targetProgress.thisMonthTarget - targetProgress.thisMonthSale;
+    const lastMonthDiff = targetProgress.thisMonthTarget > 0 
+        ? targetProgress.lastMonthSale - targetProgress.thisMonthTarget 
+        : 0;
+
     const routeStops = todayRoutePlans.length > 0
         ? todayRoutePlans.map(plan => {
             const customer = db.getCustomers().find(c => c.customer_id === plan.customer_id);
@@ -414,6 +466,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                     ))}
                 </div>
             </div>
+
+            {/* Target Progress Card */}
+            {targetProgress.thisMonthTarget > 0 && (
+                <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-slate-50">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-black text-slate-800 text-sm">Monthly Target</h3>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xl font-black text-slate-900">{targetPercentage.toFixed(0)}%</p>
+                                <p className="text-[10px] text-slate-400 font-bold">Achieved</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="h-3 bg-slate-100">
+                        <div 
+                            className={`h-full transition-all duration-1000 ${targetPercentage >= 100 ? 'bg-emerald-500' : targetPercentage >= 75 ? 'bg-indigo-500' : targetPercentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                            style={{ width: `${targetPercentage}%` }}
+                        />
+                    </div>
+                    <div className="grid grid-cols-3 divide-x divide-slate-100">
+                        <div className="p-3 text-center">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">Target</p>
+                            <p className="font-black text-slate-800 text-sm">{formatCurrency(targetProgress.thisMonthTarget)}</p>
+                        </div>
+                        <div className="p-3 text-center">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">Achieved</p>
+                            <p className="font-black text-indigo-600 text-sm">{formatCurrency(targetProgress.thisMonthSale)}</p>
+                        </div>
+                        <div className="p-3 text-center">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">Last Month</p>
+                            <p className={`font-black text-sm ${lastMonthDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {formatCurrency(targetProgress.lastMonthSale)}
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* Quick Actions */}
             <section className="grid grid-cols-2 gap-3">
