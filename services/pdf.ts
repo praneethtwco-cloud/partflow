@@ -105,6 +105,7 @@ export const pdfService = {
 
   /**
    * Generates a PDF from a generic HTML element selector.
+   * Supports multiple pages if multiple elements match the selector.
    */
   generatePdfFromElement: async (
     selector: string,
@@ -112,36 +113,45 @@ export const pdfService = {
   ): Promise<{ blob: Blob; fileName: string }> => {
     try {
       console.log(`Generating PDF from selector: ${selector}`);
-      const element = document.querySelector(selector) as HTMLElement;
-      if (!element) throw new Error(`Element not found for selector: ${selector}`);
+      const elements = document.querySelectorAll(selector) as unknown as HTMLElement[];
+      if (elements.length === 0) throw new Error(`Element not found for selector: ${selector}`);
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: element.offsetWidth,
-        onclone: (clonedDoc) => {
-          const clonedEl = clonedDoc.querySelector(selector) as HTMLElement | null;
-          if (clonedEl) {
-            clonedEl.style.width = `${element.offsetWidth}px`;
-          }
-          const header = clonedDoc.getElementById('pdf-header');
-          if (header) header.style.display = 'block';
-          const content = clonedDoc.getElementById('report-content');
-          if (content) content.style.color = '#000000';
-        }
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgWidthPx = canvas.width;
-      const imgHeightPx = canvas.height;
-      const ratio = pdfWidth / imgWidthPx;
-      const canvasHeightInPdfUnits = imgHeightPx * ratio;
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, canvasHeightInPdfUnits, undefined, 'FAST');
+      for (let i = 0; i < elements.length; i++) {
+        const element = elements[i];
+        
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+          windowWidth: element.offsetWidth,
+          onclone: (clonedDoc) => {
+            const clonedEl = clonedDoc.querySelector(selector) as HTMLElement | null;
+            if (clonedEl) {
+              clonedEl.style.width = `${element.offsetWidth}px`;
+            }
+            const header = clonedDoc.getElementById('pdf-header');
+            if (header) header.style.display = 'block';
+            const content = clonedDoc.getElementById('report-content');
+            if (content) content.style.color = '#000000';
+          }
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgWidthPx = canvas.width;
+        const imgHeightPx = canvas.height;
+        const ratio = pdfWidth / imgWidthPx;
+        const canvasHeightInPdfUnits = imgHeightPx * ratio;
+
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, canvasHeightInPdfUnits, undefined, 'FAST');
+      }
       
       const blob = pdf.output('blob');
 
