@@ -178,11 +178,29 @@ export interface CompanySettings {
   show_sku_in_item_cards?: boolean; // New Setting - default false
   logo_base64?: string;
   show_advanced_sync_options?: boolean; // New Setting for advanced sync options visibility
+  gemini_api_key?: string; // For AI target suggestions
+  gemini_model?: string; // Gemini model version (default: gemini-2.0-flash)
   route_plans?: RoutePlanEntry[];
   visits?: VisitEntry[];
   sync_status?: SyncStatus;
   last_updated?: string;
   updated_at?: string;
+}
+
+export interface MonthlyTarget {
+  id: string;
+  year: number;
+  month: number;
+  target_amount: number;
+  achieved_amount: number;
+  status: 'draft' | 'ai_suggested' | 'confirmed' | 'locked';
+  is_ai_generated: boolean;
+  ai_suggestion_reason?: string;
+  created_at: string;
+  updated_at: string;
+  locked_at?: string;
+  sync_status?: SyncStatus;
+  last_updated?: string;
 }
 
 export interface StockAdjustment extends BaseEntity {

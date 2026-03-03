@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { CustomerList } from './components/CustomerList';
 import { InventoryList } from './components/InventoryList';
@@ -37,6 +37,7 @@ function AppContent() {
   const [initError, setInitError] = useState<string | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
+  const reportsGoBackRef = useRef<() => boolean | undefined>(() => undefined);
 
   // Handle Tab Change with History
   const navigateTo = (tab: string) => {
@@ -53,6 +54,12 @@ function AppContent() {
   };
 
   const handleBack = () => {
+      // Check if Reports component can handle back navigation
+      if (activeTab === 'reports') {
+          const handled = reportsGoBackRef.current();
+          if (handled) return;
+      }
+      
       if (historyStack.length > 1) {
           const newStack = [...historyStack];
           newStack.pop(); // Remove current
@@ -295,7 +302,7 @@ function AppContent() {
       case 'history':
         return <OrderHistory onViewInvoice={handleViewInvoice} onEditOrder={handleEditOrder} onViewShopProfile={handleViewShopProfileFromHistory} />;
       case 'reports':
-        return <Reports onOpenProfile={handleOpenProfile} />;
+        return <Reports onOpenProfile={handleOpenProfile} onGoBack={reportsGoBackRef} />;
       case 'sync':
         return <SyncDashboard onSyncComplete={() => setIsSyncing(!isSyncing)} />;
       case 'settings':

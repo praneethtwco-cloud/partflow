@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment, RoutePlanEntry, VisitEntry } from '../types';
+import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment, RoutePlanEntry, VisitEntry, MonthlyTarget } from '../types';
 import { supabaseService } from './supabase';
 import { supabaseSyncService } from './supabase-sync-service';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
@@ -44,10 +44,11 @@ class PartFlowDB extends Dexie {
     users!: Table<User, string>;
     routePlans!: Table<RoutePlanEntry, string>;
     visits!: Table<VisitEntry, string>;
+    targets!: Table<MonthlyTarget, string>;
 
     constructor() {
         super('PartFlowDB');
-        this.version(12).stores({
+        this.version(13).stores({
             customers: 'customer_id, shop_name, sync_status, city, discount_1, discount_2, balance, last_updated',
             items: 'item_id, item_number, item_display_name, sync_status, status, internal_name, last_updated',
             orders: 'order_id, customer_id, order_date, sync_status, payment_status, delivery_status, invoice_number, original_invoice_number, approval_status, disc_1_rate, disc_1_value, disc_2_rate, disc_2_value, paid, status, last_updated',
@@ -55,7 +56,8 @@ class PartFlowDB extends Dexie {
             settings: 'id',
             users: 'id, username',
             routePlans: 'id, customer_id, route_date, sync_status',
-            visits: 'id, customer_id, route_date, status, sync_status'
+            visits: 'id, customer_id, route_date, status, sync_status',
+            targets: 'id, year, month, status, sync_status'
         });
     }
 }
@@ -72,6 +74,7 @@ class LocalDB {
       users: User[];
       routePlans: RoutePlanEntry[];
       visits: VisitEntry[];
+      targets: MonthlyTarget[];
   };
   private initialized: boolean = false;
   private isOnline: boolean = true;
@@ -87,7 +90,8 @@ class LocalDB {
         adjustments: [],
         users: [],
         routePlans: [],
-        visits: []
+        visits: [],
+        targets: []
     };
   }
 
@@ -875,7 +879,8 @@ class LocalDB {
       adjustments: [],
       users: [],
       routePlans: [],
-      visits: []
+      visits: [],
+      targets: []
     };
   }
 
@@ -984,6 +989,78 @@ class LocalDB {
     this.cache.visits = visitsWithSync;
     await this.db.visits.clear();
     await this.db.visits.bulkPut(visitsWithSync);
+  }
+
+  // --- Targets ---
+  getTargets(): MonthlyTarget[] {
+    return this.cache.targets;
+  }
+
+  getTarget(year: number, month: number): MonthlyTarget | undefined {
+    return this.cache.targets.find(t => t.year === year && t.month === month);
+  }
+
+  getAllTargets(): MonthlyTarget[] {
+    return this.cache.targets.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  }
+
+  async saveTarget(target: MonthlyTarget): Promise<void> {
+    const targetWithSync = {
+      ...target,
+      sync_status: 'pending' as const,
+      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    const existingIndex = this.cache.targets.findIndex(t => t.id === target.id);
+    if (existingIndex >= 0) {
+      this.cache.targets[existingIndex] = targetWithSync;
+    } else {
+      this.cache.targets.push(targetWithSync);
+    }
+    
+    await this.db.targets.put(targetWithSync);
+  }
+
+  async lockTarget(targetId: string): Promise<void> {
+    const target = this.cache.targets.find(t => t.id === targetId);
+    if (target) {
+      target.status = 'locked';
+      target.locked_at = new Date().toISOString();
+      target.sync_status = 'pending';
+      await this.db.targets.put(target);
+    }
+  }
+
+  async deleteTarget(targetId: string): Promise<void> {
+    this.cache.targets = this.cache.targets.filter(t => t.id !== targetId);
+    await this.db.targets.delete(targetId);
+  }
+
+  getSalesHistoryForTarget(months: number = 12): { year: number; month: number; total: number }[] {
+    const history: { year: number; month: number; total: number }[] = [];
+    const now = new Date();
+    
+    for (let i = 0; i < months; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      
+      const monthOrders = this.cache.orders.filter(o => {
+        const orderDate = new Date(o.order_date);
+        return orderDate.getFullYear() === year && 
+               orderDate.getMonth() + 1 === month &&
+               (o.approval_status === 'approved' || o.approval_status === 'pending_approval');
+      });
+      
+      const total = monthOrders.reduce((sum, o) => sum + (o.net_total || 0), 0);
+      history.push({ year, month, total });
+    }
+    
+    return history.reverse();
   }
 
   // --- Sync Stats (Read from Cache - Fast) ---

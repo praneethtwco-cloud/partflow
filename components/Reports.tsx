@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { db } from '../services/db';
 import { Customer, Item, Order } from '../types';
 import { pdfService } from '../services/pdf';
@@ -11,16 +11,18 @@ type ReportView = 'overview' | 'revenue' | 'category' | 'customer' | 'stock' | '
 
 interface ReportsProps {
     onOpenProfile?: (customer: Customer) => void;
+    onGoBack?: React.MutableRefObject<() => boolean | undefined>;
 }
 
 import { useTheme } from '../context/ThemeContext';
 
-export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
+export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => {
     const { themeClasses } = useTheme();
     const [orders, setOrders] = useState<Order[]>([]);
     const [items, setItems] = useState<Item[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [view, setView] = useState<ReportView>('overview');
+    const [viewHistory, setViewHistory] = useState<ReportView[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
@@ -34,6 +36,18 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const pullRef = useRef<HTMLDivElement>(null);
     const [pullDistance, setPullDistance] = useState(0);
+
+    useImperativeHandle(onGoBack, () => () => {
+        goBack();
+    });
+
+    const goBack = (): boolean => {
+        if (viewHistory.length === 0) return false;
+        const previousView = viewHistory[viewHistory.length - 1];
+        setViewHistory(prev => prev.slice(0, -1));
+        setView(previousView);
+        return true;
+    };
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -142,6 +156,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     }, [filteredOrders]);
 
     const handleDrillDown = (newView: ReportView, id: string | null = null) => {
+        setViewHistory(prev => [...prev, view]);
         setView(newView);
         setSelectedId(id);
     };
@@ -271,7 +286,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
     const renderPerformanceReport = () => (
         <div className="animate-in fade-in slide-in-from-bottom-2">
             <div className="flex justify-between items-center mb-6 no-print">
-                <button onClick={() => setView('overview')} className="text-xs font-black text-indigo-600 uppercase">← Back to Overview</button>
+                <button onClick={goBack} className="text-xs font-black text-indigo-600 uppercase">← Back</button>
                 <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                     Print Report
@@ -362,7 +377,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center mb-6 no-print">
-                    <button onClick={() => setView('performance')} className="text-xs font-black text-indigo-600 uppercase">← Back to Performance</button>
+                    <button onClick={goBack} className="text-xs font-black text-indigo-600 uppercase">← Back</button>
                     <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                         Print Ledger
@@ -511,7 +526,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center mb-6 no-print">
-                    <button onClick={() => setView('performance')} className="text-xs font-black text-indigo-600 uppercase">← Back to Performance</button>
+                    <button onClick={goBack} className="text-xs font-black text-indigo-600 uppercase">← Back</button>
                     <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                         Print Report
@@ -654,18 +669,26 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
         <div className="overflow-x-auto animate-in fade-in slide-in-from-bottom-2">
             <div className="flex justify-between items-center mb-6 no-print">
                 <h3 className="font-black text-slate-800 uppercase text-sm">Inventory Status</h3>
-                <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
-                    {['all', 'out', 'in'].map(f => (
-                        <button key={f} onClick={() => setStockFilter(f as any)} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${stockFilter === f ? 'bg-white shadow-sm' : 'text-slate-400'}`}>{f}</button>
-                    ))}
+                <div className="flex gap-2 items-center">
+                    <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                        {['all', 'out', 'in'].map(f => (
+                            <button key={f} onClick={() => setStockFilter(f as any)} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${stockFilter === f ? 'bg-white shadow-sm' : 'text-slate-400'}`}>{f}</button>
+                        ))}
+                    </div>
+                    <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 active:scale-95 transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print PDF
+                    </button>
                 </div>
             </div>
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="text-left text-[10px] font-black text-slate-400 uppercase border-b border-slate-200">
+                            <th className="px-4 py-4">Part Number</th>
                             <th className="px-4 py-4">Part Details</th>
-                            <th className="px-4 py-4">Origin</th>
+                            <th className="px-4 py-4">Vehicle Model</th>
+                            <th className="px-4 py-4">Brand</th>
                             <th className="px-4 py-4 text-right">Price</th>
                             <th className="px-4 py-4 text-center">Status</th>
                         </tr>
@@ -673,7 +696,9 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                     <tbody className="divide-y divide-slate-100">
                         {items.filter(i => stockFilter === 'all' || (stockFilter === 'out' ? i.is_out_of_stock : !i.is_out_of_stock)).map(i => (
                             <tr key={i.item_id}>
-                                <td className="px-4 py-4 font-bold text-slate-800">{cleanText(i.item_display_name)} <span className="block text-[10px] text-slate-400 font-mono">{cleanText(i.item_number)}</span></td>
+                                <td className="px-4 py-4 font-mono text-xs text-slate-500">{cleanText(i.item_number)}</td>
+                                <td className="px-4 py-4 font-bold text-slate-800">{cleanText(i.item_display_name)}</td>
+                                <td className="px-4 py-4 text-slate-600">{cleanText(i.vehicle_model || '-')}</td>
                                 <td className="px-4 py-4 text-slate-500">{cleanText(i.source_brand)}</td>
                                 <td className="px-4 py-4 text-right font-mono font-bold">{formatCurrency(i.unit_value, false)}</td>
                                 <td className="px-4 py-4 text-center uppercase text-[9px] font-black">{i.is_out_of_stock ? 'Out Stock' : 'In Stock'}</td>
@@ -690,9 +715,12 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className={`text-sm font-bold leading-tight ${i.is_out_of_stock ? 'text-rose-800' : 'text-slate-900'}`}>{cleanText(i.item_display_name)}</h4>
-                                <div className="flex gap-2 mt-1">
+                                <div className="flex gap-2 mt-1 flex-wrap">
                                     <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{cleanText(i.item_number)}</span>
                                     <span className="text-[10px] font-bold text-slate-500">{cleanText(i.source_brand)}</span>
+                                    {i.vehicle_model && (
+                                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 rounded">{cleanText(i.vehicle_model)}</span>
+                                    )}
                                 </div>
                             </div>
                             <div className="text-right">
@@ -759,7 +787,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile }) => {
                 {view === 'stock' && renderStockReport()}
                 {view === 'aging' && renderAgingReport()}
                 {view === 'invoice' && selectedOrder && (
-                    <InvoicePreview order={selectedOrder} customer={customers.find(c => c.customer_id === selectedOrder.customer_id)!} settings={settings} onClose={() => setView('customer')} />
+                    <InvoicePreview order={selectedOrder} customer={customers.find(c => c.customer_id === selectedOrder.customer_id)!} settings={settings} onClose={goBack} />
                 )}
             </div>
         </div>

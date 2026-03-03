@@ -7,5 +7,7 @@
   "starting_invoice_number": 1,
   "footer_note": "Thank you for your business. Goods once sold cannot be returned.",
   "currency_symbol": "Rs.",
-  "show_advanced_sync_options": false
+  "show_advanced_sync_options": false,
+  "gemini_api_key": "",
+  "gemini_model": "gemini-2.5-flash"
 }
