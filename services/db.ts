@@ -222,7 +222,7 @@ class LocalDB {
   }
 
   private async refreshCache() {
-      const [c, i, o, s, a, u, rp, v] = await Promise.all([
+      const [c, i, o, s, a, u, rp, v, t] = await Promise.all([
           this.db.customers.toArray(),
           this.db.items.toArray(),
           this.db.orders.toArray(),
@@ -230,7 +230,8 @@ class LocalDB {
           this.db.stockAdjustments.toArray(),
           this.db.users.toArray(),
           this.db.routePlans.toArray(),
-          this.db.visits.toArray()
+          this.db.visits.toArray(),
+          this.db.targets.toArray()
       ]);
 
       // Migrate existing customers to include new CSV-compatible fields
@@ -388,6 +389,7 @@ class LocalDB {
       this.cache.users = u;
       this.cache.routePlans = rp || [];
       this.cache.visits = v || [];
+      this.cache.targets = t || [];
   }
 
   // --- Customers ---
