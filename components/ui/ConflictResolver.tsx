@@ -46,7 +46,7 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({ conflicts, o
         );
 
         return (
-            <div className="text-xs space-y-2 mt-4 max-h-60 overflow-y-auto custom-scrollbar">
+            <div className="conflict-diff-container custom-scrollbar">
                 {diffs.map(key => (
                     <div key={key} className="grid grid-cols-2 gap-2 border-b border-slate-100 pb-2">
                         <div>
