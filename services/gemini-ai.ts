@@ -1,3 +1,4 @@
+import { GEMINI_CONFIG } from '../config';
 import { MonthlyTarget } from '../types';
 
 interface SalesHistory {
@@ -55,7 +56,7 @@ class GeminiAIService {
 
     try {
       const modelName = this.model.trim();
-      const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${this.apiKey}`;
+      const url = `${GEMINI_CONFIG.BASE_URL}/${modelName}:generateContent?key=${this.apiKey}`;
       console.log('Calling Gemini API with model:', modelName);
       
       const response = await fetch(
