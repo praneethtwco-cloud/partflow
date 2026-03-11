@@ -120,7 +120,7 @@ class LocalDB {
       console.log("Database initialized and cache loaded.");
   }
 
-  private handleConnectionChange = (isOnline: boolean) => {
+  private handleConnectionChange = (isOnline: boolean): void => {
     this.isOnline = isOnline;
     console.log(`Connection status changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
 
@@ -146,7 +146,7 @@ class LocalDB {
     }
   };
 
-  private async migrateOrSeed() {
+  private async migrateOrSeed(): Promise<void> {
       // 1. Check for legacy LocalStorage data
       const legCustomers = localStorage.getItem(STORAGE_KEYS.LEGACY_CUSTOMERS);
       const legItems = localStorage.getItem(STORAGE_KEYS.LEGACY_ITEMS);
@@ -221,7 +221,7 @@ class LocalDB {
       localStorage.removeItem(STORAGE_KEYS.LEGACY_SETTINGS);
   }
 
-  private async refreshCache() {
+  private async refreshCache(): Promise<void> {
       const [c, i, o, s, a, u, rp, v, t] = await Promise.all([
           this.db.customers.toArray(),
           this.db.items.toArray(),
@@ -681,7 +681,7 @@ class LocalDB {
       await this.recalcCustomerBalance(order.customer_id);
   }
 
-  private async recalcCustomerBalance(customerId: string) {
+  private async recalcCustomerBalance(customerId: string): Promise<void> {
       // Find all unpaid orders for this customer
       // Filter out 'failed' and 'cancelled' delivery statuses as requested
       const orders = this.cache.orders.filter(o => 
@@ -1080,7 +1080,7 @@ class LocalDB {
   }
 
   // --- Analytics (Read from Cache - Fast) ---
-  getDashboardStats() {
+  getDashboardStats(): { dailySales: number; monthlySales: number; criticalItems: number; totalOrders: number; monthlyOrders: number; totalCustomers: number; totalItems: number; } {
     const orders = this.cache.orders;
     const items = this.cache.items;
     const today = new Date().toISOString().split('T')[0];
@@ -1126,7 +1126,7 @@ class LocalDB {
     };
   }
 
-  async reloadCache() {
+  async reloadCache(): Promise<void> {
     await this.refreshCache();
   }
 
@@ -1167,7 +1167,7 @@ class LocalDB {
       if (idx >= 0) this.cache.users[idx].password = newPassword;
   }
 
-  logout() {
+  logout(): void {
     localStorage.removeItem(STORAGE_KEYS.USER);
   }
 
