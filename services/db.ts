@@ -120,7 +120,7 @@ class LocalDB {
       console.log("Database initialized and cache loaded.");
   }
 
-  private handleConnectionChange = (isOnline: boolean) => {
+  private handleConnectionChange = (isOnline: boolean): void => {
     this.isOnline = isOnline;
     console.log(`Connection status changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
 
@@ -128,25 +128,29 @@ class LocalDB {
     if (isOnline && !syncQueueService.isEmpty()) {
       console.log(`Attempting to sync ${syncQueueService.length()} queued operations`);
       // Trigger a sync to process queued operations
-      setTimeout(() => {
-        this.performSync().catch(err => {
+      setTimeout(async () => {
+        try {
+          await this.performSync();
+        } catch (err) {
           console.error('Error syncing queued operations:', err);
-        });
+        }
       }, 1000); // Delay slightly to ensure connection is stable
     }
     
     // Process the new Supabase sync queue when coming online
     if (isOnline && !supabaseSyncService.isQueueEmpty()) {
       console.log(`Attempting to process ${supabaseSyncService.getQueueLength()} operations from Supabase sync queue`);
-      setTimeout(() => {
-        supabaseSyncService.processQueuedOperations().catch(err => {
+      setTimeout(async () => {
+        try {
+          await supabaseSyncService.processQueuedOperations();
+        } catch (err) {
           console.error('Error processing Supabase queued operations:', err);
-        });
+        }
       }, 1500); // Slightly longer delay to ensure connection stability
     }
   };
 
-  private async migrateOrSeed() {
+  private async migrateOrSeed(): Promise<void> {
       // 1. Check for legacy LocalStorage data
       const legCustomers = localStorage.getItem(STORAGE_KEYS.LEGACY_CUSTOMERS);
       const legItems = localStorage.getItem(STORAGE_KEYS.LEGACY_ITEMS);
@@ -221,7 +225,7 @@ class LocalDB {
       localStorage.removeItem(STORAGE_KEYS.LEGACY_SETTINGS);
   }
 
-  private async refreshCache() {
+  private async refreshCache(): Promise<void> {
       const [c, i, o, s, a, u, rp, v, t] = await Promise.all([
           this.db.customers.toArray(),
           this.db.items.toArray(),
@@ -681,7 +685,7 @@ class LocalDB {
       await this.recalcCustomerBalance(order.customer_id);
   }
 
-  private async recalcCustomerBalance(customerId: string) {
+  private async recalcCustomerBalance(customerId: string): Promise<void> {
       // Find all unpaid orders for this customer
       // Filter out 'failed' and 'cancelled' delivery statuses as requested
       const orders = this.cache.orders.filter(o => 
@@ -1080,7 +1084,7 @@ class LocalDB {
   }
 
   // --- Analytics (Read from Cache - Fast) ---
-  getDashboardStats() {
+  getDashboardStats(): { dailySales: number; monthlySales: number; criticalItems: number; totalOrders: number; monthlyOrders: number; totalCustomers: number; totalItems: number; } {
     const orders = this.cache.orders;
     const items = this.cache.items;
     const today = new Date().toISOString().split('T')[0];
@@ -1126,7 +1130,7 @@ class LocalDB {
     };
   }
 
-  async reloadCache() {
+  async reloadCache(): Promise<void> {
     await this.refreshCache();
   }
 
@@ -1167,7 +1171,7 @@ class LocalDB {
       if (idx >= 0) this.cache.users[idx].password = newPassword;
   }
 
-  logout() {
+  logout(): void {
     localStorage.removeItem(STORAGE_KEYS.USER);
   }
 
@@ -1801,18 +1805,11 @@ class LocalDB {
       console.log(`Auto-resolving ${conflictResult.conflicts.length} conflicts using last-write-wins strategy`);
       
       // Create resolution map based on the resolution field in conflicts
-      const resolutions: { [id: string]: 'local' | 'cloud' } = {};
-      
-      for (const conflict of conflictResult.conflicts) {
-          // Use the resolution field that was set in checkForConflicts
-          // If resolution is 'local', we keep the local version (do nothing)
-          // If resolution is 'cloud', we use the cloud version (apply it)
-          resolutions[conflict.id] = conflict.resolution;
-          
-          console.log(`Conflict for ${conflict.type} ${conflict.id}: ${conflict.resolution} version wins`);
-          console.log(`  Local timestamp: ${conflict.localTimestamp}`);
-          console.log(`  Cloud timestamp: ${conflict.cloudTimestamp}`);
-      }
+      const resolutions = conflictResult.conflicts.reduce((acc, conflict) => {
+          acc[conflict.id] = conflict.resolution;
+          console.log(`Conflict for ${conflict.type} ${conflict.id}: ${conflict.resolution} wins (Local: ${conflict.localTimestamp}, Cloud: ${conflict.cloudTimestamp})`);
+          return acc;
+      }, {} as { [id: string]: 'local' | 'cloud' });
 
       // Apply the resolutions
       await this.resolveConflictsAndSync(resolutions, conflictResult.cloudData!);

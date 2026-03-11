@@ -199,19 +199,20 @@ class SupabaseSyncService {
         pulledVisits: pulledData.visits,
         logs: this.currentLogs
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       // Log sync failure
-      supabaseSyncTracker.logSyncWithSupabase('customers', uploadData?.customers?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('items', uploadData?.items?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('orders', uploadData?.orders?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('settings', uploadData?.settings?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('users', uploadData?.users?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('adjustments', uploadData?.adjustments?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('customers', uploadData?.customers?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('items', uploadData?.items?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('orders', uploadData?.orders?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('settings', uploadData?.settings?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('users', uploadData?.users?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('adjustments', uploadData?.adjustments?.length || 0, false, errorMessage);
 
-      this.addLog(`Supabase Error: ${err.message}`);
+      this.addLog(`Supabase Error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }
@@ -882,11 +883,12 @@ class SupabaseSyncService {
         pulledAdjustments: pulledData.adjustments,
         logs: this.currentLogs
       };
-    } catch (err: any) {
-      this.addLog(`Conflict check error: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.addLog(`Conflict check error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }
