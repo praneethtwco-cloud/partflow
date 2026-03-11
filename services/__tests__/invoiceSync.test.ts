@@ -1,9 +1,9 @@
-import { db } from '../services/db';
-import { sheetsService } from '../services/sheets';
+import { db } from '../db';
+import { sheetsService } from '../sheets';
 import { Order } from '../types';
 
 // Mock the database and sheets service for testing
-jest.mock('../services/db', () => ({
+jest.mock('../db', () => ({
   db: {
     getSettings: jest.fn(),
     getOrders: jest.fn(),
@@ -15,7 +15,7 @@ jest.mock('../services/db', () => ({
   }
 }));
 
-jest.mock('../services/sheets', () => ({
+jest.mock('../sheets', () => ({
   sheetsService: {
     syncData: jest.fn()
   }
