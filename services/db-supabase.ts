@@ -632,7 +632,6 @@ class LocalDB {
     const users = this.cache.users;
     const adjustments = this.cache.adjustments.filter(a => a.sync_status === 'pending');
 
-    console.log("DEBUG: Pending Customers for Sync:", pendingCustomers);
     updateProgress(15);
 
     const result = await supabaseService.syncData(

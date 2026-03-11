@@ -1209,8 +1209,6 @@ class LocalDB {
     const routePlans = this.cache.routePlans;
     const visits = this.cache.visits;
 
-    console.log("DEBUG: Pending Customers for Sync:", pendingCustomers);
-
     const result = await supabaseService.syncData(
         pendingCustomers,
         pendingOrders,
