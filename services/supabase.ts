@@ -107,11 +107,12 @@ class SupabaseService {
         pulledAdjustments: pulledData.adjustments,
         logs: this.currentLogs
       };
-    } catch (err: any) {
-      this.addLog(`Supabase Error: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.addLog(`Supabase Error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }
@@ -715,11 +716,12 @@ class SupabaseService {
         pulledAdjustments: pulledData.adjustments,
         logs: this.currentLogs
       };
-    } catch (err: any) {
-      this.addLog(`Conflict check error: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.addLog(`Conflict check error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }

@@ -55,10 +55,9 @@ export const InventoryList: React.FC = () => {
   const settings = db.getSettings();
 
   useEffect(() => {
-    // Simulate loading for better UX perception
+    // Load initial data
     const loadData = async () => {
         setIsLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 400)); 
         setItems(db.getItems());
         setIsLoading(false);
     };

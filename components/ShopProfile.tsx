@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Customer, Order, Payment, PaymentType } from '../types';
+import { Customer, Order, Payment, PaymentType, DeliveryStatus } from '../types';
 import { db } from '../services/database';
 import { generateUUID } from '../utils/uuid';
 import { formatCurrency } from '../utils/currency';
@@ -118,7 +118,7 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
     const unpaidOrders = activeOrders.filter(o => o.payment_status !== 'paid');
     const paidOrders = activeOrders.filter(o => o.payment_status === 'paid');
 
-    const getDeliveryColor = (status: any) => {
+    const getDeliveryColor = (status: DeliveryStatus) => {
         switch (status) {
             case 'delivered': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
             case 'out_for_delivery': return 'bg-indigo-50 text-indigo-700 border-indigo-100';

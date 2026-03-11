@@ -92,12 +92,13 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
         setCustomers(db.getCustomers());
     }, []);
 
+    const isValidOrder = (o: Order) => o.delivery_status !== 'failed' && o.delivery_status !== 'cancelled';
+
     // Filtered data
     const filteredOrders = orders.filter(o => 
         o.order_date >= dateRange.start && 
         o.order_date <= dateRange.end &&
-        o.delivery_status !== 'failed' && 
-        o.delivery_status !== 'cancelled'
+        isValidOrder(o)
     );
 
     // Aggregations
@@ -123,8 +124,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
             // Let's filter them out for the aggregate numbers.
             const customerOrders = filteredOrders.filter(o =>
                 o.customer_id === id &&
-                o.delivery_status !== 'failed' &&
-                o.delivery_status !== 'cancelled'
+                isValidOrder(o)
             );
 
             return {
@@ -367,10 +367,7 @@ export const Reports: React.FC<ReportsProps> = ({ onOpenProfile, onGoBack }) => 
         const custOrders = filteredOrders.filter(o => o.customer_id === selectedId);
 
         // Filter out cancelled/failed orders for total calculations
-        const validOrders = custOrders.filter(o =>
-            o.delivery_status !== 'failed' &&
-            o.delivery_status !== 'cancelled'
-        );
+        const validOrders = custOrders.filter(isValidOrder);
 
         const totalPurchased = validOrders.reduce((sum, o) => sum + o.net_total, 0);
         const totalPaid = validOrders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);

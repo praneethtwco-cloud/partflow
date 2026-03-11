@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { db } from './db';
+import { Customer, Item, Order, OrderLine } from '../types';
 
 /**
  * Migration script to update database schema for CSV import compatibility
@@ -30,7 +31,7 @@ export async function updateSchemaForCsvCompatibility(): Promise<void> {
   await tempDb.open();
   
   // Update existing customer records to include new fields
-  await tempDb.table('customers').toCollection().modify((customer: any) => {
+  await tempDb.table('customers').toCollection().modify((customer: Partial<Customer> & { updated_at?: string }) => {
     customer.city = customer.city || customer.city_ref;
     customer.discount_1 = customer.discount_rate || 0;
     customer.discount_2 = customer.secondary_discount_rate || 0;
@@ -39,13 +40,13 @@ export async function updateSchemaForCsvCompatibility(): Promise<void> {
   });
   
   // Update existing item records to include new fields
-  await tempDb.table('items').toCollection().modify((item: any) => {
+  await tempDb.table('items').toCollection().modify((item: Partial<Item> & { item_name?: string, updated_at?: string }) => {
     item.internal_name = item.item_name || '';
     item.last_updated = item.updated_at;
   });
   
   // Update existing order records to include new fields
-  await tempDb.table('orders').toCollection().modify((order: any) => {
+  await tempDb.table('orders').toCollection().modify((order: Partial<Order> & { discount_rate?: number, discount_value?: number, secondary_discount_rate?: number, secondary_discount_value?: number, paid_amount?: number, order_status?: string, updated_at?: string }) => {
     order.disc_1_rate = order.discount_rate || 0;
     order.disc_1_value = order.discount_value || 0;
     order.disc_2_rate = order.secondary_discount_rate || 0;
@@ -68,7 +69,7 @@ export async function updateSchemaForCsvCompatibility(): Promise<void> {
  * Function to transform customer data from CSV format to database format
  * Supports both old format (Shop Name, Discount 1) and new format (shop_name, discount_1)
  */
-export function transformCustomerFromCsv(csvData: any): any {
+export function transformCustomerFromCsv(csvData: any): Partial<Customer> {
   return {
     customer_id: csvData.ID || csvData.customer_id || csvData['Customer ID'],
     shop_name: csvData['Shop Name'] || csvData.shop_name,
@@ -101,7 +102,7 @@ export function transformCustomerFromCsv(csvData: any): any {
  * Function to transform item data from CSV format to database format
  * Supports both old format and new format
  */
-export function transformItemFromCsv(csvData: any): any {
+export function transformItemFromCsv(csvData: any): Partial<Item> {
   console.log('CSV Item Data Keys:', Object.keys(csvData));
   
   const result = {
@@ -140,7 +141,7 @@ export function transformItemFromCsv(csvData: any): any {
 /**
  * Function to transform order data from CSV format to database format
  */
-export function transformOrderFromCsv(csvData: any): any {
+export function transformOrderFromCsv(csvData: any): Partial<Order> {
   return {
     order_id: csvData['Order ID'] || csvData.order_id,
     customer_id: csvData['Customer ID'] || csvData.customer_id,
@@ -181,7 +182,7 @@ export function transformOrderFromCsv(csvData: any): any {
 /**
  * Function to transform order line data from CSV format to database format
  */
-export function transformOrderLineFromCsv(csvData: any): any {
+export function transformOrderLineFromCsv(csvData: any): Partial<OrderLine> {
   return {
     line_id: csvData['Line ID'] || csvData.line_id,
     order_id: csvData['Order ID'] || csvData.order_id,

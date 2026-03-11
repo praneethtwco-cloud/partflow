@@ -199,19 +199,20 @@ class SupabaseSyncService {
         pulledVisits: pulledData.visits,
         logs: this.currentLogs
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       // Log sync failure
-      supabaseSyncTracker.logSyncWithSupabase('customers', uploadData?.customers?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('items', uploadData?.items?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('orders', uploadData?.orders?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('settings', uploadData?.settings?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('users', uploadData?.users?.length || 0, false, err.message);
-      supabaseSyncTracker.logSyncWithSupabase('adjustments', uploadData?.adjustments?.length || 0, false, err.message);
+      supabaseSyncTracker.logSyncWithSupabase('customers', uploadData?.customers?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('items', uploadData?.items?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('orders', uploadData?.orders?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('settings', uploadData?.settings?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('users', uploadData?.users?.length || 0, false, errorMessage);
+      supabaseSyncTracker.logSyncWithSupabase('adjustments', uploadData?.adjustments?.length || 0, false, errorMessage);
 
-      this.addLog(`Supabase Error: ${err.message}`);
+      this.addLog(`Supabase Error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }
@@ -239,13 +240,6 @@ class SupabaseSyncService {
       }
       return result;
     };
-
-    // Note: Authentication check removed - using anon policies for sync
-    // If you want auth-required sync, uncomment the following:
-    // const { data: { session } } = await this.supabase.auth.getSession();
-    // if (!session) {
-    //   throw new Error('User not authenticated. Please log in to sync data.');
-    // }
 
     // Upload customers
     if (data.customers.length > 0) {
@@ -523,13 +517,6 @@ class SupabaseSyncService {
   }
 
   private async pullLatestData() {
-    // Note: Authentication check removed - using anon policies for sync
-    // If you want auth-required sync, uncomment the following:
-    // const { data: { session } } = await this.supabase.auth.getSession();
-    // if (!session) {
-    //   throw new Error('User not authenticated. Please log in to sync data.');
-    // }
-
     // Pull items
     const { data: items, error: itemsError } = await this.supabase
       .from('items')
@@ -882,11 +869,12 @@ class SupabaseSyncService {
         pulledAdjustments: pulledData.adjustments,
         logs: this.currentLogs
       };
-    } catch (err: any) {
-      this.addLog(`Conflict check error: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.addLog(`Conflict check error: ${errorMessage}`);
       return {
         success: false,
-        message: err.message,
+        message: errorMessage,
         logs: this.currentLogs
       };
     }
