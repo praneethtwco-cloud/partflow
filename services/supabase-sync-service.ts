@@ -241,13 +241,6 @@ class SupabaseSyncService {
       return result;
     };
 
-    // Note: Authentication check removed - using anon policies for sync
-    // If you want auth-required sync, uncomment the following:
-    // const { data: { session } } = await this.supabase.auth.getSession();
-    // if (!session) {
-    //   throw new Error('User not authenticated. Please log in to sync data.');
-    // }
-
     // Upload customers
     if (data.customers.length > 0) {
       this.addLog(`Uploading ${data.customers.length} customers to Supabase...`);
@@ -524,13 +517,6 @@ class SupabaseSyncService {
   }
 
   private async pullLatestData() {
-    // Note: Authentication check removed - using anon policies for sync
-    // If you want auth-required sync, uncomment the following:
-    // const { data: { session } } = await this.supabase.auth.getSession();
-    // if (!session) {
-    //   throw new Error('User not authenticated. Please log in to sync data.');
-    // }
-
     // Pull items
     const { data: items, error: itemsError } = await this.supabase
       .from('items')
