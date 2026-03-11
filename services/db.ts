@@ -663,15 +663,17 @@ class LocalDB {
 
       // Logical Fix: Restore stock if delivery failed or cancelled
       // only if it wasn't already failed/cancelled (to prevent double restoration)
-      if ((status === 'failed' || status === 'cancelled') && (oldStatus !== 'failed' && oldStatus !== 'cancelled')) {
-          for (const line of order.lines) {
-              await this.updateStock(line.item_id, line.quantity);
+      if (this.cache.settings.stock_tracking_enabled && order.order_status === 'confirmed') {
+          if ((status === 'failed' || status === 'cancelled') && (oldStatus !== 'failed' && oldStatus !== 'cancelled')) {
+              for (const line of order.lines) {
+                  await this.updateStock(line.item_id, line.quantity);
+              }
           }
-      }
-      // If moving BACK to an active state, re-deduce stock
-      else if ((status !== 'failed' && status !== 'cancelled') && (oldStatus === 'failed' || oldStatus === 'cancelled')) {
-          for (const line of order.lines) {
-              await this.updateStock(line.item_id, -line.quantity);
+          // If moving BACK to an active state, re-deduce stock
+          else if ((status !== 'failed' && status !== 'cancelled') && (oldStatus === 'failed' || oldStatus === 'cancelled')) {
+              for (const line of order.lines) {
+                  await this.updateStock(line.item_id, -line.quantity);
+              }
           }
       }
 
