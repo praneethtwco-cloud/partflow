@@ -1801,18 +1801,13 @@ class LocalDB {
       console.log(`Auto-resolving ${conflictResult.conflicts.length} conflicts using last-write-wins strategy`);
       
       // Create resolution map based on the resolution field in conflicts
-      const resolutions: { [id: string]: 'local' | 'cloud' } = {};
-      
-      for (const conflict of conflictResult.conflicts) {
-          // Use the resolution field that was set in checkForConflicts
+      const resolutions = conflictResult.conflicts.reduce((acc: { [id: string]: 'local' | 'cloud' }, conflict) => {
           // If resolution is 'local', we keep the local version (do nothing)
           // If resolution is 'cloud', we use the cloud version (apply it)
-          resolutions[conflict.id] = conflict.resolution;
-          
-          console.log(`Conflict for ${conflict.type} ${conflict.id}: ${conflict.resolution} version wins`);
-          console.log(`  Local timestamp: ${conflict.localTimestamp}`);
-          console.log(`  Cloud timestamp: ${conflict.cloudTimestamp}`);
-      }
+          acc[conflict.id] = conflict.resolution;
+          console.log(`Conflict for ${conflict.type} ${conflict.id}: ${conflict.resolution} version wins\n  Local timestamp: ${conflict.localTimestamp}\n  Cloud timestamp: ${conflict.cloudTimestamp}`);
+          return acc;
+      }, {});
 
       // Apply the resolutions
       await this.resolveConflictsAndSync(resolutions, conflictResult.cloudData!);
