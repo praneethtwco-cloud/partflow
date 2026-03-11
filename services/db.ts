@@ -128,20 +128,24 @@ class LocalDB {
     if (isOnline && !syncQueueService.isEmpty()) {
       console.log(`Attempting to sync ${syncQueueService.length()} queued operations`);
       // Trigger a sync to process queued operations
-      setTimeout(() => {
-        this.performSync().catch(err => {
+      setTimeout(async () => {
+        try {
+          await this.performSync();
+        } catch (err) {
           console.error('Error syncing queued operations:', err);
-        });
+        }
       }, 1000); // Delay slightly to ensure connection is stable
     }
     
     // Process the new Supabase sync queue when coming online
     if (isOnline && !supabaseSyncService.isQueueEmpty()) {
       console.log(`Attempting to process ${supabaseSyncService.getQueueLength()} operations from Supabase sync queue`);
-      setTimeout(() => {
-        supabaseSyncService.processQueuedOperations().catch(err => {
+      setTimeout(async () => {
+        try {
+          await supabaseSyncService.processQueuedOperations();
+        } catch (err) {
           console.error('Error processing Supabase queued operations:', err);
-        });
+        }
       }, 1500); // Slightly longer delay to ensure connection stability
     }
   };
