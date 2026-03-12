@@ -1,3 +1,4 @@
+import { formatDateForDb } from "../utils/dateUtils";
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   Customer,
@@ -229,22 +230,11 @@ class SupabaseSyncService {
     visits: VisitEntry[];
   }, mode: 'upsert' | 'overwrite') {
     // Transform data to ensure compatibility with Supabase schema
-    const transformDates = (obj: any) => {
-      const result = { ...obj };
-      for (const key in result) {
-        if (result[key] instanceof Date) {
-          result[key] = result[key].toISOString();
-        } else if (typeof result[key] === 'object' && result[key] !== null && !Array.isArray(result[key])) {
-          result[key] = transformDates(result[key]);
-        }
-      }
-      return result;
-    };
 
     // Upload customers
     if (data.customers.length > 0) {
       this.addLog(`Uploading ${data.customers.length} customers to Supabase...`);
-      const transformedCustomers = data.customers.map(transformDates);
+      const transformedCustomers = data.customers.map(formatDateForDb);
       const { error } = await this.supabase
         .from('customers')
         .upsert(transformedCustomers, {
@@ -268,7 +258,7 @@ class SupabaseSyncService {
       
       // Transform items: map app's item_name to Supabase's internal_name
       const transformedItems = data.items.map(item => {
-        const transformed = transformDates(item);
+        const transformed = formatDateForDb(item);
         if (transformed.item_name && !transformed.internal_name) {
           transformed.internal_name = transformed.item_name;
         }
@@ -299,7 +289,7 @@ class SupabaseSyncService {
       // Remove 'lines' field from orders before uploading (lines stored separately)
       const ordersWithoutLines = data.orders.map(order => {
         const { lines, ...orderWithoutLines } = order;
-        return transformDates(orderWithoutLines);
+        return formatDateForDb(orderWithoutLines);
       });
       
       const { error } = await this.supabase
@@ -347,7 +337,7 @@ class SupabaseSyncService {
     // Upload settings (as a singleton)
     if (data.settings.length > 0) {
       this.addLog(`Uploading settings to Supabase...`);
-      const transformedSettings = data.settings.map(transformDates);
+      const transformedSettings = data.settings.map(formatDateForDb);
       // Filter out fields not in Supabase schema
       const settingsToSync = { 
         ...transformedSettings[0], 
@@ -400,7 +390,7 @@ class SupabaseSyncService {
       this.addLog(`Uploading ${data.users.length} users to Supabase...`);
       // Hash passwords before storing in Supabase (in a real implementation)
       const transformedUsers = data.users.map(user => {
-        const transformed = transformDates(user);
+        const transformed = formatDateForDb(user);
         return {
           ...transformed,
           // In a real implementation, we would hash the password here
@@ -429,7 +419,7 @@ class SupabaseSyncService {
     // Upload stock adjustments
     if (data.adjustments.length > 0) {
       this.addLog(`Uploading ${data.adjustments.length} stock adjustments to Supabase...`);
-      const transformedAdjustments = data.adjustments.map(transformDates);
+      const transformedAdjustments = data.adjustments.map(formatDateForDb);
       console.log(`Attempting to upload ${data.adjustments.length} adjustments to Supabase:`, transformedAdjustments.slice(0, 3)); // Log first 3 for debugging
       
       const { error } = await this.supabase
