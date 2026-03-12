@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
   Customer, 
@@ -372,7 +373,7 @@ class SupabaseService {
           ...transformed,
           // In a real implementation, we would hash the password here
           // For now, we'll store as-is but this is not secure
-          password: user.password // This should be hashed in production
+          password: user.password && !user.password.startsWith('$2') ? bcrypt.hashSync(user.password, 10) : user.password
         };
       });
 
