@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCsvTemplate, CSV_TEMPLATES } from '../../utils/csv-templates';
+import { generateCsvTemplate, CSV_TEMPLATES, validateCsvAgainstTemplate } from '../../utils/csv-templates';
 import Papa from 'papaparse';
 
 describe('csv-templates', () => {
@@ -44,5 +44,64 @@ describe('csv-templates', () => {
         assert.strictEqual(result.split('\n').length, 2);
       });
     });
+  });
+
+  describe('validateCsvAgainstTemplate', () => {
+    it('should return invalid for unknown template', () => {
+      const result = validateCsvAgainstTemplate('a,b\n1,2', 'non_existent_template');
+      assert.strictEqual(result.isValid, false);
+      assert.deepStrictEqual(result.errors, ["Template 'non_existent_template' not found"]);
+    });
+
+    it('should return invalid for less than 2 rows', () => {
+      const result = validateCsvAgainstTemplate('header_only', 'customers');
+      assert.strictEqual(result.isValid, false);
+      assert.deepStrictEqual(result.errors, ['CSV must contain at least one header row and one data row']);
+    });
+
+    it('should validate missing headers and extra headers', () => {
+      const csvStr = 'shop_name,extra_col\nData 1,Data 2';
+      const result = validateCsvAgainstTemplate(csvStr, 'customers');
+
+      assert.strictEqual(result.isValid, false);
+      assert.ok(result.errors.length > 0);
+      assert.ok(result.errors[0].includes('Missing required headers'));
+      assert.ok(result.warnings.length > 0);
+      assert.ok(result.warnings[0].includes('Extra headers found'));
+    });
+
+    it('should validate correctly for a valid template csv', () => {
+      const csvStr = generateCsvTemplate('items');
+      const result = validateCsvAgainstTemplate(csvStr, 'items');
+
+      assert.strictEqual(result.isValid, true);
+      assert.strictEqual(result.errors.length, 0);
+      assert.strictEqual(result.warnings.length, 0);
+    });
+
+    it('should report mismatched column counts on rows', () => {
+      const template = CSV_TEMPLATES['items'];
+      const headers = template.headers.join(',');
+      const invalidRow = '"item_123"';
+      const csvStr = `${headers}\n${invalidRow}`;
+
+      const result = validateCsvAgainstTemplate(csvStr, 'items');
+      assert.strictEqual(result.isValid, false);
+      assert.ok(result.errors.some(err => err.includes('Row 2 has')));
+    });
+
+    it('should stop reporting errors after 5 mismatched rows', () => {
+      const template = CSV_TEMPLATES['items'];
+      const headers = template.headers.join(',');
+
+      const invalidRows = Array(7).fill('"item_123"').join('\n');
+      const csvStr = `${headers}\n${invalidRows}`;
+
+      const result = validateCsvAgainstTemplate(csvStr, 'items');
+      assert.strictEqual(result.isValid, false);
+      assert.strictEqual(result.errors.length, 7);
+      assert.strictEqual(result.errors[result.errors.length - 1], '...and more errors (fix first 5 and try again)');
+    });
+
   });
 });
