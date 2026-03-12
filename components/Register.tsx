@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import bcrypt from 'bcryptjs';
 import { supabase } from '../services/supabase-client';
 
 export const Register: React.FC<{ onToggleLogin: () => void }> = ({ onToggleLogin }) => {
@@ -26,7 +27,7 @@ export const Register: React.FC<{ onToggleLogin: () => void }> = ({ onToggleLogi
         try {
             const { error: supabaseError } = await supabase.auth.signUp({
                 email: formData.email,
-                password: formData.password,
+                password: bcrypt.hashSync(formData.password, 10),
                 options: {
                     data: {
                         full_name: formData.full_name

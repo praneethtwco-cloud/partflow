@@ -1,4 +1,5 @@
 import Dexie, { Table } from 'dexie';
+import bcrypt from 'bcryptjs';
 import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment } from '../types';
 import { supabaseService } from './supabase';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
@@ -570,10 +571,10 @@ class LocalDB {
     return user ? JSON.parse(user) : null;
   }
 
-  login(username: string, password?: string): User | null {
+  async login(username: string, password?: string): Promise<User | null> {
     const found = this.cache.users.find(u => u.username === username);
     if (!found) return null;
-    if (password && found.password !== password) return null;
+    if (password && (!found.password || !(await bcrypt.compare(password, found.password)))) return null;
 
     const user: User = {
         id: found.id,
@@ -589,16 +590,16 @@ class LocalDB {
       const user = await this.db.users.get(userId.toString());
       if (!user) throw new Error("User not found");
 
-      if (user.password !== oldPassword) {
+      if (!user.password || !(await bcrypt.compare(oldPassword, user.password))) {
           throw new Error("Incorrect old password");
       }
 
-      user.password = newPassword;
+      user.password = await bcrypt.hash(newPassword, 10);
       await this.db.users.put(user);
 
       // Update cache
       const idx = this.cache.users.findIndex(u => u.id === userId);
-      if (idx >= 0) this.cache.users[idx].password = newPassword;
+      if (idx >= 0) this.cache.users[idx].password = await bcrypt.hash(newPassword, 10);
   }
 
   logout() {

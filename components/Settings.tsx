@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import bcrypt from 'bcryptjs';
 import { CompanySettings, RoutePlanEntry, MonthlyTarget } from '../types';
 import { db } from '../services/db';
 import { useAuth } from '../context/AuthContext';
@@ -261,7 +262,7 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
 
         try {
             const { error } = await supabase.auth.updateUser({
-                password: passData.new
+                password: bcrypt.hashSync(passData.new, 10)
             });
 
             if (error) {
