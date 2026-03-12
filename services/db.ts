@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, StockAdjustment, RoutePlanEntry, VisitEntry, MonthlyTarget } from '../types';
+import { Customer, Item, Order, OrderLine, CompanySettings, SyncStats, User, Payment, PaymentStatus, StockAdjustment, RoutePlanEntry, VisitEntry, MonthlyTarget } from '../types';
 import { supabaseService } from './supabase';
 import { supabaseSyncService } from './supabase-sync-service';
 import { jsonToCsv, downloadCsv } from '../utils/csv';
@@ -528,7 +528,7 @@ class LocalDB {
     // Auto-calculate payment status if not set
     const paid = order.paid_amount || 0;
     const due = order.net_total - paid;
-    const status: any = due <= 0.5 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid'); // 0.5 tolerance
+    const status: PaymentStatus = due <= 0.5 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid'); // 0.5 tolerance
 
     // Ensure the approval status is set properly
     const approvalStatus = order.approval_status || 'draft';
