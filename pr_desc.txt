@@ -1,0 +1,12 @@
+🎯 What
+Replaced the `any[]` cast for `SEED_DATA.customers` with `Omit<Customer, 'outstanding_balance'>[]` in `services/db.ts`.
+
+💡 Why
+This improves the type safety of the codebase. By defining the specific expected shape of the seed data from the JSON file before it maps over the array, we eliminate an unsafe `any` cast. It allows the TypeScript compiler to properly check that all other required `Customer` fields are present and correctly typed before the `.map()` adds the `outstanding_balance` default value.
+
+✅ Verification
+- Run TypeScript compiler `npx tsc --noEmit` and confirm no type errors introduced for `services/db.ts`.
+- Confirmed that the `.map` is preserved, so no runtime regressions are introduced.
+
+✨ Result
+A safer, more maintainable data seeding process free of `any` types.

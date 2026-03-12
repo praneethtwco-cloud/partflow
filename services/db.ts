@@ -23,7 +23,7 @@ const STORAGE_KEYS = {
 };
 
 // Seed Data
-const SEED_CUSTOMERS: Customer[] = (SEED_DATA.customers as any[]).map(c => ({...c, outstanding_balance: 0}));
+const SEED_CUSTOMERS: Customer[] = (SEED_DATA.customers as Omit<Customer, 'outstanding_balance'>[]).map(c => ({...c, outstanding_balance: 0}));
 const SEED_ITEMS: Item[] = SEED_DATA.items as Item[];
 const SEED_SETTINGS: CompanySettings = {
     ...(APP_SETTINGS as any),
