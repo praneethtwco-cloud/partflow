@@ -488,6 +488,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                     <div className="hidden md:flex items-center gap-2 min-w-0">
                         <button
                             onClick={onCancel}
+                            aria-label="Cancel order"
                             className="text-white bg-rose-500 hover:bg-rose-600 p-1.5 rounded-full shrink-0"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1122,7 +1123,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
                     <div className="bg-white w-full max-w-md rounded-t-3xl md:rounded-2xl p-6 pb-24 md:pb-6 shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300 relative">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-black text-slate-800">Checkout & Payment</h3>
-                            <button onClick={() => setShowPaymentModal(false)} className="bg-slate-100 p-2 rounded-full text-slate-500">
+                            <button onClick={() => setShowPaymentModal(false)} aria-label="Close payment modal" className="bg-slate-100 p-2 rounded-full text-slate-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
