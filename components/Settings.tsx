@@ -579,10 +579,10 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                                             <span className={`text-[10px] font-bold px-2 py-1 rounded ${plan.route_date === new Date().toISOString().split('T')[0] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                                                 {plan.route_date}
                                             </span>
-                                            <button onClick={() => handleEditRoutePlan(plan)} className="text-slate-400 hover:text-indigo-600 p-1">
+                                            <button onClick={() => handleEditRoutePlan(plan)} aria-label="Edit route plan" className="text-slate-400 hover:text-indigo-600 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                             </button>
-                                            <button onClick={() => handleDeleteRoutePlan(plan.id)} className="text-slate-400 hover:text-rose-600 p-1">
+                                            <button onClick={() => handleDeleteRoutePlan(plan.id)} aria-label="Delete route plan" className="text-slate-400 hover:text-rose-600 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-rose-500 rounded">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             </button>
                                         </div>
@@ -699,13 +699,13 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                                                 </span>
                                                 {!isLocked && (
                                                     <>
-                                                        <button onClick={() => openEditTargetModal(target)} className="text-slate-400 hover:text-indigo-600 p-1">
+                                                        <button onClick={() => openEditTargetModal(target)} aria-label="Edit target" className="text-slate-400 hover:text-indigo-600 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                         </button>
-                                                        <button onClick={() => handleLockTarget(target.id)} className="text-slate-400 hover:text-emerald-600 p-1" title="Lock target">
+                                                        <button onClick={() => handleLockTarget(target.id)} aria-label="Lock target" className="text-slate-400 hover:text-emerald-600 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-emerald-500 rounded" title="Lock target">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                         </button>
-                                                        <button onClick={() => handleDeleteTarget(target.id)} className="text-slate-400 hover:text-rose-600 p-1">
+                                                        <button onClick={() => handleDeleteTarget(target.id)} aria-label="Delete target" className="text-slate-400 hover:text-rose-600 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-rose-500 rounded">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                         </button>
                                                     </>
@@ -755,7 +755,7 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="text-lg font-black text-slate-800 tracking-tight">Security</h3>
-                            <button onClick={() => setShowPassModal(false)} className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors">
+                            <button onClick={() => setShowPassModal(false)} aria-label="Close change password modal" className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -830,7 +830,7 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="text-lg font-black text-slate-800 tracking-tight">{editingRoutePlan ? 'Edit Route Stop' : 'Add Route Stop'}</h3>
-                            <button onClick={() => { setShowRouteModal(false); setEditingRoutePlan(null); }} className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors">
+                            <button onClick={() => { setShowRouteModal(false); setEditingRoutePlan(null); }} aria-label="Close route plan modal" className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -903,7 +903,7 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="text-lg font-black text-slate-800 tracking-tight">{editingTarget ? 'Edit Target' : 'Add Monthly Target'}</h3>
-                            <button onClick={() => { setShowTargetModal(false); setEditingTarget(null); }} className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors">
+                            <button onClick={() => { setShowTargetModal(false); setEditingTarget(null); }} aria-label="Close target modal" className="text-slate-400 p-1 hover:bg-slate-200 rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>

@@ -88,7 +88,7 @@ const StockReportPreview: React.FC<StockReportPreviewProps> = ({ items, settings
             <div className="w-full max-w-5xl bg-white shadow-2xl flex flex-col relative min-h-screen md:min-h-0 md:rounded-2xl overflow-hidden">
                 {/* Controls Bar */}
                 <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-[110] md:rounded-t-2xl">
-                    <button onClick={onClose} className="p-2 text-slate-500 hover:text-slate-800 bg-slate-100 rounded-full active:scale-90 transition-transform">
+                    <button onClick={onClose} aria-label="Close report" className="p-2 text-slate-500 hover:text-slate-800 bg-slate-100 rounded-full active:scale-90 transition-transform focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                     {isMultiPage && (
