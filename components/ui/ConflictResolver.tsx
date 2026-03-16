@@ -7,8 +7,8 @@ import { useTheme } from '../../context/ThemeContext';
 export type ConflictItem = {
     type: 'customer' | 'item' | 'order';
     id: string;
-    local: any;
-    cloud: any;
+    local: Record<string, unknown>;
+    cloud: Record<string, unknown>;
 };
 
 interface ConflictResolverProps {
@@ -36,7 +36,7 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({ conflicts, o
         }
     };
 
-    const renderDiff = (local: any, cloud: any) => {
+    const renderDiff = (local: Record<string, unknown>, cloud: Record<string, unknown>) => {
         // Simple JSON diff for now, can be enhanced to show specific field diffs
         const keys = Array.from(new Set([...Object.keys(local), ...Object.keys(cloud)]));
         const diffs = keys.filter(k => 
