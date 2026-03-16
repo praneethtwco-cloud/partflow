@@ -529,7 +529,7 @@ class LocalDB {
     // Auto-calculate payment status if not set
     const paid = order.paid_amount || 0;
     const due = order.net_total - paid;
-    const status: any = due <= 0.5 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid'); // 0.5 tolerance
+    const status: PaymentStatus = due <= 0.5 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid'); // 0.5 tolerance
 
     // Ensure the approval status is set properly
     const approvalStatus = order.approval_status || 'draft';
