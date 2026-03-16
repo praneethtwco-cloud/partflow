@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { jsonToCsv } from '../utils/csv';
+import { describe, it, expect, vi } from 'vitest';
+import { jsonToCsv, parseCsv } from '../utils/csv';
+import Papa from 'papaparse';
 
 describe('jsonToCsv', () => {
   it('converts a simple array of objects to CSV format', () => {
@@ -46,5 +47,28 @@ describe('jsonToCsv', () => {
     const expected = `id,text,multiline\r\n1,"This has a comma, and a ""quote""","Line 1\nLine 2"`;
 
     expect(result).toBe(expected);
+  });
+});
+
+describe('parseCsv', () => {
+  it('resolves with data on success', async () => {
+     const mockFile = new File(['a,b\n1,2'], 'test.csv', { type: 'text/csv' });
+     const result = await parseCsv(mockFile);
+     expect(result).toEqual([{a: '1', b: '2'}]);
+  });
+
+  it('rejects the promise when Papa.parse triggers an error', async () => {
+    const spy = vi.spyOn(Papa, 'parse').mockImplementation((file: any, config: any) => {
+      if (config && config.error) {
+         config.error(new Error('Test PapaParse error'), file);
+      }
+      return undefined as any;
+    });
+
+    const mockFile = new File(['test'], 'test.csv', { type: 'text/csv' });
+
+    await expect(parseCsv(mockFile)).rejects.toThrow('Test PapaParse error');
+
+    spy.mockRestore();
   });
 });
