@@ -182,6 +182,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                                     onClick={() => setShowInactive(!showInactive)}
                                     className={`p-3 rounded-xl border transition-all ${showInactive ? `${themeClasses.bg} text-white ${themeClasses.border} shadow-md` : `bg-white text-slate-400 border-slate-300 hover:${themeClasses.border}`}`}
                                     title={showInactive ? 'Showing All Shops' : 'Showing Active Only'}
+                                    aria-label="Toggle active status"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.882 9.882L5.146 5.146m13.708 13.708L15.146 15.146M21 12a9 9 0 01-1.391 4.876m-9.474-9.474L3 3m18 18l-3-3" /></svg>
                                 </button>
@@ -215,6 +216,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
             <button
                 onClick={() => setShowAddForm(true)}
                 className={`md:hidden fixed bottom-20 right-4 w-14 h-14 ${themeClasses.bg} rounded-full text-white shadow-lg flex items-center justify-center z-40 active:bg-indigo-700`}
+                aria-label="Create new customer"
             >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             </button>
@@ -306,7 +308,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                             <h3 className="text-xl font-bold text-slate-800">{editingCustomer ? 'Edit Customer' : 'New Customer'}</h3>
-                            <button onClick={() => { setShowAddForm(false); setEditingCustomer(null); }} className="text-slate-400 hover:text-slate-600">
+                            <button aria-label="Close form" onClick={() => { setShowAddForm(false); setEditingCustomer(null); }} className="text-slate-400 hover:text-slate-600">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
