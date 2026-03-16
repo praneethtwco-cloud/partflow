@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
   Customer, 
@@ -133,17 +134,6 @@ class SupabaseService {
     onProgress?: (progress: number) => void
   ) {
     // Transform data to ensure compatibility with Supabase schema
-    const transformDates = (obj: any) => {
-      const result = { ...obj };
-      for (const key in result) {
-        if (result[key] instanceof Date) {
-          result[key] = result[key].toISOString();
-        } else if (typeof result[key] === 'object' && result[key] !== null && !Array.isArray(result[key])) {
-          result[key] = transformDates(result[key]);
-        }
-      }
-      return result;
-    };
 
     // Note: Authentication check removed - using anon policies for sync
     // This allows sync without requiring user login
@@ -166,7 +156,7 @@ class SupabaseService {
       ];
       
       const transformedCustomers = data.customers.map(customer => {
-        const transformed = transformDates(customer);
+        const transformed = formatDateForDb(customer);
         const filtered: Record<string, unknown> = {};
         for (const key of validCustomerFields) {
           if (key in transformed) {
@@ -206,7 +196,7 @@ class SupabaseService {
       
       // Transform items: map app's item_name to Supabase's internal_name
       const transformedItems = data.items.map(item => {
-        const transformed = transformDates(item);
+        const transformed = formatDateForDb(item);
         // Map app's item_name to Supabase's internal_name
         if (transformed.item_name && !transformed.internal_name) {
           transformed.internal_name = transformed.item_name;
@@ -258,7 +248,7 @@ class SupabaseService {
       // Remove 'lines' field from orders before uploading (lines stored separately)
       const ordersWithoutLines = data.orders.map(order => {
         const { lines, ...orderWithoutLines } = order;
-        const transformed = transformDates(orderWithoutLines);
+        const transformed = formatDateForDb(orderWithoutLines);
         // Only keep fields that exist in Supabase schema
         const filtered: Record<string, unknown> = {};
         for (const key of validOrderFields) {
@@ -286,7 +276,7 @@ class SupabaseService {
       const validLineFields = ['line_id', 'order_id', 'item_id', 'item_name', 'quantity', 'unit_value', 'unit_price', 'line_total', 'created_at'];
       const allLines = data.orders.flatMap(order => 
         (order.lines || []).map(line => {
-          const transformed = transformDates(line);
+          const transformed = formatDateForDb(line);
           const filtered: Record<string, unknown> = {};
           for (const key of validLineFields) {
             if (key in transformed) {
@@ -317,7 +307,7 @@ class SupabaseService {
     // Upload settings (as a singleton)
     if (data.settings.length > 0) {
       this.addLog(`Uploading settings to Supabase...`);
-      const transformedSettings = data.settings.map(transformDates);
+      const transformedSettings = data.settings.map(formatDateForDb);
       const settingsToSync = { 
         ...transformedSettings[0], 
         id: 'main'
@@ -367,12 +357,12 @@ class SupabaseService {
       this.addLog(`Uploading ${data.users.length} users to Supabase...`);
       // Hash passwords before storing in Supabase (in a real implementation)
       const transformedUsers = data.users.map(user => {
-        const transformed = transformDates(user);
+        const transformed = formatDateForDb(user);
         return {
           ...transformed,
           // In a real implementation, we would hash the password here
           // For now, we'll store as-is but this is not secure
-          password: user.password // This should be hashed in production
+          password: user.password && !user.password.startsWith('$2') ? bcrypt.hashSync(user.password, 10) : user.password
         };
       });
 
@@ -394,7 +384,7 @@ class SupabaseService {
     // Upload stock adjustments
     if (data.adjustments.length > 0) {
       this.addLog(`Uploading ${data.adjustments.length} stock adjustments to Supabase...`);
-      const transformedAdjustments = data.adjustments.map(transformDates);
+      const transformedAdjustments = data.adjustments.map(formatDateForDb);
       const { error } = await this.supabase
         .from('stock_adjustments')
         .upsert(transformedAdjustments, {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { calculateTopSellingItems } from '../../../utils/reports/salesAnalytics';
+import { aggregateSalesByDate, calculateTopSellingItems } from '../../../utils/reports/salesAnalytics';
 import { Order, Item, OrderLine } from '../../../types';
 
 describe('calculateTopSellingItems', () => {
@@ -215,5 +215,165 @@ describe('calculateTopSellingItems', () => {
 
     expect(result.length).toBe(1);
     expect(result[0].name).toBe('Fallback Name');
+  });
+});
+
+describe('aggregateSalesByDate', () => {
+  const createMockOrder = (overrides: Partial<Order> = {}): Order => {
+    return {
+      order_id: '1',
+      customer_id: 'CUST-001',
+      order_date: new Date().toISOString(),
+      discount_rate: 0,
+      gross_total: 100,
+      discount_value: 0,
+      net_total: 100,
+      paid_amount: 0,
+      balance_due: 100,
+      payment_status: 'unpaid',
+      payments: [],
+      delivery_status: 'delivered',
+      order_status: 'confirmed',
+      lines: [],
+      approval_status: 'approved',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      sync_status: 'synced',
+      ...overrides
+    };
+  };
+
+  test('should handle an empty order list', () => {
+    const orders: Order[] = [];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toEqual([]);
+  });
+
+  test('should aggregate valid orders within the date range', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_id: '1', order_date: '2023-01-15T10:00:00.000Z', net_total: 150, gross_total: 150 }),
+      createMockOrder({ order_id: '2', order_date: '2023-01-15T14:00:00.000Z', net_total: 250, gross_total: 250 }),
+      createMockOrder({ order_id: '3', order_date: '2023-01-16T10:00:00.000Z', net_total: 100, gross_total: 100 }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(2);
+
+    const day1 = result.find(r => r.date === '2023-01-15');
+    expect(day1).toBeDefined();
+    expect(day1?.sales).toBe(400);
+    expect(day1?.transactions).toBe(2);
+    expect(day1?.netSales).toBe(400);
+    expect(day1?.grossSales).toBe(400);
+
+    const day2 = result.find(r => r.date === '2023-01-16');
+    expect(day2).toBeDefined();
+    expect(day2?.sales).toBe(100);
+    expect(day2?.transactions).toBe(1);
+    expect(day2?.netSales).toBe(100);
+    expect(day2?.grossSales).toBe(100);
+  });
+
+  test('should exclude orders entirely outside the date range', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_date: '2022-12-31T23:59:59.999Z' }),
+      createMockOrder({ order_date: '2023-02-01T00:00:00.000Z' }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toEqual([]);
+  });
+
+  test('should include orders exactly on the boundary dates', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_id: '1', order_date: '2023-01-01T00:00:00.000Z', net_total: 100, gross_total: 100 }),
+      createMockOrder({ order_id: '2', order_date: '2023-01-31T23:59:59.999Z', net_total: 200, gross_total: 200 }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(2);
+    expect(result.find(r => r.date === '2023-01-01')).toBeDefined();
+    expect(result.find(r => r.date === '2023-01-31')).toBeDefined();
+  });
+
+  test('should exclude orders with delivery_status === "failed"', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_id: '1', order_date: '2023-01-15T10:00:00.000Z', delivery_status: 'failed', net_total: 100 }),
+      createMockOrder({ order_id: '2', order_date: '2023-01-15T12:00:00.000Z', delivery_status: 'delivered', net_total: 200 }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2023-01-15');
+    expect(result[0].sales).toBe(200);
+    expect(result[0].transactions).toBe(1);
+  });
+
+  test('should exclude orders with delivery_status === "cancelled"', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_id: '1', order_date: '2023-01-15T10:00:00.000Z', delivery_status: 'cancelled', net_total: 100 }),
+      createMockOrder({ order_id: '2', order_date: '2023-01-15T12:00:00.000Z', delivery_status: 'delivered', net_total: 200 }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2023-01-15');
+    expect(result[0].sales).toBe(200);
+    expect(result[0].transactions).toBe(1);
+  });
+
+  test('should aggregate multiple orders correctly including $0 totals', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_id: '1', order_date: '2023-01-15T10:00:00.000Z', net_total: 0, gross_total: 0 }),
+      createMockOrder({ order_id: '2', order_date: '2023-01-15T12:00:00.000Z', net_total: 150, gross_total: 200 }),
+      createMockOrder({ order_id: '3', order_date: '2023-01-15T14:00:00.000Z', net_total: 50, gross_total: 50 }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2023-01-15');
+    expect(result[0].sales).toBe(200);
+    expect(result[0].transactions).toBe(3);
+    expect(result[0].netSales).toBe(200);
+    expect(result[0].grossSales).toBe(250);
+  });
+
+  test('should sort results by date in ascending order', () => {
+    const orders: Order[] = [
+      createMockOrder({ order_date: '2023-01-17T10:00:00.000Z' }),
+      createMockOrder({ order_date: '2023-01-15T10:00:00.000Z' }),
+      createMockOrder({ order_date: '2023-01-16T10:00:00.000Z' }),
+    ];
+    const startDate = new Date('2023-01-01T00:00:00.000Z');
+    const endDate = new Date('2023-01-31T23:59:59.999Z');
+
+    const result = aggregateSalesByDate(orders, startDate, endDate);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].date).toBe('2023-01-15');
+    expect(result[1].date).toBe('2023-01-16');
+    expect(result[2].date).toBe('2023-01-17');
   });
 });
