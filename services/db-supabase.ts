@@ -495,10 +495,7 @@ class LocalDB {
       } else if (adjustment.adjustment_type === 'damage') {
           qtyDelta = -adjustment.quantity;
       } else if (adjustment.adjustment_type === 'correction') {
-          // Correction logic is complex, for simplicity here assuming correction is absolute delta passed by UI
-          // If the UI passes the *new* total, we need to calculate delta.
-          // For now, let's assume 'correction' passes the signed delta directly, or we avoid 'correction' type for now.
-          // Let's treat 'correction' as a direct delta for now (positive or negative)
+          // TODO: 'correction' expects a signed delta (positive or negative). Revisit if UI changes to pass absolute new total.
           qtyDelta = adjustment.quantity;
       }
 
