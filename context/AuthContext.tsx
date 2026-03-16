@@ -14,7 +14,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [state, setState] = useState<AuthState>(() => {
         const savedAuth = localStorage.getItem('partflow_auth');
         if (savedAuth) {
-            return JSON.parse(savedAuth);
+            const parsed = JSON.parse(savedAuth);
+            return { ...parsed, token: null };
         }
         return { user: null, token: null, isAuthenticated: false };
     });
@@ -36,7 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = (user: User, token: string) => {
         const newState = { user, token, isAuthenticated: true };
         setState(newState);
-        localStorage.setItem('partflow_auth', JSON.stringify(newState));
+        const { token: _, ...stateToSave } = newState;
+        localStorage.setItem('partflow_auth', JSON.stringify(stateToSave));
     };
 
     const logout = async () => {
