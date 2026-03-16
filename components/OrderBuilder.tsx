@@ -27,9 +27,21 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({ onCancel, onOrderCre
     const [items, setItems] = useState<Item[]>([]);
     const [lines, setLines] = useState<OrderLine[]>(draftState?.lines || editingOrder?.lines || []);
     const [orderDate, setOrderDate] = useState(draftState?.order_date || editingOrder?.order_date || new Date().toISOString().split('T')[0]);
-    const [discountRate, setDiscountRate] = useState<number>((draftState?.discount_rate !== undefined ? draftState.discount_rate : (editingOrder ? editingOrder.discount_rate : (existingCustomer?.discount_rate || 0))) * 100);
-    const [secondaryDiscountRate, setSecondaryDiscountRate] = useState<number>((draftState?.secondary_discount_rate !== undefined ? draftState.secondary_discount_rate : (editingOrder ? (editingOrder.secondary_discount_rate || 0) : (existingCustomer?.secondary_discount_rate || 0))) * 100);
-    const [taxRate, setTaxRate] = useState<number>((draftState?.tax_rate !== undefined ? draftState.tax_rate : (editingOrder ? (editingOrder.tax_rate || 0) : (settings.tax_rate || 0))) * 100);
+    const [discountRate, setDiscountRate] = useState<number>(() => {
+        if (draftState?.discount_rate !== undefined) return draftState.discount_rate * 100;
+        if (editingOrder) return editingOrder.discount_rate * 100;
+        return (existingCustomer?.discount_rate || 0) * 100;
+    });
+    const [secondaryDiscountRate, setSecondaryDiscountRate] = useState<number>(() => {
+        if (draftState?.secondary_discount_rate !== undefined) return draftState.secondary_discount_rate * 100;
+        if (editingOrder) return (editingOrder.secondary_discount_rate || 0) * 100;
+        return (existingCustomer?.secondary_discount_rate || 0) * 100;
+    });
+    const [taxRate, setTaxRate] = useState<number>(() => {
+        if (draftState?.tax_rate !== undefined) return draftState.tax_rate * 100;
+        if (editingOrder) return (editingOrder.tax_rate || 0) * 100;
+        return (settings.tax_rate || 0) * 100;
+    });
     const [useCustomDiscount, setUseCustomDiscount] = useState<boolean>(editingOrder ? !!editingOrder.custom_discount_value : false);
     const [customDiscountInput, setCustomDiscountInput] = useState<number>(editingOrder?.custom_discount_value || 0);
     
