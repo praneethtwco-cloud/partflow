@@ -133,7 +133,7 @@ export const ShopProfile: React.FC<ShopProfileProps> = ({ customer, onBack, onVi
         <div className="pb-24">
             {/* Header */}
             <div className="bg-white p-4 sticky top-0 z-10 border-b border-slate-200 flex items-center gap-3">
-                <button onClick={onBack} className="p-2 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200">
+                <button onClick={onBack} aria-label="Go back" className="p-2 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
                 <div className="flex-1">

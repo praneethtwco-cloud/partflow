@@ -570,7 +570,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                                 </div>
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                     {customer.customerId && (
-                                        <button onClick={() => onOpenProfile(customer.customerId)} className="text-slate-400 hover:text-slate-700 p-1">
+                                        <button onClick={() => onOpenProfile(customer.customerId)} aria-label="View shop profile" className="text-slate-400 hover:text-slate-700 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded">
                                             <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                         </button>
                                     )}
@@ -752,7 +752,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                     <div className="bg-white rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 animate-in slide-in-from-bottom-20 duration-300">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-black text-slate-900">Add Route Stop</h3>
-                            <button onClick={() => setShowRoutePlanner(false)} className="p-2 text-slate-400 hover:text-slate-600">
+                            <button onClick={() => setShowRoutePlanner(false)} aria-label="Close route planner" className="p-2 text-slate-400 hover:text-slate-600 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded-full">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -815,7 +815,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                                 <h3 className="text-lg font-black text-slate-900">Check In</h3>
                                 <p className="text-sm text-slate-500">{checkInCustomer.name}</p>
                             </div>
-                            <button onClick={() => setShowCheckInModal(false)} className="p-2 text-slate-400 hover:text-slate-600">
+                            <button onClick={() => setShowCheckInModal(false)} aria-label="Close check-in modal" className="p-2 text-slate-400 hover:text-slate-600 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded-full">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
