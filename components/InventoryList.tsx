@@ -527,7 +527,7 @@ export const InventoryList: React.FC = () => {
             <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-lg h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 md:zoom-in duration-200">
                 <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                     <h3 className="text-lg font-black text-slate-800 tracking-tight">{editingItem ? 'Edit Item' : 'New Spare Part'}</h3>
-                    <button onClick={closeAddForm} className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-slate-400 hover:text-rose-500 shadow-sm border border-slate-200 transition-colors">
+                    <button onClick={closeAddForm} aria-label="Close add form" className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-slate-400 hover:text-rose-500 shadow-sm border border-slate-200 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -616,7 +616,7 @@ export const InventoryList: React.FC = () => {
                 </div>
                 <div className="p-4 md:p-5 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0 pb-safe">
                     {editingItem && (
-                        <button onClick={handleDeleteItem} className="bg-rose-100 text-rose-600 px-4 py-3.5 rounded-xl font-bold hover:bg-rose-200 transition-colors">
+                        <button onClick={handleDeleteItem} aria-label="Delete item" className="bg-rose-100 text-rose-600 px-4 py-3.5 rounded-xl font-bold hover:bg-rose-200 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-rose-500">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                     )}
