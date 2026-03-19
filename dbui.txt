@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sales Rep Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f6df0",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101822",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<div class="relative flex min-h-screen flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-xl">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20">
+<img alt="User avatar" class="size-full object-cover" data-alt="Professional sales representative headshot profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdTkjUQDamtKQ1nW27oJMY0kwAUIwW4dV6kIJGLWGwrNhUvoUIRsa35H7vr6xI0OB2lw5OsiTXsgR1oR656Rs9hBvJobGbPS-_MAWCUSb6mpE6sdJbw-5Hb4a46JpGKKUlmF88ngVS6N4JuWoj-wgL_oUpdsUZk3lSZWSmfJrT_MctNulwlF5bqeRAc9A1EyPpxmIBjGllhfR46m5_Hwng4wzhmqR798hnvOdWi2_SHbcuJLo2IKfR5_HguDu5o4YuR1_KSXu0mAhF"/>
+</div>
+<div>
+<h1 class="text-sm font-medium text-slate-500 dark:text-slate-400 leading-none mb-1">Good morning,</h1>
+<h2 class="text-lg font-bold leading-none">Alex Rivera</h2>
+</div>
+</div>
+<button class="flex size-10 items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300">notifications</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Metrics Grid -->
+<section class="grid grid-cols-2 gap-3 p-4">
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex items-center justify-between mb-1">
+<span class="material-symbols-outlined text-primary text-xl">payments</span>
+<span class="text-emerald-600 dark:text-emerald-400 text-xs font-bold">+12%</span>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider">Daily Revenue</p>
+<p class="text-2xl font-bold">$1,240</p>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex items-center justify-between mb-1">
+<span class="material-symbols-outlined text-primary text-xl">target</span>
+<span class="text-amber-500 text-xs font-bold">78%</span>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider">Monthly Goal</p>
+<p class="text-2xl font-bold">$42.5k</p>
+</div>
+</section>
+<!-- Weekly Performance Placeholder -->
+<section class="px-4 mb-6">
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-800 dark:text-slate-100">Weekly Performance</h3>
+<span class="text-xs font-medium text-slate-400 uppercase tracking-tighter">Mon - Sun</span>
+</div>
+<div class="flex items-end justify-between h-32 gap-2 px-1">
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[40%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[65%]"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[85%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[55%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[95%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[30%]"></div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-[10%]"></div>
+</div>
+<div class="flex justify-between mt-2 text-[10px] text-slate-400 font-medium">
+<span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+</div>
+</div>
+</section>
+<!-- Today's Route -->
+<section class="px-4 mb-6">
+<div class="flex items-center justify-between mb-3">
+<h3 class="text-lg font-bold">Today's Route</h3>
+<span class="text-primary text-sm font-semibold">4 Stops Remaining</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Stop Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+<div class="flex flex-col items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 shrink-0 size-12">
+<span class="text-xs font-bold text-slate-400 leading-none">10:00</span>
+<span class="text-[10px] font-medium text-slate-400 uppercase">AM</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold truncate">Tech Corp Headquarters</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">Quarterly Review Meeting</p>
+</div>
+<button class="shrink-0 flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-xl">near_me</span>
+</button>
+</div>
+<!-- Stop Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+<div class="flex flex-col items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 shrink-0 size-12">
+<span class="text-xs font-bold text-slate-400 leading-none">01:30</span>
+<span class="text-[10px] font-medium text-slate-400 uppercase">PM</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold truncate">Global Logistics Inc</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">New Contract Signing</p>
+</div>
+<button class="shrink-0 flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-xl">near_me</span>
+</button>
+</div>
+<!-- Stop Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm opacity-60">
+<div class="flex flex-col items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 shrink-0 size-12">
+<span class="material-symbols-outlined text-emerald-600">check_circle</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold truncate line-through">Retail Solutions Ltd</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">Inventory Checkup - Completed</p>
+</div>
+<div class="shrink-0 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 text-[10px] font-bold uppercase">Done</div>
+</div>
+</div>
+</section>
+<!-- Top Customers -->
+<section class="px-4 mb-6">
+<h3 class="text-lg font-bold mb-3">Top Customers</h3>
+<div class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700">
+<div class="p-4 flex items-center gap-3 border-b border-slate-50 dark:border-slate-700">
+<div class="size-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">TC</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Tech Corp</p>
+<p class="text-xs text-slate-500">$24,500 YTD</p>
+</div>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</div>
+<div class="p-4 flex items-center gap-3 border-b border-slate-50 dark:border-slate-700">
+<div class="size-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 font-bold">GL</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Global Logistics</p>
+<p class="text-xs text-slate-500">$18,200 YTD</p>
+</div>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</div>
+<div class="p-4 flex items-center gap-3">
+<div class="size-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">RS</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Retail Solutions</p>
+<p class="text-xs text-slate-500">$12,900 YTD</p>
+</div>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section class="px-4 mb-6">
+<h3 class="text-lg font-bold mb-3">Recent Activity</h3>
+<div class="space-y-4 relative before:absolute before:left-5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
+<div class="flex gap-4 relative">
+<div class="size-10 rounded-full bg-primary flex items-center justify-center z-10 shrink-0 shadow-md">
+<span class="material-symbols-outlined text-white text-sm">add_shopping_cart</span>
+</div>
+<div class="flex flex-col pt-1">
+<p class="text-sm"><span class="font-bold">New Order</span> created for Retail Solutions</p>
+<p class="text-xs text-slate-400">2 hours ago • $450.00</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="size-10 rounded-full bg-slate-400 flex items-center justify-center z-10 shrink-0 shadow-md">
+<span class="material-symbols-outlined text-white text-sm">mail</span>
+</div>
+<div class="flex flex-col pt-1">
+<p class="text-sm"><span class="font-bold">Follow up</span> email sent to Tech Corp</p>
+<p class="text-xs text-slate-400">5 hours ago</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="size-10 rounded-full bg-emerald-500 flex items-center justify-center z-10 shrink-0 shadow-md">
+<span class="material-symbols-outlined text-white text-sm">handshake</span>
+</div>
+<div class="flex flex-col pt-1">
+<p class="text-sm"><span class="font-bold">Deal Closed</span> with Global Logistics</p>
+<p class="text-xs text-slate-400">Yesterday • $2,500.00</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full max-w-md bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-6 pt-2 px-6 flex justify-between items-center z-20">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined font-variation-fill">home</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Routes</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Clients</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Stats</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Profile</span>
+</a>
+</nav>
+<!-- Quick Action Floating Button -->
+<button class="fixed bottom-24 right-6 size-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex items-center justify-center z-30 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</body></html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PartFlow Pro - Inventory Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display">
+<div class="relative flex flex-col min-h-screen max-w-md mx-auto bg-background-light dark:bg-background-dark overflow-x-hidden pb-24">
+<header class="sticky top-0 z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pt-6 pb-2">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Inventory</h1>
+<span class="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-lg">2,847</span>
+</div>
+<button class="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+</div>
+<div class="relative mb-4">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-400 text-xl">search</span>
+</div>
+<input class="block w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border-none rounded-xl text-sm ring-1 ring-slate-200 dark:ring-slate-800 focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-400" placeholder="Search SKU, name or model..." type="text"/>
+</div>
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+<button class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium whitespace-nowrap">All</button>
+<button class="px-4 py-1.5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium whitespace-nowrap">Brakes</button>
+<button class="px-4 py-1.5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium whitespace-nowrap">Engine</button>
+<button class="px-4 py-1.5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium whitespace-nowrap">Suspension</button>
+<button class="px-4 py-1.5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-full text-sm font-medium whitespace-nowrap">Electrical</button>
+</div>
+</header>
+<main class="px-4 space-y-4 pt-2">
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-amber-100 dark:bg-amber-800/40 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<p class="text-sm font-bold text-amber-900 dark:text-amber-100 uppercase tracking-wider text-[10px]">Low Stock Alert</p>
+<p class="text-sm text-amber-700 dark:text-amber-300 font-medium">5 items need restocking</p>
+</div>
+</div>
+<button class="text-amber-900 dark:text-amber-100">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+</div>
+<div class="space-y-3">
+<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/50 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Ceramic Brake Pad Set</h3>
+<p class="text-xs text-slate-500 font-medium">SKU: BP-CER-2024-XM</p>
+</div>
+<span class="text-primary font-bold text-lg">$124.99</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Tesla Model 3</span>
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Brembo Elite</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">42 In Stock</span>
+</div>
+<button class="text-slate-400"><span class="material-symbols-outlined text-xl">more_horiz</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/50 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Oil Filter - High Perf</h3>
+<p class="text-xs text-slate-500 font-medium">SKU: OF-HP-992</p>
+</div>
+<span class="text-primary font-bold text-lg">$24.50</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Porsche 911</span>
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Mobil 1</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-xs font-semibold text-amber-600 dark:text-amber-400">4 Low Stock</span>
+</div>
+<button class="text-slate-400"><span class="material-symbols-outlined text-xl">more_horiz</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/50 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<h3 class="text-base font-bold text-slate-900 dark:text-white">LED Headlight Unit</h3>
+<p class="text-xs text-slate-500 font-medium">SKU: LT-LED-X5-L</p>
+</div>
+<span class="text-primary font-bold text-lg">$899.00</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">BMW X5</span>
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">OEM Original</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span>
+<span class="text-xs font-semibold text-rose-600 dark:text-rose-400">Out of Stock</span>
+</div>
+<button class="text-slate-400"><span class="material-symbols-outlined text-xl">more_horiz</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/50 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Air Intake Sensor</h3>
+<p class="text-xs text-slate-500 font-medium">SKU: SN-AIR-001</p>
+</div>
+<span class="text-primary font-bold text-lg">$45.15</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Audi RS6</span>
+<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-tight">Bosch</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">12 In Stock</span>
+</div>
+<button class="text-slate-400"><span class="material-symbols-outlined text-xl">more_horiz</span></button>
+</div>
+</div>
+</div>
+</main>
+<button class="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-indigo-400 shadow-xl shadow-primary/40 flex items-center justify-center text-white z-40">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50">
+<div class="flex justify-around items-center h-20 px-4">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined text-[26px] font-variation-fill-1">inventory_2</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Inventory</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">shopping_cart</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Orders</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">local_shipping</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Suppliers</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[26px]">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Settings</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

@@ -414,7 +414,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             {/* Pull to Refresh Indicator */}
             {pullDistance > 0 && (
                 <div 
-                    className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-indigo-600 text-white py-2 transition-transform duration-200"
+                    className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-gradient-to-r ${themeClasses.gradient} text-white py-2 rounded-b-2xl transition-transform duration-200`}
                     style={{ transform: `translateY(${pullDistance}px)` }}
                 >
                     <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -431,77 +431,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                     </h2>
                     <p className="text-slate-500 font-medium text-sm">Here's your performance overview</p>
                 </div>
-                <div className="text-right hidden sm:block">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Today</span>
-                    <p className="text-slate-800 font-bold">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                <div className="bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                 </div>
             </div>
 
 
-            {/* Auto-sliding Stats Cards */}
-            <div className="relative overflow-hidden rounded-3xl">
-                <div 
-                    ref={scrollContainerRef}
-                    className="flex transition-transform duration-500 ease-out"
-                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                >
-                    {statCards.map((card, idx) => (
-                        <div key={idx} className="w-full flex-shrink-0 px-1">
-                            <div
-                                onClick={card.action}
-                                className={`bg-gradient-to-br ${card.gradient} p-5 md:p-6 rounded-3xl shadow-lg shadow-indigo-100 text-white relative overflow-hidden group cursor-pointer active:scale-95 transition-transform`}
-                            >
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    {card.icon}
-                                </div>
-                                <div className="relative z-10">
-                                    <p className="text-xs uppercase font-bold text-white/80 tracking-wider mb-1">{card.title}</p>
-                                    <p className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight truncate">
-                                        {card.isCount ? card.value : formatCurrency(card.value)}
-                                    </p>
-                                    <p className="text-white/60 text-xs font-medium mt-1">{card.subtitle}</p>
-                                </div>
+            {/* Stats Carousel - Stitch Style Horizontal Scroll */}
+            <div className="flex overflow-x-auto custom-scrollbar gap-4 -mx-2 px-2 pb-2">
+                {statCards.map((card, idx) => (
+                    <div
+                        key={idx}
+                        onClick={card.action}
+                        className={`flex-shrink-0 w-[260px] md:w-[280px] p-5 md:p-6 rounded-3xl bg-gradient-to-br ${card.gradient} text-white shadow-xl ${themeClasses.shadow} relative overflow-hidden group cursor-pointer active:scale-[0.97] transition-all`}
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <div className="text-6xl">{card.icon}</div>
+                        </div>
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="p-2.5 bg-white/20 rounded-xl">
+                                {card.icon}
                             </div>
                         </div>
-                    ))}
-                </div>
+                        <p className="text-white/80 text-sm font-medium">{card.title}</p>
+                        <h3 className="text-2xl font-bold mt-1 tracking-tight">
+                            {card.isCount ? card.value : formatCurrency(card.value)}
+                        </h3>
+                    </div>
+                ))}
             </div>
 
             {/* Target Progress Card */}
             {targetProgress.thisMonthTarget > 0 && (
-                <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-slate-50">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-black text-slate-800 text-sm">Monthly Target</h3>
-                                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                    {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xl font-black text-slate-900">{targetPercentage.toFixed(0)}%</p>
-                                <p className="text-[10px] text-slate-400 font-bold">Achieved</p>
-                            </div>
-                        </div>
+                <section className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-slate-900">Monthly Target</h3>
+                        <span className={`${themeClasses.text} font-bold text-sm`}>{targetPercentage.toFixed(0)}%</span>
                     </div>
-                    <div className="h-3 bg-slate-100">
+                    <div className="w-full bg-slate-100 h-3 rounded-full mb-6 overflow-hidden">
                         <div 
-                            className={`h-full transition-all duration-1000 ${targetPercentage >= 100 ? 'bg-emerald-500' : targetPercentage >= 75 ? 'bg-indigo-500' : targetPercentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                            className={`h-full bg-gradient-to-r ${themeClasses.gradient} rounded-full transition-all duration-1000`}
                             style={{ width: `${targetPercentage}%` }}
                         />
                     </div>
-                    <div className="grid grid-cols-3 divide-x divide-slate-100">
-                        <div className="p-3 text-center">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">Target</p>
-                            <p className="font-black text-slate-800 text-sm">{formatCurrency(targetProgress.thisMonthTarget)}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Target</p>
+                            <p className="font-bold text-sm text-slate-900">{formatCurrency(targetProgress.thisMonthTarget)}</p>
                         </div>
-                        <div className="p-3 text-center">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">Achieved</p>
-                            <p className="font-black text-indigo-600 text-sm">{formatCurrency(targetProgress.thisMonthSale)}</p>
+                        <div>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Achieved</p>
+                            <p className={`font-bold text-sm ${themeClasses.text}`}>{formatCurrency(targetProgress.thisMonthSale)}</p>
                         </div>
-                        <div className="p-3 text-center">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">Last Month</p>
-                            <p className={`font-black text-sm ${lastMonthDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <div>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Last Month</p>
+                            <p className={`font-bold text-sm ${lastMonthDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {formatCurrency(targetProgress.lastMonthSale)}
                             </p>
                         </div>
@@ -510,14 +494,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             )}
 
             {/* Quick Actions */}
-            <section className="grid grid-cols-2 gap-3">
-                <button onClick={() => onAction('customers')} className={`flex flex-col items-center justify-center gap-2 ${themeClasses.bg} text-white p-4 rounded-2xl shadow-md active:scale-95 transition-transform`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    <span className="font-bold text-sm">New Order</span>
+            <section className="grid grid-cols-2 gap-4">
+                <button onClick={() => onAction('customers')} className={`flex items-center justify-center gap-2 bg-gradient-to-r ${themeClasses.gradient} text-white p-4 rounded-2xl font-bold shadow-lg ${themeClasses.shadow} active:scale-[0.97] transition-all`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <span className="text-sm">New Order</span>
                 </button>
-                <button onClick={() => onAction('inventory')} className="flex flex-col items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 p-4 rounded-2xl shadow-sm active:scale-95 transition-transform">
-                    <svg className={`w-7 h-7 ${themeClasses.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                    <span className="font-bold text-sm">Search Catalog</span>
+                <button onClick={() => onAction('inventory')} className="flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 p-4 rounded-2xl font-bold shadow-sm active:scale-[0.97] transition-all">
+                    <svg className={`w-5 h-5 ${themeClasses.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                    <span className="text-sm">Catalog</span>
                 </button>
             </section>
 
@@ -537,68 +521,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
                         const hasOutstanding = outstandingBalance > 0;
                         
                         return (
-                        <div key={`${customer.customerId || 'empty'}-${index}`} className={`rounded-xl md:rounded-2xl p-3 md:p-4 shadow-sm border ${index === 0 ? `bg-white border-l-4 ${themeClasses.border}` : 'bg-white border border-slate-100'} ${index > 0 ? 'opacity-90' : ''} ${isCompleted ? 'border-emerald-200 bg-emerald-50/30' : ''}`}>
-                            <div className="flex items-start justify-between gap-2 md:gap-3">
-                                <div className="flex gap-2 md:gap-3 min-w-0 flex-1">
-                                    <div className={`mt-0.5 md:mt-1 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full flex-shrink-0 ${isCompleted ? 'bg-emerald-100 text-emerald-600' : index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-500'}`}>
-                                        {isCompleted ? (
-                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        ) : isCheckedIn ? (
-                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        ) : (
-                                            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a2 2 0 010-2.828l4.243-4.243m0 0L14.828 2.5m2.829 2.829L20.5 8.172" /></svg>
-                                        )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 flex-wrap">
-                                            <p className="text-slate-500 text-[10px] md:text-xs font-semibold truncate max-w-[80px] md:max-w-none">
-                                                {isCompleted ? 'Completed' : isCheckedIn ? 'In Progress' : index === 0 ? 'Current' : index === 1 ? 'Next' : 'Upcoming'}
-                                            </p>
-                                            {customer.isPlanned && customer.visitTime && (
-                                                <span className="text-[9px] md:text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{customer.visitTime}</span>
-                                            )}
-                                            {isCheckedIn && (
-                                                <span className="text-[9px] md:text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">In</span>
-                                            )}
-                                            {hasOutstanding && (
-                                                <span className="text-[9px] md:text-[10px] font-bold bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">{formatCurrency(outstandingBalance)}</span>
-                                            )}
-                                        </div>
-                                        <h3 className="text-sm md:text-base font-bold text-slate-900 truncate">{customer.name}</h3>
-                                        <p className="text-slate-500 text-xs md:text-sm truncate">{customer.city || 'No city'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                    {customer.customerId && (
-                                        <button onClick={() => onOpenProfile(customer.customerId)} aria-label="View shop profile" className="text-slate-400 hover:text-slate-700 p-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 rounded">
-                                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                        </button>
+                        <div key={`${customer.customerId || 'empty'}-${index}`} className={`rounded-3xl p-5 shadow-sm border ${isCompleted ? 'bg-white border-slate-200 opacity-70' : 'bg-white border-slate-200'} relative overflow-hidden`}>
+                            {hasOutstanding && !isCompleted && (
+                                <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] px-3 py-1 rounded-bl-xl font-bold">Bal: {formatCurrency(outstandingBalance)}</div>
+                            )}
+                            <div className="flex items-start gap-4 mb-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isCompleted ? 'bg-emerald-100 text-emerald-500' : index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'bg-slate-100 text-slate-400'}`}>
+                                    {isCompleted ? (
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    ) : isCheckedIn ? (
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    ) : (
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                     )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-bold text-base leading-none mb-1">{customer.name}</h3>
+                                    <p className="text-xs text-slate-500">{customer.city || 'No city'}{customer.isPlanned && customer.visitTime ? ` • ${customer.visitTime}` : ''}</p>
+                                    <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                        isCompleted ? 'bg-emerald-50 text-emerald-600' :
+                                        isCheckedIn ? `${themeClasses.bgSoft} ${themeClasses.text}` :
+                                        index === 0 ? `${themeClasses.bgSoft} ${themeClasses.text}` :
+                                        'bg-slate-100 text-slate-500'
+                                    }`}>
+                                        {isCompleted ? 'Completed' : isCheckedIn ? 'In Progress' : index === 0 ? 'Current' : 'Upcoming'}
+                                    </span>
                                 </div>
                             </div>
                             {customer.customerId && (
-                                <div className="mt-2 md:mt-3 flex gap-1.5 md:gap-2">
+                                <div className="grid grid-cols-2 gap-3 mt-1">
                                     {!isCheckedIn && !isCompleted && (
                                         <>
-                                            <button onClick={() => handleCheckIn(customer.customerId, customer.planId || undefined)} className={`flex-1 ${themeClasses.bg} text-white text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg`}>Check In</button>
+                                            <button onClick={() => handleCheckIn(customer.customerId, customer.planId || undefined)} className={`py-2.5 px-4 rounded-xl ${themeClasses.bg} text-white text-xs font-bold`}>Check In</button>
                                             {hasOutstanding && (
-                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-rose-50 text-rose-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-rose-100">Collect {formatCurrency(outstandingBalance)}</button>
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Collect</button>
                                             )}
                                             {!hasOutstanding && (
-                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-slate-100 text-slate-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg">New Order</button>
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">New Order</button>
                                             )}
                                         </>
                                     )}
                                     {isCheckedIn && (
                                         <>
-                                            <button onClick={() => onOpenProfile(customer.customerId)} className={`flex-1 ${themeClasses.bg} text-white text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg`}>View Shop</button>
+                                            <button onClick={() => onOpenProfile(customer.customerId)} className={`py-2.5 px-4 rounded-xl ${themeClasses.bg} text-white text-xs font-bold`}>View Shop</button>
                                             {hasOutstanding && (
-                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-rose-50 text-rose-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-rose-100">Collect {formatCurrency(outstandingBalance)}</button>
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Collect</button>
                                             )}
                                             {!hasOutstanding && (
-                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="flex-1 bg-emerald-50 text-emerald-700 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg border border-emerald-100">New Order</button>
+                                                <button onClick={() => onSelectCustomerForOrder ? onSelectCustomerForOrder(customer.customerId) : onAction('orders')} className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">New Order</button>
                                             )}
-                                            <button onClick={() => handleCheckOut(visit!.id)} className="px-3 md:px-4 bg-slate-100 text-slate-600 text-[10px] md:text-xs font-bold py-1.5 md:py-2 rounded-lg">Out</button>
+                                            <button onClick={() => handleCheckOut(visit!.id)} className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold col-span-2">Check Out</button>
                                         </>
                                     )}
                                     {isCompleted && (
@@ -615,29 +587,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             </section>
 
             {/* Quick Stats Row */}
-            <section className="grid grid-cols-2 gap-3">
+            <section className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                    <div className="flex items-center gap-2 mb-2 text-blue-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8L10 18l-5-5-7 7" /></svg>
-                        <span className="text-xs font-bold uppercase">Weekly Trend</span>
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Weekly Trend</p>
+                    <div className="flex items-end gap-2">
+                        <h4 className="text-xl font-bold text-blue-900">{formatCurrency(trendData.reduce((acc, curr) => acc + curr.sales, 0))}</h4>
+                        <svg className="w-4 h-4 text-blue-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8L10 18l-5-5-7 7" /></svg>
                     </div>
-                    <p className="text-slate-900 text-xl font-black">{formatCurrency(trendData.reduce((acc, curr) => acc + curr.sales, 0))}</p>
-                    <p className="text-slate-500 text-xs">Last 7 days total</p>
                 </div>
                 <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-                    <div className="flex items-center gap-2 mb-2 text-orange-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M3.34 16h17.32c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L1.61 13c-.77 1.33.19 3 1.73 3z" /></svg>
-                        <span className="text-xs font-bold uppercase">Pending</span>
+                    <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1">Pending</p>
+                    <div className="flex items-end gap-2">
+                        <h4 className="text-xl font-bold text-orange-900">{paymentBreakdown.filter(p => p.name !== 'Paid').length} Buckets</h4>
+                        <svg className="w-4 h-4 text-orange-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M3.34 16h17.32c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L1.61 13c-.77 1.33.19 3 1.73 3z" /></svg>
                     </div>
-                    <p className="text-slate-900 text-xl font-black">{paymentBreakdown.filter(p => p.name !== 'Paid').length}</p>
-                    <p className="text-slate-500 text-xs">Payment buckets open</p>
                 </div>
             </section>
 
             {/* Existing analytics sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Weekly Performance */}
-                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <div>
                             <h3 className="font-black text-slate-800">Weekly Performance</h3>
@@ -688,33 +658,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAction, onViewOrder, onO
             {/* Top customers / recent */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {topCustomers.length > 0 && (
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50">
-                            <h3 className="font-black text-slate-800 text-sm">Top Customers This Month</h3>
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-5">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4">Top Customers This Month</h3>
                         </div>
                         <div className="divide-y divide-slate-50">
                             {topCustomers.map((customer, idx) => (
                                 <button
                                     key={customer.customerId}
                                     onClick={() => onOpenProfile(customer.customerId)}
-                                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
+                                    className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors mx-4 mb-3 text-left" style={{ width: 'calc(100% - 2rem)' }}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black flex-shrink-0 ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'}`}>
-                                            {idx + 1}
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${idx === 0 ? 'bg-amber-100 text-amber-600' : idx === 1 ? 'bg-slate-200 text-slate-500' : 'bg-orange-100 text-orange-600'}`}>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold text-slate-900">{customer.name}</p>
-                                            <p className="text-[10px] text-slate-400">{customer.city} • {customer.count} orders</p>
+                                            <p className="font-bold text-sm text-slate-900">{customer.name}</p>
+                                            <p className="text-xs text-slate-500">{customer.count} Orders</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-emerald-600">{formatCurrency(customer.total)}</p>
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600">
-                                            Profile
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                        </span>
-                                    </div>
+                                    <p className={`font-bold text-sm ${themeClasses.text}`}>{formatCurrency(customer.total)}</p>
                                 </button>
                             ))}
                         </div>

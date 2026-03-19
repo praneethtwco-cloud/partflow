@@ -149,6 +149,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
     return (
         <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
 
+            {/* Header */}
+            <div className="flex items-baseline gap-3 px-1">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Shops</h1>
+                <span className={`${themeClasses.bgSoft} ${themeClasses.text} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${themeClasses.border}`}>{filteredCustomers.length} Active</span>
+            </div>
+
             {/* Search & Action Bar */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center sticky top-0 bg-slate-50 pt-2 pb-2 z-10">
                 <div className="w-full md:w-96 space-y-2">
@@ -173,7 +179,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                                     <input
                                         type="text"
                                         placeholder="Search shops or cities..."
-                                        className={`block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 ${themeClasses.ring} focus:border-transparent transition-shadow shadow-sm`}
+                                        className={`block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-2xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 ${themeClasses.ring} focus:border-transparent transition-shadow shadow-sm text-sm`}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
@@ -205,7 +211,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                 </div>
                 <button
                     onClick={() => setShowAddForm(true)}
-                    className={`hidden md:flex ${themeClasses.bg} ${themeClasses.bgHover} text-white px-5 py-3 rounded-xl font-semibold shadow-md transition-transform active:scale-95 items-center space-x-2`}
+                    className={`hidden md:flex bg-gradient-to-r ${themeClasses.gradient} text-white px-5 py-3 rounded-2xl font-bold shadow-lg ${themeClasses.shadow} transition-all active:scale-[0.97] items-center space-x-2`}
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     <span>New Customer</span>
@@ -215,7 +221,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
             {/* Mobile FAB */}
             <button
                 onClick={() => setShowAddForm(true)}
-                className={`md:hidden fixed bottom-20 right-4 w-14 h-14 ${themeClasses.bg} rounded-full text-white shadow-lg flex items-center justify-center z-40 active:bg-indigo-700`}
+                className={`md:hidden fixed bottom-24 right-4 w-14 h-14 bg-gradient-to-br ${themeClasses.gradient} rounded-2xl text-white shadow-xl ${themeClasses.shadow} flex items-center justify-center z-40 active:scale-[0.95] transition-all`}
                 aria-label="Create new customer"
             >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -226,7 +232,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 md:p-4" onClick={() => { setActionCustomer(null); setShowAdminActions(false); }}>
                     <div className="bg-white w-full max-w-sm rounded-t-3xl md:rounded-2xl p-6 pb-24 md:pb-6 shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-200" onClick={e => e.stopPropagation()}>
                         <div className="text-center mb-6">
-                            <div className={`w-16 h-16 ${actionCustomer.status === 'inactive' ? 'bg-slate-200 text-slate-400' : `${themeClasses.bgSoft} ${themeClasses.text}`} rounded-full flex items-center justify-center text-2xl font-black mx-auto mb-3`}>
+                            <div className={`w-16 h-16 ${actionCustomer.status === 'inactive' ? 'bg-slate-200 text-slate-400' : `${themeClasses.bgSoft} ${themeClasses.text}`} rounded-2xl flex items-center justify-center text-2xl font-black mx-auto mb-3`}>
                                 {getInitials(actionCustomer.shop_name)}
                             </div>
                             <h3 className="text-xl font-black text-slate-900">{cleanText(actionCustomer.shop_name)}</h3>
@@ -244,7 +250,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                                     setActionCustomer(null);
                                     setShowAdminActions(false);
                                 }}
-                                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform ${actionCustomer.status === 'inactive' ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' : `${themeClasses.bg} text-white`}`}
+                                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold shadow-lg active:scale-[0.97] transition-all ${actionCustomer.status === 'inactive' ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' : `bg-gradient-to-r ${themeClasses.gradient} text-white ${themeClasses.shadow}`}`}
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                                 Create New Bill
@@ -351,7 +357,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                             </div>
                         </div>
                         <div className="p-4 md:p-6 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0 pb-safe">
-                            <button onClick={handleSaveCustomer} className={`flex-1 ${themeClasses.bg} text-white py-3.5 rounded-xl font-bold ${themeClasses.bgHover} shadow-lg active:scale-95 transition-transform`}>{editingCustomer ? 'Update Shop' : 'Save Shop'}</button>
+                            <button onClick={handleSaveCustomer} className={`flex-1 bg-gradient-to-r ${themeClasses.gradient} text-white py-3.5 rounded-xl font-bold shadow-lg ${themeClasses.shadow} active:scale-[0.97] transition-all`}>{editingCustomer ? 'Update Shop' : 'Save Shop'}</button>
                             <button onClick={() => { setShowAddForm(false); setEditingCustomer(null); }} className="flex-1 bg-white text-slate-700 border border-slate-300 py-3.5 rounded-xl font-bold hover:bg-slate-50 active:scale-95 transition-transform">Cancel</button>
                         </div>
                     </div>
@@ -364,9 +370,9 @@ export const CustomerList: React.FC<CustomerListProps> = ({ onSelectCustomer, on
                     <button
                         key={customer.customer_id}
                         onClick={() => setActionCustomer(customer)}
-                        className={`bg-white p-4 rounded-xl shadow-sm border ${customer.status === 'inactive' ? 'border-slate-100 opacity-60' : `border-slate-200 hover:${themeClasses.border}`} hover:shadow-md transition-all text-left flex items-start space-x-4 group active:scale-[0.98]`}
+                        className={`bg-white p-4 rounded-2xl shadow-sm border ${customer.status === 'inactive' ? 'border-slate-100 opacity-60' : `border-slate-200/80 hover:${themeClasses.border}`} hover:shadow-md transition-all text-left flex items-start space-x-4 group active:scale-[0.98]`}
                     >
-                        <div className={`flex-shrink-0 w-12 h-12 rounded-full ${customer.status === 'inactive' ? 'bg-slate-100 text-slate-400' : `${themeClasses.bgSoft} ${themeClasses.text} group-hover:${themeClasses.bg} group-hover:text-white`} flex items-center justify-center font-bold text-lg transition-colors`}>
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-2xl ${customer.status === 'inactive' ? 'bg-slate-100 text-slate-400' : `${themeClasses.bgSoft} ${themeClasses.text} group-hover:${themeClasses.bg} group-hover:text-white`} flex items-center justify-center font-bold text-lg transition-colors`}>
                             {getInitials(customer.shop_name)}
                         </div>
                         <div className="flex-1 min-w-0">

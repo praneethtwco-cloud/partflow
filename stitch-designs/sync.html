@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PartFlow Pro - Cloud Sync</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen pb-24">
+<!-- Header Section -->
+<header class="p-6 pb-2">
+<div class="flex items-center justify-between mb-2">
+<span class="material-symbols-outlined text-primary cursor-pointer">arrow_back</span>
+<span class="material-symbols-outlined text-slate-400">more_vert</span>
+</div>
+<h1 class="text-3xl font-bold tracking-tight">Cloud Sync</h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your data synchronization with Supabase</p>
+</header>
+<!-- Main Content -->
+<main class="px-6 py-4 space-y-6 max-w-2xl mx-auto">
+<!-- Hero Sync Status Card -->
+<div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800">
+<div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-600"></div>
+<div class="p-6">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<div class="p-3 bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-primary text-3xl">cloud_sync</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="size-2.5 rounded-full bg-emerald-500"></span>
+<span class="font-bold text-lg">Online</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400">Last synced: 5 minutes ago</p>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary/25 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">sync</span>
+                    Sync Now
+                </button>
+<div class="mt-4 space-y-2">
+<div class="flex justify-between text-xs font-medium text-slate-500">
+<span>Sync Progress</span>
+<span>85%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-gradient-to-r from-indigo-500 to-primary h-full rounded-full w-[85%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pending Changes Section -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold flex items-center gap-2">
+                    Pending Changes
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-bold">22</span>
+</h2>
+<button class="text-primary text-sm font-medium">Review All</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-blue-500 bg-blue-500/10 p-2 rounded-lg">group</span>
+<span class="text-xs font-bold px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">3</span>
+</div>
+<span class="text-sm font-semibold">Customers</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-emerald-500 bg-emerald-500/10 p-2 rounded-lg">package_2</span>
+<span class="text-xs font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">12</span>
+</div>
+<span class="text-sm font-semibold">Items</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-violet-500 bg-violet-500/10 p-2 rounded-lg">receipt_long</span>
+<span class="text-xs font-bold px-2 py-0.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full">5</span>
+</div>
+<span class="text-sm font-semibold">Orders</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-amber-500 bg-amber-500/10 p-2 rounded-lg">tune</span>
+<span class="text-xs font-bold px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full">2</span>
+</div>
+<span class="text-sm font-semibold">Adjustments</span>
+</div>
+</div>
+</section>
+<!-- Sync Log Section -->
+<section>
+<h2 class="text-lg font-bold mb-4">Sync Log</h2>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+<div class="p-4 flex gap-4">
+<span class="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
+<div class="flex-1">
+<p class="text-sm font-medium">Pushed 12 items to cloud</p>
+<p class="text-xs text-slate-400">Today, 10:45 AM</p>
+</div>
+</div>
+<div class="p-4 flex gap-4">
+<span class="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
+<div class="flex-1">
+<p class="text-sm font-medium">Pulled 45 customers from cloud</p>
+<p class="text-xs text-slate-400">Today, 10:43 AM</p>
+</div>
+</div>
+<div class="p-4 flex gap-4 bg-amber-50/50 dark:bg-amber-900/10">
+<span class="material-symbols-outlined text-amber-500 text-xl">warning</span>
+<div class="flex-1">
+<p class="text-sm font-medium">3 items skipped (duplicate SKUs)</p>
+<p class="text-xs text-slate-400">Yesterday, 4:20 PM</p>
+</div>
+</div>
+<div class="p-4 flex gap-4 bg-rose-50/50 dark:bg-rose-900/10">
+<span class="material-symbols-outlined text-rose-500 text-xl">error</span>
+<div class="flex-1">
+<p class="text-sm font-medium">Order sync failed: network timeout</p>
+<p class="text-xs text-slate-400">Yesterday, 2:15 PM</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Advanced Options -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold">Advanced Sync Options</h2>
+<span class="material-symbols-outlined text-slate-400">expand_more</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<div>
+<p class="text-sm font-semibold">Overwrite Mode</p>
+<p class="text-xs text-rose-500">Local changes will be lost</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 p-3 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-sm font-bold rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20">
+<span class="material-symbols-outlined text-sm">delete_forever</span>
+                        Clear Local
+                    </button>
+<button class="flex items-center justify-center gap-2 p-3 border border-amber-200 dark:border-amber-900 text-amber-600 dark:text-amber-400 text-sm font-bold rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20">
+<span class="material-symbols-outlined text-sm">rocket_launch</span>
+                        Force Full
+                    </button>
+</div>
+</div>
+</section>
+<!-- Supabase Account Section -->
+<section>
+<div class="bg-slate-900 dark:bg-slate-800 text-white p-5 rounded-2xl flex items-center justify-between shadow-lg">
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+<span class="material-symbols-outlined fill-icon text-white">person</span>
+</div>
+<div>
+<p class="text-xs text-slate-400">Cloud Account</p>
+<p class="text-sm font-bold truncate max-w-[150px]">admin@partflow.pro</p>
+</div>
+</div>
+<button class="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-bold rounded-lg transition-colors">
+                    Sign Out
+                </button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 z-50">
+<div class="flex gap-2 border-t border-slate-200 dark:border-[#272546] bg-white dark:bg-[#1c1b32] px-4 pb-6 pt-2">
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-slate-400 dark:text-[#9795c6]" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Inventory</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-slate-400 dark:text-[#9795c6]" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined">shopping_cart</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Orders</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-primary" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined fill-icon">cloud_sync</span>
+</div>
+<p class="text-[10px] font-bold leading-normal">Sync</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-slate-400 dark:text-[#9795c6]" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined">settings</span>
+</div>
+<p class="text-[10px] font-medium leading-normal">Settings</p>
+</a>
+</div>
+</nav>
+</body></html>

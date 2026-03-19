@@ -86,29 +86,18 @@ class AutoSyncService {
     try {
       console.log('[AutoSync] Starting sync...');
       
-      const result = await supabaseSyncService.syncData(
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        'upsert'
+      // Call db.performSync with skipBackup = true to avoid downloading CSVs
+      await db.performSync(
+        undefined, // onLog
+        'upsert',  // mode
+        undefined, // onProgress
+        true       // skipBackup
       );
 
-      if (result.success) {
-        console.log('[AutoSync] Sync completed successfully');
-        this.retryCount = 0;
-        this.onSyncStatusChange?.(false, 'Sync complete');
-        return true;
-      } else {
-        console.error('[AutoSync] Sync failed:', result.message);
-        this.handleSyncError(result.message || 'Sync failed');
-        this.onSyncStatusChange?.(false, `Sync failed: ${result.message}`);
-        return false;
-      }
+      console.log('[AutoSync] Sync completed successfully');
+      this.retryCount = 0;
+      this.onSyncStatusChange?.(false, 'Sync complete');
+      return true;
     } catch (error: any) {
       console.error('[AutoSync] Sync error:', error);
       

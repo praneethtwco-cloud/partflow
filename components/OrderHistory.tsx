@@ -203,34 +203,40 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
     };
 
     return (
-        <div className="space-y-4 pb-20 md:pb-0">
+        <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+            {/* Header Title */}
+            <div className="flex items-baseline gap-3 px-3 mt-4 md:mt-6">
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Sales History</h1>
+                <span className={`${themeClasses.bgSoft} ${themeClasses.text} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${themeClasses.border}`}>{filteredOrders.length} Orders</span>
+            </div>
+
             {/* Batch Actions Bar */}
             {showBatchActions && (
                 <div className="fixed bottom-20 md:bottom-4 left-2 right-2 z-30 animate-in slide-in-from-bottom-4">
                     <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl flex items-center justify-between max-w-md mx-auto">
                         <span className="text-sm font-bold">{selectedOrders.size} selected</span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 border-l border-slate-700 pl-3 ml-2 overflow-x-auto custom-scrollbar">
                             <button 
                                 onClick={() => handleBatchUpdateDelivery('shipped')}
-                                className="px-3 py-1.5 bg-blue-600 rounded-lg text-xs font-bold"
+                                className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded-lg text-[10px] md:text-xs font-bold transition-colors whitespace-nowrap"
                             >
-                                Mark Shipped
+                                <span className="hidden md:inline">Mark </span>Shipped
                             </button>
                             <button 
                                 onClick={() => handleBatchUpdateDelivery('out_for_delivery')}
-                                className="px-3 py-1.5 bg-indigo-600 rounded-lg text-xs font-bold"
+                                className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 rounded-lg text-[10px] md:text-xs font-bold transition-colors whitespace-nowrap"
                             >
-                                Out for Delivery
+                                Out<span className="hidden md:inline"> for Delivery</span>
                             </button>
                             <button 
                                 onClick={() => handleBatchUpdateDelivery('delivered')}
-                                className="px-3 py-1.5 bg-emerald-600 rounded-lg text-xs font-bold"
+                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 rounded-lg text-[10px] md:text-xs font-bold transition-colors whitespace-nowrap"
                             >
                                 Delivered
                             </button>
                             <button 
                                 onClick={() => { setSelectedOrders(new Set()); setShowBatchActions(false); }}
-                                className="px-3 py-1.5 bg-slate-700 rounded-lg text-xs font-bold"
+                                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] md:text-xs font-bold transition-colors whitespace-nowrap"
                             >
                                 Clear
                             </button>
@@ -239,7 +245,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                 </div>
             )}
 
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 sticky top-0 z-20 mx-2 mt-2 space-y-3">
+            <div className="bg-white p-4 md:p-5 rounded-3xl shadow-sm border border-slate-200/80 sticky top-0 z-20 mx-2 mt-2 space-y-3">
                 {/* Select All Row */}
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -264,14 +270,14 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                         <input 
                             type="text"
                             placeholder="Search by shop name or order ID..."
-                            className={`w-full pl-10 p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 ${themeClasses.ring} outline-none transition-shadow`}
+                            className={`w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 ${themeClasses.ring} outline-none transition-all focus:bg-white`}
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
                         />
                     </div>
                     <button 
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`p-2.5 rounded-xl border transition-colors ${showFilters ? `${themeClasses.bgSoft} ${themeClasses.text} ${themeClasses.border}` : 'bg-white border-slate-300 text-slate-500'}`}
+                        className={`p-3 rounded-2xl border transition-all ${showFilters ? `${themeClasses.bgSoft} ${themeClasses.text} ${themeClasses.border}` : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
                         aria-label="Toggle filters"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
@@ -335,17 +341,17 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                 )}
             </div>
 
-            <div className="pb-20">
+            <div className="pb-20 px-2">
                 {sortedDates.map(date => (
-                    <div key={date} className="mb-6">
-                        <h3 className="sticky top-[4.5rem] bg-slate-50/95 backdrop-blur-sm py-3 px-4 text-xs font-black uppercase text-slate-400 z-10 border-b border-slate-100 flex justify-between items-center">
-                            <span>{new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                            <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">{groupedOrders[date].length}</span>
+                    <div key={date} className="mb-8">
+                        <h3 className="sticky top-[5.5rem] bg-slate-50/95 backdrop-blur-md py-3 px-2 text-[11px] font-black uppercase tracking-widest text-slate-500 z-10 flex justify-between items-center rounded-lg mt-2 mb-3">
+                            <span>{new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                            <span className={`text-[10px] ${themeClasses.bgSoft} ${themeClasses.text} px-2 py-0.5 rounded-md font-bold`}>{groupedOrders[date].length}</span>
                         </h3>
-                        <div className="space-y-3 px-2 mt-2">
+                        <div className="space-y-3">
                             {groupedOrders[date].map(order => (
-                                <div key={order.order_id} className={`bg-white p-4 rounded-2xl shadow-sm border active:scale-[0.99] transition-transform ${selectedOrders.has(order.order_id) ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100'}`}>
-                                    <div className="flex items-start gap-3 mb-3">
+                                <div key={order.order_id} className={`bg-white p-4 md:p-5 rounded-3xl shadow-sm border active:scale-[0.98] transition-all group ${selectedOrders.has(order.order_id) ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300 hover:shadow-md'}`}>
+                                    <div className="flex items-start gap-4 mb-3">
                                         {/* Checkbox */}
                                         <input 
                                             type="checkbox"
@@ -357,12 +363,12 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h3 
-                                                        className={`font-bold text-sm cursor-pointer ${onViewShopProfile ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-900'}`}
+                                                        className={`font-black text-sm md:text-base cursor-pointer transition-colors ${onViewShopProfile ? 'text-slate-900 group-hover:text-indigo-600' : 'text-slate-900'}`}
                                                         onClick={() => onViewShopProfile && onViewShopProfile(order.customer_id)}
                                                     >
                                                         {getCustomerName(order.customer_id)}
                                                     </h3>
-                                                    <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                                         <span className="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all">
                                                             #{(order.invoice_number || order.order_id).toUpperCase()}
                                                         </span>
@@ -380,49 +386,49 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className={`font-black text-sm ${themeClasses.textDark}`}>{formatCurrency(order.net_total)}</p>
-                                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${order.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                        <div className="text-right flex-shrink-0">
+                                            <p className={`font-black text-base md:text-lg tracking-tight ${themeClasses.textDark}`}>{formatCurrency(order.net_total)}</p>
+                                            <span className={`inline-block mt-1 text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${order.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : order.payment_status === 'partial' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
                                                 {order.payment_status}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-between items-center pt-3 border-t border-slate-50">
-                                        <p className="text-xs text-slate-400 font-medium">{order.lines.length} Items</p>
+                                    <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-100">
+                                        <p className="text-xs text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-lg">{order.lines.length} {order.lines.length === 1 ? 'Item' : 'Items'}</p>
                                         
-                                        <div className="flex gap-1.5">
+                                        <div className="flex gap-2">
                                             {/* Quick Delivery Buttons */}
                                             {order.delivery_status !== 'delivered' && (
-                                                <>
+                                                <div className="hidden sm:flex gap-1.5 mr-2">
                                                     <button 
                                                         onClick={() => db.updateDeliveryStatus(order.order_id, 'shipped')}
-                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                                        className="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                                                         title="Mark Shipped"
                                                     >
                                                         Ship
                                                     </button>
                                                     <button 
                                                         onClick={() => db.updateDeliveryStatus(order.order_id, 'out_for_delivery')}
-                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                                                        className="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
                                                         title="Out for Delivery"
                                                     >
                                                         Out
                                                     </button>
                                                     <button 
                                                         onClick={() => db.updateDeliveryStatus(order.order_id, 'delivered')}
-                                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                                        className="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
                                                         title="Mark Delivered"
                                                     >
                                                         Done
                                                     </button>
-                                                </>
+                                                </div>
                                             )}
                                             
                                             {/* Action Buttons */}
                                             <button 
                                                 onClick={() => { setSelectedOrder(order); setShowDeliveryModal(true); }}
-                                                className="p-2 rounded-xl bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500"
+                                                className="p-2.5 rounded-2xl bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 active:scale-95"
                                                 title="Delivery"
                                                 aria-label="Manage Delivery"
                                             >
@@ -432,7 +438,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                                             {(order.delivery_status === 'pending' || !order.delivery_status) && onEditOrder && (
                                                 <button 
                                                     onClick={() => onEditOrder(order)}
-                                                    className="p-2 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500"
+                                                    className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 active:scale-95"
                                                     title="Edit"
                                                     aria-label="Edit Order"
                                                 >
@@ -442,11 +448,12 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
 
                                             <button 
                                                 onClick={() => onViewInvoice(order)}
-                                                className={`p-2 rounded-xl ${themeClasses.bgSoft} ${themeClasses.text} hover:${themeClasses.bgSoftHover} transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500`}
+                                                className={`p-2.5 rounded-2xl bg-gradient-to-r ${themeClasses.gradient} text-white shadow-lg ${themeClasses.shadow} hover:shadow-xl active:scale-95 transition-all focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-indigo-500 flex items-center justify-center gap-1.5 px-3 md:px-4`}
                                                 title="Invoice"
                                                 aria-label="View Invoice"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                <span className="text-xs font-bold hidden md:inline">Invoice</span>
                                             </button>
                                         </div>
                                     </div>
@@ -481,7 +488,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
                     <div className="bg-white w-full max-w-sm rounded-t-3xl md:rounded-3xl p-6 pb-20 md:pb-6 shadow-2xl animate-in slide-in-from-bottom-10 md:zoom-in duration-200">
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h3 className="text-lg font-black text-slate-800 mb-1">Update Delivery</h3>
+                                <h3 className="text-xl font-black text-slate-900 mb-1">Update Delivery</h3>
                                 <p className="text-xs font-mono text-slate-500 break-all">#{(selectedOrder.invoice_number || selectedOrder.order_id).toUpperCase()}</p>
                             </div>
                             <button aria-label="Close delivery modal" onClick={() => { setShowDeliveryModal(false); setSelectedOrder(null); setDeliveryDate(''); }} className="bg-slate-100 p-2 rounded-full text-slate-500">
@@ -491,12 +498,12 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ onViewInvoice, onEdi
 
                         {/* Date Picker */}
                         <div className="mb-4">
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Delivery Date</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Delivery Date</label>
                             <input 
                                 type="datetime-local" 
                                 value={deliveryDate}
                                 onChange={e => setDeliveryDate(e.target.value)}
-                                className="w-full p-3 border border-slate-200 rounded-xl text-sm"
+                                className={`w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 ${themeClasses.ring} outline-none transition-all focus:bg-white`}
                             />
                             <p className="text-[10px] text-slate-400 mt-1">Leave empty to use current date/time</p>
                         </div>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PartFlow Pro - Order Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden">
+<div class="relative flex min-h-screen flex-col pb-64">
+<header class="sticky top-0 z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+<button class="flex items-center justify-center size-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:scale-95 transition-transform">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+<div class="flex-1 px-4 overflow-hidden">
+<h1 class="text-sm font-bold whitespace-nowrap animate-pulse dark:text-slate-200">
+                    Lakmal Auto Parts - Colombo
+                </h1>
+</div>
+<button class="flex items-center justify-center size-10 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-2xl">sync</span>
+</button>
+</header>
+<main class="max-w-md mx-auto w-full p-4 space-y-6">
+<section class="relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+<div class="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-primary to-violet-600"></div>
+<div class="flex justify-between items-start">
+<div>
+<h2 class="text-lg font-bold leading-tight">Lakmal Auto Parts</h2>
+<div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm mt-1">
+<span class="material-symbols-outlined text-xs">location_on</span>
+<span>Colombo</span>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider mb-2">VIP Customer</span>
+<div class="text-xs font-medium text-slate-500 dark:text-slate-400">Discount: <span class="text-emerald-500">15%</span></div>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<span class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Outstanding Balance</span>
+<span class="text-primary font-bold">Rs. 45,230</span>
+</div>
+</section>
+<section class="space-y-4">
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="shrink-0 px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold shadow-lg shadow-primary/20">Draft</button>
+<button class="shrink-0 px-4 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium">Pending Approval</button>
+<button class="shrink-0 px-4 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium">Approved</button>
+</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-slate-400" placeholder="Search items by SKU or Name..." type="text"/>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">directions_car</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-sm">Ceramic Brake Pads</h4>
+<p class="text-[10px] text-slate-400 uppercase font-medium">SKU: BP-CER-2024</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-primary font-bold text-sm">Rs. 8,400</span>
+<span class="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">In Stock</span>
+</div>
+</div>
+<button class="size-10 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">oil_barrel</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-sm">Synthetic Oil Filter</h4>
+<p class="text-[10px] text-slate-400 uppercase font-medium">SKU: FL-SYN-99</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-primary font-bold text-sm">Rs. 1,250</span>
+<span class="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Out of Stock</span>
+</div>
+</div>
+<div class="flex items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-1">
+<button class="size-8 flex items-center justify-center text-slate-400 hover:text-red-500"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="px-2 text-sm font-bold w-6 text-center">2</span>
+<button class="size-8 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">bolt</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-sm">Iridium Spark Plug</h4>
+<p class="text-[10px] text-slate-400 uppercase font-medium">SKU: SP-IRD-5X</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-primary font-bold text-sm">Rs. 2,800</span>
+<span class="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">42 Left</span>
+</div>
+</div>
+<button class="size-10 rounded-lg bg-primary text-white flex items-center justify-center">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<h3 class="text-base font-bold">Order Lines</h3>
+<span class="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">3 Items</span>
+</div>
+<button class="text-xs font-semibold text-slate-400 hover:text-red-500 uppercase tracking-tight transition-colors">Clear All</button>
+</div>
+<div class="space-y-2">
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 flex items-center justify-between shadow-sm">
+<div class="flex-1 min-w-0 pr-4">
+<h4 class="text-sm font-semibold truncate">Synthetic Oil Filter</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="text-xs text-slate-400">2 x Rs. 1,250</span>
+</div>
+</div>
+<div class="text-right flex items-center gap-4">
+<span class="text-sm font-bold text-slate-700 dark:text-slate-200">Rs. 2,500</span>
+<button class="text-slate-300 hover:text-red-500"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 flex items-center justify-between shadow-sm">
+<div class="flex-1 min-w-0 pr-4">
+<h4 class="text-sm font-semibold truncate">Ceramic Brake Pads</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="text-xs text-slate-400">1 x Rs. 8,400</span>
+</div>
+</div>
+<div class="text-right flex items-center gap-4">
+<span class="text-sm font-bold text-slate-700 dark:text-slate-200">Rs. 8,400</span>
+<button class="text-slate-300 hover:text-red-500"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 flex items-center justify-between shadow-sm">
+<div class="flex-1 min-w-0 pr-4">
+<h4 class="text-sm font-semibold truncate">Iridium Spark Plug</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="text-xs text-slate-400">4 x Rs. 2,800</span>
+</div>
+</div>
+<div class="text-right flex items-center gap-4">
+<span class="text-sm font-bold text-slate-700 dark:text-slate-200">Rs. 11,200</span>
+<button class="text-slate-300 hover:text-red-500"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<section class="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] p-4 max-w-md mx-auto rounded-t-xl">
+<div class="space-y-2 mb-4">
+<div class="flex justify-between text-xs text-slate-500 font-medium">
+<span>Gross Total</span>
+<span>Rs. 22,100</span>
+</div>
+<div class="flex justify-between text-xs font-medium">
+<span class="text-slate-500">Discount 1 (15%)</span>
+<span class="text-emerald-500">- Rs. 3,315</span>
+</div>
+<div class="flex justify-between text-xs font-medium">
+<span class="text-slate-500">Discount 2 (0%)</span>
+<span class="text-primary underline cursor-pointer">Add Promo</span>
+</div>
+<div class="flex justify-between text-xs text-slate-500 font-medium">
+<span>VAT (15%)</span>
+<span>Rs. 2,818</span>
+</div>
+<div class="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-baseline">
+<span class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">Net Total</span>
+<span class="text-2xl font-black text-primary">Rs. 21,603</span>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-primary to-violet-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span>SUBMIT ORDER</span>
+<span class="material-symbols-outlined">send</span>
+</button>
+</section>
+</div>
+</body></html>

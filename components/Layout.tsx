@@ -115,12 +115,12 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
 
-      {/* Desktop Header */}
-      <header className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-50 no-print">
+      {/* Desktop Header - Enhanced */}
+      <header className="hidden md:block bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-50 no-print">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`w-8 h-8 ${themeClasses.bg} rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg ${themeClasses.shadow}`}>PF</div>
-            <h1 className="text-xl font-black tracking-tight text-slate-800">PartFlow <span className={themeClasses.text}>Pro</span></h1>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-200/50">PF</div>
+            <h1 className="text-xl font-black tracking-tight text-slate-800">PartFlow <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">Pro</span></h1>
           </div>
 
           <nav className="flex space-x-1">
@@ -128,14 +128,14 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                    ? `${themeClasses.bgSoft} ${themeClasses.text}`
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.id
+                    ? 'bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100/50'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
               >
                 <span>{tab.label}</span>
                 {tab.id === 'sync' && totalPending > 0 && (
-                  <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-sm">{totalPending}</span>
+                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">{totalPending}</span>
                 )}
               </button>
             ))}
@@ -143,19 +143,19 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </header>
 
-      {/* Mobile Header */}
-      <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-3 sticky top-0 z-40 no-print">
+      {/* Mobile Header - Premium Frosted Glass */}
+      <header className="md:hidden bg-white/70 backdrop-blur-2xl border-b border-slate-200/40 p-3 sticky top-0 z-40 no-print">
         <div className="flex justify-between items-center">
           {/* Left: Close button + Shop name (for Order screen) or Logo (for other screens) */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
             {isOrderScreen && onOrderClose ? (
               // Order screen: show close button and shop name
               <>
                 <button
                   onClick={onOrderClose}
-                  className="p-1.5 bg-rose-100 text-rose-600 rounded-full hover:bg-rose-200 transition-colors"
+                  className="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all active:scale-90"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
                 <div className="overflow-hidden max-w-[calc(100vw-110px)]">
                   <h1 className={`text-sm font-bold text-slate-800 whitespace-nowrap ${shouldAnimateOrderTitle ? 'animate-marquee' : ''}`}>
@@ -166,7 +166,7 @@ export const Layout: React.FC<LayoutProps> = ({
             ) : (
               // Other screens: show logo
               <>
-                <div className={`w-8 h-8 ${themeClasses.bg} rounded-lg flex items-center justify-center text-white font-bold text-xs ${themeClasses.shadow} shadow-lg`}>PF</div>
+                <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-200/50">PF</div>
                 <h1 className="text-sm font-black tracking-wider text-slate-800">
                   PARTFLOW
                 </h1>
@@ -177,14 +177,14 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* Right: Sync button and pending count */}
           <div className="flex items-center gap-2">
             {totalPending > 0 && !isOrderScreen && (
-              <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-full border border-amber-100">
+              <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2.5 py-1.5 rounded-xl border border-amber-100/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 <span className="text-[10px] font-bold">{totalPending} Pending</span>
               </div>
             )}
             <button
               onClick={() => onTabChange('sync')}
-              className={`p-2 rounded-full relative transition-colors ${activeTab === 'sync' ? `${themeClasses.bgSoft} ${themeClasses.text}` : 'text-slate-400'}`}
+              className={`p-2.5 rounded-xl relative transition-all duration-200 ${activeTab === 'sync' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
             >
               {tabs.find(t => t.id === 'sync')?.icon}
             </button>
@@ -197,26 +197,26 @@ export const Layout: React.FC<LayoutProps> = ({
         {children}
       </main>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay - Enhanced */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[60] md:hidden" onClick={() => setShowMobileMenu(false)}>
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] animate-in fade-in duration-300"></div>
-          <div className="absolute bottom-24 left-4 right-4 bg-white rounded-3xl shadow-2xl border border-slate-100 p-3 animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden">
+          <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[3px]" style={{ animation: 'fadeIn 0.2s ease-out' }}></div>
+          <div className="absolute bottom-24 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-900/10 border border-slate-100/80 p-4" style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'history', label: 'History', icon: tabs.find(t => t.id === 'history')?.icon, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { id: 'reports', label: 'Reports', icon: tabs.find(t => t.id === 'reports')?.icon, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { id: 'settings', label: 'Settings', icon: tabs.find(t => t.id === 'settings')?.icon, color: 'text-slate-600', bg: 'bg-slate-50' }
+                { id: 'history', label: 'History', icon: tabs.find(t => t.id === 'history')?.icon, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100/60' },
+                { id: 'reports', label: 'Reports', icon: tabs.find(t => t.id === 'reports')?.icon, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100/60' },
+                { id: 'settings', label: 'Settings', icon: tabs.find(t => t.id === 'settings')?.icon, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100/60' }
               ].map(item => (
                 <button
                   key={item.id}
                   onClick={() => handleMobileNavClick(item.id)}
-                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl hover:bg-slate-50 transition-all active:scale-95"
+                  className="flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl hover:bg-slate-50 transition-all active:scale-95"
                 >
-                  <div className={`w-12 h-12 ${item.bg} ${item.color} rounded-xl flex items-center justify-center shadow-sm`}>
+                  <div className={`w-12 h-12 ${item.bg} ${item.color} rounded-2xl flex items-center justify-center shadow-sm border ${item.border}`}>
                     {item.icon}
                   </div>
-                  <span className="text-[11px] font-black uppercase tracking-tight text-slate-600">{item.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -224,8 +224,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-15px_50px_-15px_rgba(0,0,0,0.1)] z-50 pb-safe no-print">
+      {/* Mobile Bottom Navigation - Premium */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-100/60 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.08)] z-50 pb-safe no-print">
         <div className="flex justify-between items-center h-20 px-2 max-w-md mx-auto">
           {mobileNavOrder.map(id => {
             if (id === 'menu') {
@@ -233,9 +233,9 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   key="menu"
                   onClick={() => handleMobileNavClick('menu')}
-                  className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all active:scale-90 ${showMobileMenu ? themeClasses.text : 'text-slate-400'}`}
+                  className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all active:scale-90 ${showMobileMenu ? 'text-indigo-600' : 'text-slate-400'}`}
                 >
-                  <div className={`p-2 rounded-xl transition-colors ${showMobileMenu ? themeClasses.bgSoft : ''}`}>
+                  <div className={`p-2 rounded-xl transition-all duration-200 ${showMobileMenu ? 'bg-indigo-50' : ''}`}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16m-7 6h7" /></svg>
                   </div>
                   <span className="text-[9px] font-black uppercase tracking-tighter">More</span>
@@ -254,14 +254,14 @@ export const Layout: React.FC<LayoutProps> = ({
                 <div key={id} className="relative px-2">
                   <button
                     onClick={() => handleMobileNavClick(id)}
-                    className={`w-16 h-16 rounded-2xl ${themeClasses.bg} text-white shadow-xl ${themeClasses.shadow} flex flex-col items-center justify-center transform -translate-y-4 border-4 border-white active:scale-95 transition-all relative`}
+                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl shadow-indigo-500/30 flex flex-col items-center justify-center transform -translate-y-4 border-4 border-white active:scale-95 transition-all relative hover:shadow-indigo-500/40"
                   >
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                     <span className="text-[8px] font-black uppercase mt-0.5">Sale</span>
                     {hasActiveDraft && (
-                      <span className="absolute top-3 right-3 flex h-3 w-3">
+                      <span className="absolute top-2 right-2 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className={`relative inline-flex rounded-full h-3 w-3 bg-rose-500 border-2 ${themeClasses.border}`}></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border-2 border-violet-500"></span>
                       </span>
                     )}
                   </button>
@@ -273,18 +273,30 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={id}
                 onClick={() => handleMobileNavClick(id)}
-                className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all active:scale-90 ${isActive ? themeClasses.text : 'text-slate-400 hover:text-slate-600'
+                className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-all duration-200 active:scale-90 ${isActive ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
                   }`}
               >
-                <div className={`p-2 rounded-xl transition-colors ${isActive ? themeClasses.bgSoft : ''}`}>
+                <div className={`p-2 rounded-xl transition-all duration-200 ${isActive ? 'bg-indigo-50 shadow-sm shadow-indigo-100/50' : ''}`}>
                   {tab.icon}
                 </div>
-                <span className={`text-[9px] font-black uppercase tracking-tighter ${isActive ? themeClasses.textDark : 'text-slate-500'}`}>{tab.label}</span>
+                <span className={`text-[9px] font-black uppercase tracking-tighter ${isActive ? 'text-indigo-700' : 'text-slate-500'}`}>{tab.label}</span>
               </button>
             );
           })}
         </div>
       </nav>
+
+      {/* Global Animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
 
     </div>
   );

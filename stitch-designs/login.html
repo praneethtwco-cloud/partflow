@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PartFlow Pro - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#5048e5",
+                "background-light": "#f6f6f8",
+                "background-dark": "#020617",
+              },
+              fontFamily: {
+                "display": ["Inter", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased">
+<!-- Background Gradient and Decorative Elements -->
+<div class="fixed inset-0 bg-gradient-to-br from-[#0F172A] via-[#020617] to-[#020617] -z-10">
+<div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#5048e5 1px, transparent 1px); background-size: 40px 40px;"></div>
+<div class="absolute top-1/4 -left-20 w-96 h-96 bg-primary/20 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]"></div>
+</div>
+<div class="relative flex min-h-screen w-full items-center justify-center p-4">
+<!-- Main UI Element: Frosted Glass Card -->
+<div class="w-full max-w-[440px] rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 shadow-2xl md:p-12">
+<!-- Logo Section -->
+<div class="flex flex-col items-center mb-10">
+<div class="relative mb-6">
+<div class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+<span class="text-2xl font-bold text-white tracking-tighter">PF</span>
+</div>
+</div>
+<h1 class="text-3xl font-bold text-slate-100 tracking-tight">
+                    PartFlow <span class="bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] bg-clip-text text-transparent">Pro</span>
+</h1>
+<p class="mt-2 text-slate-400 text-sm font-medium">Sales &amp; Inventory Management</p>
+</div>
+<!-- Login Form -->
+<form class="space-y-6">
+<!-- Email Input -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-slate-300 ml-1">Email address</label>
+<div class="group relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
+<input class="w-full rounded-lg border border-white/10 bg-white/5 py-4 pl-12 pr-4 text-slate-100 placeholder:text-slate-500 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="Enter your email" type="email"/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="space-y-2">
+<div class="flex items-center justify-between ml-1">
+<label class="block text-sm font-medium text-slate-300">Password</label>
+<a class="text-xs text-primary hover:underline" href="#">Forgot?</a>
+</div>
+<div class="group relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
+<input class="w-full rounded-lg border border-white/10 bg-white/5 py-4 pl-12 pr-12 text-slate-100 placeholder:text-slate-500 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="Enter your password" type="password"/>
+<button class="absolute right-4 text-slate-400 hover:text-slate-200 flex items-center" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Sign In Button -->
+<button class="group relative mt-4 flex w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] py-4 px-6 text-white font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_4px_20px_rgba(99,102,241,0.3)]" type="submit">
+<span class="relative z-10">Sign In</span>
+<div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</button>
+</form>
+<!-- Footer Section -->
+<div class="mt-10 text-center">
+<p class="text-sm text-slate-400">
+                    New sales rep? 
+                    <a class="ml-1 font-semibold text-[#8B5CF6] hover:text-[#A78BFA] transition-colors" href="#">
+                        Create an Account
+                    </a>
+</p>
+</div>
+</div>
+<!-- System Branding / Status (Subtle) -->
+<div class="fixed bottom-6 w-full text-center">
+<p class="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-bold">
+                Premium Distribution Management System v4.2
+            </p>
+</div>
+</div>
+</body></html>

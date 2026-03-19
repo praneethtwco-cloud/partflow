@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Report - Vidushan Motors</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .report-container {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 10mm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Typography */
+        h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+        p { margin: 2px 0; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+
+        /* Header Section */
+        .header {
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: 900;
+            color: #000;
+        }
+
+        .report-title {
+            font-size: 22px;
+            text-decoration: underline;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        /* Info Section */
+        .info-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .report-details {
+            width: 50%;
+        }
+
+        .report-meta {
+            width: 40%;
+        }
+
+        .meta-row {
+            display: flex;
+            margin-bottom: 3px;
+        }
+
+        .meta-label {
+            width: 100px;
+            font-weight: bold;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+
+        /* Adjusted Column Widths */
+        .col-part-no { width: 15%; }
+        .col-details { width: 30%; }
+        .col-model { width: 15%; }
+        .col-brand { width: 15%; }
+        .col-price { width: 15%; text-align: right; }
+        .col-status { width: 10%; text-align: center; font-weight: bold; }
+
+        /* Status Colors */
+        .status-in { color: #15803d; } /* Green */
+        .status-out { color: #b91c1c; } /* Red */
+        .status-low { color: #b45309; } /* Orange */
+
+        /* Summary Section */
+        .summary-container {
+            width: 40%;
+            margin-left: auto;
+            margin-bottom: 30px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .total-box {
+            border-top: 1px solid #000;
+            border-bottom: 4px double #000;
+            font-size: 14px;
+            margin-top: 5px;
+            padding: 5px 0;
+        }
+
+        /* Footer Section */
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            margin-bottom: 40px;
+        }
+
+        .sig-box {
+            width: 30%;
+            border-top: 1px dashed #999;
+            text-align: center;
+            padding-top: 5px;
+            font-size: 11px;
+        }
+
+        /* Print Planning */
+        @media print {
+            body { background: none; }
+            .report-container {
+                margin: 0;
+                box-shadow: none;
+                width: 100%;
+            }
+            
+            .no-break {
+                page-break-inside: avoid;
+            }
+
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            
+            button { display: none; }
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <button class="print-btn" onclick="window.print()">Print Report</button>
+
+    <div class="report-container">
+        <!-- Header -->
+        <div class="header text-center">
+            <div class="company-name">VIDUSHAN MOTORS</div>
+            <p>NO:16/4A CONSTANTINE LANE, KORALAWELLA, MORATUWA.</p>
+            <p>Tel: 011-2658075 / 077-3316434</p>
+            <p>Email: vidushan.motors@gmail.com</p>
+            <div class="report-title">STOCK STATUS REPORT</div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+            <div class="report-details">
+                <p class="font-bold">Report Details:</p>
+                <p>Location: Main Warehouse</p>
+                <p>Category: General Inventory</p>
+                <p>Generated By: Praneeth</p>
+            </div>
+            <div class="report-meta">
+                <div class="meta-row">
+                    <span class="meta-label">Date:</span>
+                    <span>04-06-2025</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Report No:</span>
+                    <span>SR-2025-084</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Time:</span>
+                    <span>10:30 AM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-part-no">Part Number</th>
+                    <th class="col-details">Part Details</th>
+                    <th class="col-model">Vehicle Model</th>
+                    <th class="col-brand">Brand</th>
+                    <th class="col-price">Price (Rs)</th>
+                    <th class="col-status">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Current Data -->
+                <tr>
+                    <td class="col-part-no">VM-HB-001</td>
+                    <td class="col-details">Hanger Bush - Set of 2</td>
+                    <td class="col-model">DIO</td>
+                    <td class="col-brand">A-Grade</td>
+                    <td class="col-price">350.00</td>
+                    <td class="col-status status-in">In Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-IC-102</td>
+                    <td class="col-details">Ignition Coil</td>
+                    <td class="col-model">PLEASURE</td>
+                    <td class="col-brand">BIKE KING</td>
+                    <td class="col-price">1,120.00</td>
+                    <td class="col-status status-out">Out of Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-IC-103</td>
+                    <td class="col-details">Ignition Coil (Black)</td>
+                    <td class="col-model">PULSAR 180</td>
+                    <td class="col-brand">BIKE KING</td>
+                    <td class="col-price">1,120.00</td>
+                    <td class="col-status status-in">In Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-IC-104</td>
+                    <td class="col-details">Ignition Coil (White)</td>
+                    <td class="col-model">KB4S</td>
+                    <td class="col-brand">BIKE KING</td>
+                    <td class="col-price">1,120.00</td>
+                    <td class="col-status status-low">Low Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-TC-205</td>
+                    <td class="col-details">Throttle Cable</td>
+                    <td class="col-model">DIS 135</td>
+                    <td class="col-brand">VENDERS</td>
+                    <td class="col-price">520.00</td>
+                    <td class="col-status status-in">In Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-TC-206</td>
+                    <td class="col-details">Throttle Cable</td>
+                    <td class="col-model">FZ V2</td>
+                    <td class="col-brand">VENDERS</td>
+                    <td class="col-price">720.00</td>
+                    <td class="col-status status-in">In Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-CL-301</td>
+                    <td class="col-details">Chain Link 420</td>
+                    <td class="col-model">Universal</td>
+                    <td class="col-brand">Generic China</td>
+                    <td class="col-price">26.00</td>
+                    <td class="col-status status-out">Out of Stock</td>
+                </tr>
+                <tr>
+                    <td class="col-part-no">VM-CP-405</td>
+                    <td class="col-details">Clutch Plate Set</td>
+                    <td class="col-model">MD 90</td>
+                    <td class="col-brand">ALIS GP</td>
+                    <td class="col-price">390.00</td>
+                    <td class="col-status status-in">In Stock</td>
+                </tr>
+                
+                <!-- Spacer for layout consistency -->
+                <tr style="height: 100px;">
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Summary & Footer (no-break section) -->
+        <div class="no-break">
+            <div class="summary-container">
+                <div class="summary-row">
+                    <span>Total Items Listed</span>
+                    <span>8</span>
+                </div>
+                <div class="summary-row">
+                    <span>Items Out of Stock</span>
+                    <span>2</span>
+                </div>
+                <div class="summary-row total-box font-bold">
+                    <span>Total Active Inventory Value</span>
+                    <span>Rs. 5,366.00</span>
+                </div>
+            </div>
+
+            <div class="signatures">
+                <div class="sig-box">Prepared By</div>
+                <div class="sig-box">Checked By</div>
+                <div class="sig-box">Authorized Manager</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

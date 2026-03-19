@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PartFlow Pro Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "3xl": "2.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar { display: none; }
+        .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-effect { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen pb-24">
+<!-- Header Section -->
+<header class="px-6 pt-8 pb-6 flex flex-col gap-1">
+<div class="flex justify-between items-start w-full">
+<div class="flex flex-col">
+<h1 class="text-2xl font-bold tracking-tight">
+                    Good Morning, 
+                    <span class="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">Praneeth</span>
+</h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Here's your performance overview</p>
+</div>
+<div class="bg-white dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
+<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Oct 24, 2023</p>
+</div>
+</div>
+</header>
+<!-- Stats Carousel -->
+<div class="flex overflow-x-auto custom-scrollbar gap-4 px-6 mb-8">
+<!-- Card 1 -->
+<div class="flex-shrink-0 w-[280px] p-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl">payments</span>
+</div>
+<div class="flex justify-between items-center mb-4">
+<div class="p-2 bg-white/20 rounded-xl">
+<span class="material-symbols-outlined">currency_rupee</span>
+</div>
+</div>
+<p class="text-indigo-100 text-sm font-medium">Today's Sales</p>
+<h3 class="text-2xl font-bold mt-1">Rs. 45,230</h3>
+</div>
+<!-- Card 2 -->
+<div class="flex-shrink-0 w-[280px] p-6 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl">calendar_month</span>
+</div>
+<div class="flex justify-between items-center mb-4">
+<div class="p-2 bg-white/20 rounded-xl">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+</div>
+<p class="text-emerald-50 text-sm font-medium">This Month</p>
+<h3 class="text-2xl font-bold mt-1">Rs. 1,245,000</h3>
+</div>
+<!-- Card 3 -->
+<div class="flex-shrink-0 w-[280px] p-6 rounded-3xl bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/20 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl">shopping_bag</span>
+</div>
+<div class="flex justify-between items-center mb-4">
+<div class="p-2 bg-white/20 rounded-xl">
+<span class="material-symbols-outlined">shopping_basket</span>
+</div>
+</div>
+<p class="text-violet-50 text-sm font-medium">Orders</p>
+<h3 class="text-2xl font-bold mt-1">47 Count</h3>
+</div>
+</div>
+<!-- Monthly Target Progress -->
+<div class="px-6 mb-8">
+<div class="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<h2 class="text-lg font-bold">Monthly Target</h2>
+<span class="text-primary font-bold text-sm">65%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full mb-6 overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-violet-500 w-[65%] rounded-full"></div>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<div>
+<p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Target</p>
+<p class="font-bold text-sm">2.0M</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Achieved</p>
+<p class="font-bold text-sm">1.2M</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Last Month</p>
+<p class="font-bold text-sm">980k</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="grid grid-cols-2 gap-4 px-6 mb-8">
+<button class="flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined text-xl">add_circle</span>
+<span>New Order</span>
+</button>
+<button class="flex items-center justify-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold shadow-sm">
+<span class="material-symbols-outlined text-xl">inventory_2</span>
+<span>Catalog</span>
+</button>
+</div>
+<!-- Today's Route -->
+<div class="px-6 mb-8">
+<div class="flex justify-between items-center mb-4">
+<h2 class="text-lg font-bold">Today's Route</h2>
+<button class="text-primary text-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">add</span> Add Stop
+            </button>
+</div>
+<div class="space-y-4">
+<!-- Route Card 1 -->
+<div class="bg-white dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-3 py-1 rounded-bl-xl font-bold">
+                    Bal: Rs. 12.5k
+                </div>
+<div class="flex items-start gap-4 mb-4">
+<div class="size-12 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">store</span>
+</div>
+<div>
+<h3 class="font-bold text-base leading-none mb-1">Apex Auto Spares</h3>
+<p class="text-xs text-slate-500">Kandy City • 10:30 AM</p>
+<span class="inline-block mt-2 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wider">In Progress</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="py-2.5 px-4 rounded-xl bg-primary text-white text-xs font-bold">Check In</button>
+<button class="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold">New Order</button>
+</div>
+</div>
+<!-- Route Card 2 -->
+<div class="bg-white dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm opacity-70">
+<div class="flex items-start gap-4 mb-4">
+<div class="size-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-500">check_circle</span>
+</div>
+<div>
+<h3 class="font-bold text-base leading-none mb-1">Global Motors</h3>
+<p class="text-xs text-slate-500">Peradeniya • 09:00 AM</p>
+<span class="inline-block mt-2 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Completed</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Stats Grid -->
+<div class="grid grid-cols-2 gap-4 px-6 mb-8">
+<div class="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-500/20">
+<p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Weekly Trend</p>
+<div class="flex items-end gap-2">
+<h4 class="text-xl font-bold text-blue-900 dark:text-blue-100">325k</h4>
+<span class="material-symbols-outlined text-blue-500 text-sm mb-1">trending_up</span>
+</div>
+</div>
+<div class="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-2xl border border-orange-100 dark:border-orange-500/20">
+<p class="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-1">Pending</p>
+<div class="flex items-end gap-2">
+<h4 class="text-xl font-bold text-orange-900 dark:text-orange-100">2 Buckets</h4>
+<span class="material-symbols-outlined text-orange-500 text-sm mb-1">pending_actions</span>
+</div>
+</div>
+</div>
+<!-- Weekly Performance Area Chart Mock -->
+<div class="px-6 mb-8">
+<div class="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-slate-700">
+<h2 class="text-base font-bold mb-4">Weekly Performance</h2>
+<div class="h-32 w-full flex items-end gap-2">
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[40%]"></div>
+<div class="flex-1 bg-primary/30 rounded-t-lg h-[60%]"></div>
+<div class="flex-1 bg-primary/40 rounded-t-lg h-[55%]"></div>
+<div class="flex-1 bg-primary/60 rounded-t-lg h-[85%]"></div>
+<div class="flex-1 bg-primary/50 rounded-t-lg h-[70%]"></div>
+<div class="flex-1 bg-primary/80 rounded-t-lg h-[95%]"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[75%]"></div>
+</div>
+<div class="flex justify-between mt-2 text-[10px] font-bold text-slate-400 uppercase">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+</div>
+<!-- Top Customers List -->
+<div class="px-6 mb-8">
+<h2 class="text-lg font-bold mb-4">Top Customers This Month</h2>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<div>
+<p class="font-bold text-sm">Zenith Auto Hub</p>
+<p class="text-xs text-slate-500">12 Orders</p>
+</div>
+</div>
+<p class="font-bold text-sm text-primary">Rs. 420k</p>
+</div>
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<div>
+<p class="font-bold text-sm">Mainline Parts</p>
+<p class="text-xs text-slate-500">9 Orders</p>
+</div>
+</div>
+<p class="font-bold text-sm text-primary">Rs. 315k</p>
+</div>
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<div>
+<p class="font-bold text-sm">Rapid Garage</p>
+<p class="text-xs text-slate-500">7 Orders</p>
+</div>
+</div>
+<p class="font-bold text-sm text-primary">Rs. 190k</p>
+</div>
+</div>
+</div>
+<!-- Bottom Nav Bar Component Integration -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center z-50">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">home</span>
+<span class="text-[10px] font-bold uppercase tracking-tight">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="text-[10px] font-bold uppercase tracking-tight">Catalog</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="text-[10px] font-bold uppercase tracking-tight">Orders</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-tight">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -13,6 +13,7 @@ import {
 import { SUPABASE_CONFIG } from '../config';
 import { supabaseSyncTracker } from './supabase-sync-tracker';
 import { getSupabaseClient } from './supabase-client';
+import { formatDateForDb } from '../utils/dateUtils';
 
 interface QueuedOperation {
   id: string;
@@ -264,21 +265,128 @@ class SupabaseSyncService {
         }
         return transformed;
       });
-      
-      const { error } = await this.supabase
-        .from('items')
-        .upsert(transformedItems, {
-          onConflict: 'item_id',
-          ignoreDuplicates: false
-        })
-        .select();
 
-      if (error) {
-        console.error('Item upload error details:', error);
-        supabaseSyncTracker.logPushToSupabase('items', data.items.length, false, error.message);
-        throw new Error(`Failed to upload items: ${error.message}`);
+      // Check for duplicate item_numbers within local data
+      const localItemNumberCounts = new Map<string, number>();
+      transformedItems.forEach(item => {
+        const num = item.item_number || '';
+        localItemNumberCounts.set(num, (localItemNumberCounts.get(num) || 0) + 1);
+      });
+
+      const localDuplicateItemNumbers = [...localItemNumberCounts.entries()]
+        .filter(([num, count]) => num && count > 1)
+        .map(([num]) => num);
+
+      if (localDuplicateItemNumbers.length > 0) {
+        this.addLog(`Warning: ${localDuplicateItemNumbers.length} duplicate item_numbers found in local. Clearing duplicates.`);
+        const seenNumbers = new Set<string>();
+        transformedItems.forEach(item => {
+          const num = item.item_number || '';
+          if (num && localDuplicateItemNumbers.includes(num)) {
+            if (seenNumbers.has(num)) {
+              item.item_number = '';
+            } else {
+              seenNumbers.add(num);
+            }
+          }
+        });
+      }
+
+      // Check for conflicts with cloud items (same item_number, different item_id)
+      const { data: cloudItems, error: cloudFetchError } = await this.supabase
+        .from('items')
+        .select('item_id, item_number');
+
+      if (cloudFetchError) {
+        console.error('Failed to fetch cloud items:', cloudFetchError);
+      }
+
+      const cloudItemNumberMap = new Map<string, string>();
+      (cloudItems || []).forEach(item => {
+        if (item.item_number) {
+          cloudItemNumberMap.set(item.item_number, item.item_id);
+        }
+      });
+
+      // Also check if ANY item in cloud has an item_number that's not empty (for unique constraint)
+      const cloudHasItemNumbers = new Set<string>();
+      (cloudItems || []).forEach(item => {
+        if (item.item_number) {
+          cloudHasItemNumbers.add(item.item_number);
+        }
+      });
+
+      // Find items that conflict with cloud (same item_number but different item_id)
+      const conflictingItems: string[] = [];
+      transformedItems.forEach(item => {
+        const num = item.item_number;
+        if (num) {
+          // Check if same item_number exists in cloud with different item_id
+          if (cloudItemNumberMap.has(num) && cloudItemNumberMap.get(num) !== item.item_id) {
+            conflictingItems.push(item.item_id);
+            item.item_number = '';
+            this.addLog(`Cleared item_number ${num} for ${item.item_id} - conflicts with cloud item ${cloudItemNumberMap.get(num)}`);
+          }
+          // Also check if cloud has this item_number for another item
+          else if (cloudHasItemNumbers.has(num)) {
+            const cloudItemId = cloudItemNumberMap.get(num);
+            if (cloudItemId && cloudItemId !== item.item_id) {
+              conflictingItems.push(item.item_id);
+              item.item_number = '';
+              this.addLog(`Cleared item_number ${num} for ${item.item_id} - duplicate in cloud`);
+            }
+          }
+        }
+      });
+
+      if (conflictingItems.length > 0) {
+        this.addLog(`Warning: ${conflictingItems.length} items have item_numbers that conflict with cloud.`);
+        supabaseSyncTracker.logPushToSupabase('items', data.items.length, false, `${conflictingItems.length} items cleared due to cloud conflict`);
+      }
+
+      // Try upload with retry logic
+      let uploadAttempts = 0;
+      const maxAttempts = 2;
+      let uploadError: any = null;
+      
+      while (uploadAttempts < maxAttempts) {
+        const { error } = await this.supabase
+          .from('items')
+          .upsert(transformedItems, {
+            onConflict: 'item_id',
+            ignoreDuplicates: false
+          })
+          .select();
+
+        if (!error) {
+          uploadError = null;
+          break;
+        }
+
+        uploadAttempts++;
+        uploadError = error;
+        
+        // If error is duplicate key, clear all item_numbers and retry
+        if (error.code === '23505' && uploadAttempts < maxAttempts) {
+          this.addLog(`Upload failed with duplicate key. Clearing all non-empty item_numbers and retrying (attempt ${uploadAttempts}/${maxAttempts})...`);
+          transformedItems.forEach(item => {
+            if (item.item_number) {
+              console.log(`Clearing item_number ${item.item_number} for ${item.item_id} due to upload failure`);
+              item.item_number = '';
+            }
+          });
+        } else if (error.code === '23505' && uploadAttempts >= maxAttempts) {
+          this.addLog(`Upload still failed after ${maxAttempts} attempts. Some items may have duplicate item_numbers.`);
+        }
+      }
+
+      if (uploadError) {
+        console.error('Item upload error details:', uploadError);
+        supabaseSyncTracker.logPushToSupabase('items', data.items.length, false, uploadError.message);
+        throw new Error(`Failed to upload items: ${uploadError.message}`);
       } else {
         supabaseSyncTracker.logPushToSupabase('items', data.items.length, true, `${mode} mode`);
+        this.addLog(`Successfully uploaded ${transformedItems.length} items to Supabase.`);
       }
     }
 
@@ -318,18 +426,86 @@ class SupabaseSyncService {
       
       if (allLines.length > 0) {
         this.addLog(`Uploading ${allLines.length} order lines to Supabase...`);
-        const { error: linesError } = await this.supabase
-          .from('order_lines')
-          .upsert(allLines, {
-            onConflict: 'line_id',
-            ignoreDuplicates: false
-          });
-        
-        if (linesError) {
-          console.error('Order lines upload error:', linesError);
-          supabaseSyncTracker.logPushToSupabase('orderLines', allLines.length, false, linesError.message);
+
+        // First, get all valid item_ids from cloud to ensure FK constraint is satisfied
+        const { data: cloudItems, error: itemsFetchError } = await this.supabase
+          .from('items')
+          .select('item_id');
+
+        if (itemsFetchError) {
+          throw new Error(`Failed to fetch cloud items for validation: ${itemsFetchError.message}`);
+        }
+
+        const validItemIds = new Set((cloudItems || []).map(i => i.item_id));
+        const invalidLines: string[] = [];
+
+        // Filter out lines with invalid item_ids
+        const validLines = allLines.filter(line => {
+          if (!validItemIds.has(line.item_id)) {
+            invalidLines.push(line.line_id);
+            return false;
+          }
+          return true;
+        });
+
+        if (invalidLines.length > 0) {
+          this.addLog(`Warning: ${invalidLines.length} order lines skipped due to missing items in cloud.`);
+          console.warn(`Skipped order lines with invalid item_ids:`, invalidLines);
+        }
+
+        if (validLines.length > 0) {
+          this.addLog(`Uploading ${validLines.length} valid order lines (filtered from ${allLines.length} local lines)...`);
+          
+          const { error: linesError } = await this.supabase
+            .from('order_lines')
+            .upsert(validLines, {
+              onConflict: 'line_id',
+              ignoreDuplicates: false
+            });
+          
+          if (linesError) {
+            console.error('Order lines upload error:', linesError);
+            supabaseSyncTracker.logPushToSupabase('orderLines', validLines.length, false, linesError.message);
+            throw new Error(`Failed to upload order lines: ${linesError.message}. Order sync aborted.`);
+          } else {
+            supabaseSyncTracker.logPushToSupabase('orderLines', validLines.length, true, `${mode} mode`);
+          }
+
+          // Verify all lines were uploaded successfully
+          const orderIds = [...new Set(validLines.map(l => l.order_id))];
+          for (const orderId of orderIds) {
+            const { data: verifyLines, error: verifyError } = await this.supabase
+              .from('order_lines')
+              .select('line_id')
+              .eq('order_id', orderId);
+
+            if (verifyError) {
+              throw new Error(`Failed to verify order lines for ${orderId}`);
+            }
+
+            const expectedCount = validLines.filter(l => l.order_id === orderId).length;
+            const actualCount = verifyLines?.length || 0;
+
+            if (actualCount < expectedCount) {
+              throw new Error(`Order line verification failed for ${orderId}: expected ${expectedCount}, found ${actualCount}. Sync aborted.`);
+            }
+          }
+          this.addLog(`Verified ${validLines.length} order lines uploaded successfully.`);
+          
+          // Show summary of local vs cloud counts
+          const localOrderIds = [...new Set(allLines.map(l => l.order_id))];
+          for (const orderId of localOrderIds) {
+            const localCount = allLines.filter(l => l.order_id === orderId).length;
+            const validCount = validLines.filter(l => l.order_id === orderId).length;
+            const { count: cloudCount } = await this.supabase
+              .from('order_lines')
+              .select('line_id', { count: 'exact', head: true })
+              .eq('order_id', orderId);
+            this.addLog(`Order ${orderId}: Local=${localCount}, Cloud=${cloudCount || 0}, Skipped=${localCount - validCount}`);
+          }
         } else {
-          supabaseSyncTracker.logPushToSupabase('orderLines', allLines.length, true, `${mode} mode`);
+          this.addLog(`Warning: No valid order lines to upload (all have invalid item_ids).`);
+          supabaseSyncTracker.logPushToSupabase('orderLines', 0, true, 'All lines skipped - invalid item_ids');
         }
       }
     }

@@ -307,10 +307,10 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-20 md:pb-0">
-            <h2 className="text-2xl font-bold text-slate-800 px-2">Data Sync & Tools</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight px-2">Cloud Sync</h2>
 
             {/* Status Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
                 <div className={`p-6 md:p-8 text-center bg-gradient-to-b ${themeClasses.bgSoft} to-white`}>
                      <div className="mb-6">
                         {status === 'syncing' || status === 'checking' ? (
@@ -320,7 +320,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                             </div>
                         ) : (
-                            <div className={`w-20 h-20 ${themeClasses.bgSoft} rounded-full flex items-center justify-center mx-auto ${themeClasses.text}`}>
+                            <div className={`w-20 h-20 ${themeClasses.bgSoft} rounded-2xl flex items-center justify-center mx-auto ${themeClasses.text}`}>
                                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                             </div>
                         )}
@@ -351,7 +351,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                             <span>Progress</span>
                             <span>{syncProgress}%</span>
                           </div>
-                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                          <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                             <div 
                               className={`h-full transition-all duration-300 ${themeClasses.bg}`}
                               style={{ width: `${syncProgress}%` }}
@@ -364,9 +364,9 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                         <button
                             onClick={() => handleSync('upsert')}
                             disabled={isConfiguring || status === 'syncing' || status === 'checking'}
-                            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 ${
+                            className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all active:scale-[0.97] ${
                                 status === 'syncing' || status === 'checking' ? 'bg-slate-200 text-slate-400 cursor-not-allowed' :
-                                `${themeClasses.bg} text-white ${themeClasses.bgHover} ${themeClasses.shadow}`
+                                `bg-gradient-to-r ${themeClasses.gradient} text-white ${themeClasses.shadow}`
                             }`}
                         >
                             {status === 'syncing' ? 'Processing...' : status === 'checking' ? 'Checking...' : totalPending > 0 ? 'Sync & Push' : 'Incremental Sync'}
@@ -566,7 +566,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ onSyncComplete }) 
                         </button>
                         <button
                             onClick={() => setShowImportLogViewer(true)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium ${themeClasses.bg} text-white hover:${themeClasses.hover}`}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium ${themeClasses.bg} text-white hover:${themeClasses.bgHover}`}
                         >
                             View Logs
                         </button>

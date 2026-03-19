@@ -1176,7 +1176,7 @@ class LocalDB {
   }
 
   // --- Real Sync Action ---
-  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert', onProgress?: (progress: number) => void): Promise<void> {
+  async performSync(onLog?: (msg: string) => void, mode: 'upsert' | 'overwrite' = 'upsert', onProgress?: (progress: number) => void, skipBackup: boolean = false): Promise<void> {
     const updateProgress = (progress: number) => {
       if (onProgress) onProgress(progress);
     };
@@ -1190,12 +1190,14 @@ class LocalDB {
     }
     updateProgress(5);
 
-    // Create local backup (CSV)
-    if (onLog) onLog("Creating local backup (CSV)...");
-    updateProgress(10);
-    const currentItems = this.getItems();
-    const csvData = jsonToCsv(currentItems);
-    downloadCsv(csvData, `inventory_backup_${new Date().toISOString().split('T')[0]}.csv`);
+    if (!skipBackup) {
+      // Create local backup (CSV)
+      if (onLog) onLog("Creating local backup (CSV)...");
+      updateProgress(10);
+      const currentItems = this.getItems();
+      const csvData = jsonToCsv(currentItems);
+      downloadCsv(csvData, `inventory_backup_${new Date().toISOString().split('T')[0]}.csv`);
+    }
 
     // Use Cache for current state
     const customers = this.getCustomers();

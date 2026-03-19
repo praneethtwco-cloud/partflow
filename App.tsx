@@ -211,21 +211,21 @@ function AppContent() {
 
   if (!dbInitialized) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0F172A, #020617)' }}>
               <div className="text-center">
                   {initError ? (
                       <>
-                        <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600">
+                        <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-5 text-rose-400">
                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         </div>
-                        <h2 className="text-lg font-bold text-slate-800">System Error</h2>
-                        <p className="text-rose-500 text-sm max-w-xs mx-auto mb-4">{initError}</p>
-                        <button onClick={() => window.location.reload()} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold">Retry</button>
+                        <h2 className="text-lg font-bold text-slate-200">System Error</h2>
+                        <p className="text-rose-400 text-sm max-w-xs mx-auto mb-5">{initError}</p>
+                        <button onClick={() => window.location.reload()} className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg">Retry</button>
                       </>
                   ) : (
                       <>
-                        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <h2 className="text-lg font-bold text-slate-800">Starting Engine...</h2>
+                        <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin mx-auto mb-5"></div>
+                        <h2 className="text-lg font-black text-slate-200">Starting Engine...</h2>
                         <p className="text-slate-500 text-sm">Loading database from local storage</p>
                       </>
                   )}
